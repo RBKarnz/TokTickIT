@@ -17,11 +17,11 @@ export default function App() {
     try {
     // หา Backend ตามข้อกำหนด Issue 2
     await checkSystem();
-    // ถ้าสำเร็จ ให้เด้งบอกเฉยๆ แล้วกลับไปหน้าเดิม (รอสร้าง UI จริงใน Issue 4)
+   // ถ้าสำเร็จ ให้เด้งบอกเฉยๆ แล้วกลับไปหน้าเดิม
     alert("Backend is Online!");
     setState("idle"); 
     } catch (error: any) {
-      // ถ้า Server ล่ม ข้อความจากหลุมดำใน api.ts จะเด้งขึ้นมาบนจอ!
+      // ถ้า Server ล่ม ข้อความจะเด้งขึ้นมาบนจอ
       alert("Offline: " + error.message);
       setState("idle");
     }
