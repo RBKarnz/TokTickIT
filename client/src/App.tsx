@@ -14,6 +14,17 @@ export default function App() {
     //   - success: store categories and show Online + the list, or
     //   - error: show Offline + a useful message.
     setState("loading");
+    try {
+    // หา Backend ตามข้อกำหนด Issue 2
+    await checkSystem();
+    // ถ้าสำเร็จ ให้เด้งบอกเฉยๆ แล้วกลับไปหน้าเดิม (รอสร้าง UI จริงใน Issue 4)
+    alert("Backend is Online!");
+    setState("idle"); 
+    } catch (error: any) {
+      // ถ้า Server ล่ม ข้อความจากหลุมดำใน api.ts จะเด้งขึ้นมาบนจอ!
+      alert("Offline: " + error.message);
+      setState("idle");
+    }
   }
 
   return (
