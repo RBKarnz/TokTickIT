@@ -20,6 +20,7 @@ datasource db {
 // TODO(Issue 3): add the Category model below.
 // ---------------------------------------------------------------------------
 
+// Issue 3
 model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique
