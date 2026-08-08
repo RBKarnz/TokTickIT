@@ -7,6 +7,7 @@ type UiState = "idle" | "loading" | "success" | "error";
 export default function App() {
   const [state, setState] = useState<UiState>("idle");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [errorMessage, setErrorMessage] = useState("");
   void categories;
 
   async function handleCheck() {
@@ -14,16 +15,16 @@ export default function App() {
     //   - success: store categories and show Online + the list, or
     //   - error: show Offline + a useful message.
     setState("loading");
+    setErrorMessage("");
     try {
-    // หา Backend ตามข้อกำหนด Issue 2
-    await checkSystem();
-    // ถ้าสำเร็จ ให้เด้งบอกเฉยๆ แล้วกลับไปหน้าเดิม (รอสร้าง UI จริงใน Issue 4)
-    alert("Backend is Online!");
-    setState("idle"); 
+      // ไปหา Backend (ทำงานร่วมกับ Issue 2)
+      await checkSystem();
+      setState("success");
     } catch (error: any) {
-      // ถ้า Server ล่ม ข้อความจากหลุมดำใน api.ts จะเด้งขึ้นมาบนจอ!
-      alert("Offline: " + error.message);
-      setState("idle");
+      // ถ้าไม่มี error.message ส่งมา ก็จะ fallback ไปใช้ข้อความด้านหลังทันที
+      setErrorMessage(error?.message || "Unable to connect to the backend.");
+      // ถ้า Backend ปิดอยู่ หรือเชื่อมต่อไม่ได้
+      setState("error");
     }
   }
 
@@ -36,6 +37,19 @@ export default function App() {
       <button className="btn btn-success" onClick={handleCheck} disabled={state === "loading"}>
         {state === "loading" ? "Loading…" : "Check System"}
       </button>
+
+      {/* แสดงผลสำหรับ Issue 2*/}
+      {state === "success" && (
+        <div className="alert alert-success mt-4">
+          <strong>Online:</strong> The TokTickIT backend is running successfully.
+        </div>
+      )}
+
+      {state === "error" && (
+        <div className="alert alert-danger mt-4">
+          <strong>Offline:</strong> {errorMessage}
+        </div>
+      )}
 
       {/* TODO(Issue 4): render loading / success (Online + categories) / error (Offline) states. */}
     </div>
