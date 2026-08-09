@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: toktickit-postgres
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-teerakarn}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pass1234}
+      POSTGRES_DB: ${POSTGRES_DB:-toktickit}
+    ports:
+      - "${POSTGRES_PORT:-5555}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer:latest
+    container_name: toktickit-adminer
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
