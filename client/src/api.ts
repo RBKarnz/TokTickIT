@@ -1,13 +1,13 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 export interface Category {
-  id: number;
+  id: string;
   name: string;
 }
 
 export interface SystemStatus {
   online: boolean;
-  categories: Category[];
+  categories?: Category[];
 }
 
 // Issue 2 + Issue 4 — call the backend.
@@ -25,5 +25,14 @@ export async function checkSystem(): Promise<SystemStatus> {
     if (!healthRes.ok) {
       throw new Error("Backend is unavailable (health check failed)");
     }
-  return { online: true, categories: [] };
+  
+  // ดึงข้อมูล Category จาก API ใหม่ (Issue 4)
+  const catRes = await fetch(`${API_URL}/api/categories`);
+  if (!catRes.ok) {
+    throw new Error("Failed to fetch categories.");
+  }
+
+  // แปลงข้อมูลและส่งกลับไปให้ App.tsx
+  const categories = await catRes.json();
+  return { online: true, categories: categories };
 }
