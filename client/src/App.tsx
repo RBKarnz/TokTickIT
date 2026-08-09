@@ -8,7 +8,6 @@ export default function App() {
   const [state, setState] = useState<UiState>("idle");
   const [categories, setCategories] = useState<Category[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
-  void categories;
 
   async function handleCheck() {
     // TODO(Issue 4): set loading, call checkSystem(), then either
@@ -18,7 +17,8 @@ export default function App() {
     setErrorMessage("");
     try {
       // ไปหา Backend (ทำงานร่วมกับ Issue 2)
-      await checkSystem();
+      const data = await checkSystem();
+      setCategories(data.categories || []);
       setState("success");
     } catch (error: any) {
       // ถ้าไม่มี error.message ส่งมา ก็จะ fallback ไปใช้ข้อความด้านหลังทันที
@@ -38,13 +38,19 @@ export default function App() {
         {state === "loading" ? "Loading…" : "Check System"}
       </button>
 
-      {/* แสดงผลสำหรับ Issue 2*/}
+      {/* แสดงผล Online พร้อมกับ List ของ Categories */}
       {state === "success" && (
         <div className="alert alert-success mt-4">
           <strong>Online:</strong> The TokTickIT backend is running successfully.
+          <ul className="mt-3 mb-0">
+            {categories.map((category) => (
+              <li key={category.id}>{category.name}</li>
+            ))}
+          </ul>
         </div>
       )}
 
+      {/* แสดงผล Offline */}
       {state === "error" && (
         <div className="alert alert-danger mt-4">
           <strong>Offline:</strong> {errorMessage}

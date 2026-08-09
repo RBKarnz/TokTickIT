@@ -34,4 +34,25 @@ app.get("/api/health", (_req: Request, res: Response) => {
 // TODO(Issue 4): implement the route here.
 // ---------------------------------------------------------------------------
 
+app.get('/api/categories', async (req, res) => {
+  try {
+    // เรียกใช้ getPrisma() เพื่อดึงการเชื่อมต่อ Database มาใช้งาน
+    const prisma = getPrisma();
+
+    const categories = await prisma.category.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        id: 'asc',
+      },
+    });
+    res.status(200).json(categories);
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    res.status(500).json({ error: "Failed to fetch categories" });
+  }
+});
+
 export default app;
