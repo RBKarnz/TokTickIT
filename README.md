@@ -24,6 +24,9 @@ npx prisma db seed
 npx prisma studio
 ใช้เปิด browser เพื่อเข้าไปดูข้อมูลใน Database
 
+npx prisma migrate reset
+ใช้เพื่อ reset ข้อมูล
+
 - Git
 
 git status
