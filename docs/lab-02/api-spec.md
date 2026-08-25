@@ -39,10 +39,10 @@ Since Lab 2 uses a temporary Development Requester selection rather than real au
 
 #### `POST /api/tickets`
 - **Purpose**: Create a new ticket.
+- **Headers**: `X-Requester-Id: <id>`
 - **Request Body**:
   ```json
   {
-    "requesterId": 1,
     "categoryId": 1,
     "relatedSystemId": 1,
     "requestedPriority": "MEDIUM",

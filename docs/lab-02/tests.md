@@ -15,6 +15,8 @@ Testing will follow Test-Driven Development (TDD) principles. We will implement 
 | UI-01 | UI | FR-01 | Requester Selector renders | Dropdown shows active requesters from mock API | `client/tests/lab-02/RequesterSelector.test.tsx` | - |
 | UI-02 | UI | AC-07 | Submit without required field | Form blocked; API not called; error message displayed | `client/tests/lab-02/CreateTicket.test.tsx` | - |
 | UI-03 | UI | FR-04 | My Tickets search filter | Search input updates list via API call | `client/tests/lab-02/MyTickets.test.tsx` | - |
+| UI-04 | UI | FR-04 | My Tickets advanced filters | Category/Status filters and Sorting update list correctly | `client/tests/lab-02/MyTickets.test.tsx` | - |
+| API-05 | API | FR-04 | Search, Filter, Sort query | API returns correctly filtered and sorted paginated tickets | `server/tests/lab-02/my-tickets.api.test.ts` | - |
 | E2E-01 | E2E | AC-01, AC-05 | End-to-end create & view | User logs in, creates ticket with file, views in list, opens detail, deletes file | `e2e/lab-02/requester-ticket-flow.spec.ts` | - |
 
 ## 3. Acceptance-Criterion Traceability

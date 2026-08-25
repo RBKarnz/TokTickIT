@@ -46,6 +46,7 @@ The IT department needs the first version of the ticketing system for end-users 
 - BR-09: Ticket Description must be at least 10 characters.
 - BR-10: Inactive requesters must not be shown in the Development Requester selection list.
 - BR-11: If no Development Requester is selected, the user must be redirected to the selection screen when attempting to access ticketing pages.
+- BR-12: If ticket creation succeeds but the attachment upload fails, the system must NOT rollback the ticket creation. It should save the ticket, present a warning to the user about the failed upload, and allow them to retry uploading from the Ticket Detail screen.
 
 ## 6. UI Specification Summary
 - **Theme:** Zen Green Theme (Primary: #006B3C, Secondary: #0B7A46, Background: #F5F7F6).
@@ -56,11 +57,11 @@ The IT department needs the first version of the ticketing system for end-users 
 
 ## 7. Data Changes
 - **RequesterUser (New):** id, name, email, isActive, createdAt.
-- **Ticket (New):** id, ticketNumber (unique), requesterId (FK), categoryId (FK), relatedSystemId (FK), requestedPriority (Enum), itPriority (Enum), currentStatus (Enum), summary, description, createdAt, updatedAt.
+- **Ticket (New):** id, ticketNumber (unique), requesterId (FK), categoryId (FK), relatedSystemId (FK), requestedPriority (Enum), itPriority (Enum, default: 'UNASSIGNED'), currentStatus (Enum), summary, description, createdAt, updatedAt.
 - **Attachment (New):** id, ticketId (FK), originalFilename, storedFilename, fileType, fileSize, uploadedAt, isRemoved, removalReason, removedAt.
 - **Category (New):** id, name, isActive.
 - **RelatedSystem (New):** id, name, isActive.
-- **Enums:** Priority (LOW, MEDIUM, HIGH, CRITICAL), TicketStatus (NEW, OPEN, IN_PROGRESS, RESOLVED, CLOSED).
+- **Enums:** Priority (UNASSIGNED, LOW, MEDIUM, HIGH, CRITICAL), TicketStatus (NEW, OPEN, IN_PROGRESS, RESOLVED, CLOSED).
 
 ## 8. API Contract
 - `GET /api/requesters`: Retrieve active Development Requesters.
