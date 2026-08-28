@@ -21,7 +21,9 @@ This document defines the "Zen Green Theme" visual rules, responsive layouts, an
 - **Buttons**:
   - Primary: Background `#006B3C`, text White. Hover: `#0B7A46`.
   - Secondary/Outline: Border `#006B3C`, text `#006B3C`, background transparent.
+  - Destructive: Background `#B91C1C` (or red outline) with white/red text for high-risk actions like attachment delete confirmation.
   - Disabled: Gray background/text, reduced opacity, `cursor-not-allowed`.
+  - Busy State: Replaces button text or adds a spinner icon and visually disables the button while an action is in flight.
 - **Labels & Validation**: Labels above inputs. Red asterisk `*` for required fields. Validation error messages appear immediately below the field in dark red text.
 
 ## 3. Screen Layouts
@@ -54,6 +56,14 @@ This document defines the "Zen Green Theme" visual rules, responsive layouts, an
 - **States**: Loading spinner, Empty state (no tickets exist), No-results state (search matched nothing).
 
 ### 3.5. Ticket Detail Screen
+- **Header Navigation**: Must include a breadcrumb (e.g., "My Tickets > Ticket Details") and a "Back to My Tickets" navigation button.
 - **Layout**: Similar to Create Ticket but all fields are styled as Read-only.
-- **Attachments Section**: Lists active attachments with a Download icon and a Soft-Remove (trash) icon.
+- **Attachments Section**: Lists active attachments with a Download icon and a Soft-Remove (trash) icon. Includes an explicit "Add Attachment" button/interaction to upload new files.
 - **Remove Action**: Clicking remove prompts for a "removal reason" before processing.
+- **Placeholder Sections**: Tabs or sections such as "Public Comments", "Internal Notes", and "Actions Taken" must be visually present but treated as disabled or placeholders for Lab 2.
+
+## 4. Screenshot Artifact Paths
+For test evidence and visual inspection, screenshots must be saved in the following directory paths within the repository:
+- `artifacts/lab-02/screenshots/create-ticket/`
+- `artifacts/lab-02/screenshots/my-tickets/`
+- `artifacts/lab-02/screenshots/ticket-detail/`
