@@ -36,3 +36,12 @@ export async function checkSystem(): Promise<SystemStatus> {
   const categories = await catRes.json();
   return { online: true, categories: categories };
 }
+
+// Lab 2: Fetch active requesters
+export async function fetchRequesters() {
+  const res = await fetch(`${API_URL}/api/requesters`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch requesters.");
+  }
+  return await res.json();
+}

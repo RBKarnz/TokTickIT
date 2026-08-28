@@ -1,12 +1,9 @@
 import { getPrisma } from "../src/prisma.js";
 
-// Issue 3 — seed the four supported categories.
-// The four names are: Account and Access, Hardware, Software, Network.
-// Requirement: running the seed twice must NOT create duplicates.
-// Hint: prisma.category.upsert({ where:{name}, update:{}, create:{name} }).
-
 async function main() {
   const prisma = getPrisma();
+  
+  // Categories (4 required)
   const categories = [
     "Account and Access",
     "Hardware",
@@ -18,11 +15,47 @@ async function main() {
     await prisma.category.upsert({
       where: { name },
       update: {},
-      create: { name },
+      create: { name, isActive: true },
     });
   }
 
-  console.log("Seeding categories completed successfully.");
+  // Related Systems (6+ realistic)
+  const systems = [
+    "Email",
+    "Campus Wi-Fi",
+    "VPN",
+    "LEB2 App",
+    "Grade Submission App",
+    "Printer",
+    "Corporate Laptop"
+  ];
+
+  for (const name of systems) {
+    await prisma.relatedSystem.upsert({
+      where: { name },
+      update: {},
+      create: { name, isActive: true },
+    });
+  }
+
+  // Requesters (4 active, 1 inactive)
+  const requesters = [
+    { name: "Jennifer Anderson", email: "jennifer.a@example.com", isActive: true },
+    { name: "Michael Brown", email: "michael.b@example.com", isActive: true },
+    { name: "Sarah Johnson", email: "sarah.j@example.com", isActive: true },
+    { name: "David Lee", email: "david.l@example.com", isActive: true },
+    { name: "Inactive User", email: "inactive@example.com", isActive: false }
+  ];
+
+  for (const req of requesters) {
+    await prisma.requesterUser.upsert({
+      where: { email: req.email },
+      update: { name: req.name, isActive: req.isActive },
+      create: req,
+    });
+  }
+
+  console.log("Seeding completed successfully.");
 }
 
 main()

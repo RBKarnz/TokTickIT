@@ -40,6 +40,7 @@ app.get('/api/categories', async (req, res) => {
     const prisma = getPrisma();
 
     const categories = await prisma.category.findMany({
+      where: { isActive: true },
       select: {
         id: true,
         name: true,
@@ -51,7 +52,37 @@ app.get('/api/categories', async (req, res) => {
     res.status(200).json(categories);
   } catch (error) {
     console.error("Error fetching categories:", error);
-    res.status(500).json({ error: "Failed to fetch categories" });
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch categories" } });
+  }
+});
+
+// Lab 2: Get active related systems
+app.get('/api/systems', async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const systems = await prisma.relatedSystem.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { id: 'asc' }
+    });
+    res.status(200).json(systems);
+  } catch (error) {
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch systems" } });
+  }
+});
+
+// Lab 2: Get active requesters
+app.get('/api/requesters', async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const requesters = await prisma.requesterUser.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, email: true, isActive: true },
+      orderBy: { id: 'asc' }
+    });
+    res.status(200).json(requesters);
+  } catch (error) {
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch requesters" } });
   }
 });
 
