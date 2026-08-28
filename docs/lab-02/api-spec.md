@@ -67,8 +67,14 @@ Since Lab 2 uses a temporary Development Requester selection rather than real au
   - `page` (number, default: 1)
   - `limit` (number, default: 10)
   - `search` (string, optional)
-  - `sortField` (string, optional, e.g., 'createdAt')
-  - `sortOrder` (asc/desc, optional)
+  - `categoryId` (number, optional)
+  - `requestedPriority` (string, optional)
+  - `currentStatus` (string, optional)
+  - `sortField` (string, optional, default: 'createdAt')
+  - `sortOrder` (asc/desc, optional, default: 'desc')
+- **Behavior**:
+  - Default sorting is `createdAt DESC`, with secondary sort `id DESC`.
+  - Invalid query parameters will be ignored if unrecognized, or return `400 Bad Request` if the format is invalid (e.g., passing a string for `page`).
 - **Response (200 OK)**:
   ```json
   {
@@ -103,6 +109,13 @@ Since Lab 2 uses a temporary Development Requester selection rather than real au
 - **Error (400 Bad Request)**: File too large (>5MB) or invalid type.
 - **Error (403 Forbidden)**: Max 5 attachments reached, or not ticket owner.
 
+#### `GET /api/attachments/:id`
+- **Purpose**: Retrieve metadata for a specific attachment.
+- **Headers**: `X-Requester-Id: 1`
+- **Response (200 OK)**: JSON object containing attachment metadata (e.g., `id`, `originalFilename`, `fileSize`, `uploadedAt`).
+- **Error (404 Not Found)**: Attachment does not exist or has been soft-removed.
+- **Error (403 Forbidden)**: Not ticket owner.
+
 #### `GET /api/attachments/:id/download`
 - **Purpose**: Download an active attachment.
 - **Headers**: `X-Requester-Id: 1`
@@ -119,3 +132,23 @@ Since Lab 2 uses a temporary Development Requester selection rather than real au
   ```
 - **Response (200 OK)**: Success acknowledgment.
 - **Error (403 Forbidden)**: Not ticket owner.
+
+## 4. Standard Error Schema & Status Codes
+All API error responses (4xx and 5xx) will follow a standard payload schema:
+```json
+{
+  "error": {
+    "code": "ERROR_CODE_STRING",
+    "message": "A human-readable description of the error."
+  }
+}
+```
+
+**Common HTTP Status Codes:**
+- `200 OK` / `201 Created`: Successful operations.
+- `400 Bad Request`: Validation errors, missing required fields, or invalid query parameters.
+- `401 Unauthorized`: Missing `X-Requester-Id` header.
+- `403 Forbidden`: Cross-requester access attempt or permission denied.
+- `404 Not Found`: Resource does not exist or has been soft-removed.
+- `409 Conflict`: Resource state conflict (e.g., duplicate submission).
+- `500 Internal Server Error`: Fallback for unexpected backend or database errors.

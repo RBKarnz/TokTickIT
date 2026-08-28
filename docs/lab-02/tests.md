@@ -16,7 +16,13 @@ Testing will follow Test-Driven Development (TDD) principles. We will implement 
 | UI-02 | UI | AC-07 | Submit without required field | Form blocked; API not called; error message displayed | `client/tests/lab-02/CreateTicket.test.tsx` | - |
 | UI-03 | UI | FR-04 | My Tickets search filter | Search input updates list via API call | `client/tests/lab-02/MyTickets.test.tsx` | - |
 | UI-04 | UI | FR-04 | My Tickets advanced filters | Category/Status filters and Sorting update list correctly | `client/tests/lab-02/MyTickets.test.tsx` | - |
-| API-05 | API | FR-04 | Search, Filter, Sort query | API returns correctly filtered and sorted paginated tickets | `server/tests/lab-02/my-tickets.api.test.ts` | - |
+| UI-05 | UI | AC-12 | Form input retention on error | Input values remain after API failure | `client/tests/lab-02/CreateTicket.test.tsx` | - |
+| UI-06 | UI | AC-13 | Inactive requester omission | Dropdown excludes inactive requesters | `client/tests/lab-02/RequesterSelector.test.tsx` | - |
+| UI-07 | UI | AC-10 | Requester switching context | Cached data clears on user switch | `client/tests/lab-02/RequesterContext.test.tsx` | - |
+| UI-08 | UI | Style | UI Style constraints | Validates colors, asterisks, read-only appearance | `client/tests/lab-02/Style.test.tsx` | - |
+| UI-09 | UI | Responsive | Responsive layout logic | Multi-column desktop vs single-column mobile | `client/tests/lab-02/Responsive.test.tsx` | - |
+| API-05 | API | FR-04, AC-08, AC-09 | Search, Filter, Sort query | API returns correctly filtered/sorted/paginated data | `server/tests/lab-02/my-tickets.api.test.ts` | - |
+| API-06 | API | AC-11 | Add attachment to ticket | Returns 201 Created and saves metadata | `server/tests/lab-02/attachments.api.test.ts` | - |
 | E2E-01 | E2E | AC-01, AC-05 | End-to-end create & view | User logs in, creates ticket with file, views in list, opens detail, deletes file | `e2e/lab-02/requester-ticket-flow.spec.ts` | - |
 
 ## 3. Acceptance-Criterion Traceability
@@ -28,16 +34,23 @@ Testing will follow Test-Driven Development (TDD) principles. We will implement 
 | AC-03 (Data ownership) | API-02 |
 | AC-04 (File size limit) | API-03 |
 | AC-05 (Soft-remove file) | API-04, E2E-01 |
-| AC-06 (Search functionality) | UI-03 |
+| AC-06 (Search functionality) | UI-03, API-05 |
 | AC-07 (Client-side validation) | UI-02 |
+| AC-08 (Pagination updates) | API-05, UI-04 |
+| AC-09 (Multiple filters & sorting) | API-05, UI-04 |
+| AC-10 (Requester switching context) | UI-07 |
+| AC-11 (Add attachment to ticket) | API-06 |
+| AC-12 (Form input retention) | UI-05 |
+| AC-13 (Exclude inactive requesters) | UI-06 |
 
 ## 4. Responsive and Visual Checklist
 - [ ] **Desktop**: Multi-column form layout, table view for My Tickets.
 - [ ] **Tablet**: Two-column form layout where applicable.
-- [ ] **Mobile**: Single-column form, card view for My Tickets, touch-friendly buttons.
+- [ ] **Mobile**: Single-column form, card view for My Tickets, touch-friendly buttons with minimum 44px height.
 - [ ] **Style**: Primary green `#006B3C` applied to header and primary buttons.
 - [ ] **Validation**: Errors appear in red below inputs.
 - [ ] **Read-only**: Distinct visual style from editable fields.
+- [ ] **Button Hierarchy**: Primary, Secondary, Tertiary, Destructive, Disabled, and Busy (spinner) states are visually distinct.
 
 ## 5. Test Commands
 ```bash

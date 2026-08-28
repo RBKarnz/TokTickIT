@@ -47,6 +47,12 @@ The IT department needs the first version of the ticketing system for end-users 
 - BR-10: Inactive requesters must not be shown in the Development Requester selection list.
 - BR-11: If no Development Requester is selected, the user must be redirected to the selection screen when attempting to access ticketing pages.
 - BR-12: If ticket creation succeeds but the attachment upload fails, the system must NOT rollback the ticket creation. It should save the ticket, present a warning to the user about the failed upload, and allow them to retry uploading from the Ticket Detail screen.
+- BR-13: Duplicate Submission Prevention: The Submit button must enter a busy state and disable user interaction while the request is in flight.
+- BR-14: Data Preservation on Error: Form input must be preserved if backend validation or submission fails.
+- BR-15: Requester Switching Behavior: Switching the active Development Requester must clear active ticket detail/cached states and refresh data.
+- BR-16: Empty State vs. No-Results State: The system must explicitly distinguish between when a user has zero tickets (Empty) versus when filters/search yield zero tickets (No Results).
+- BR-17: Safe Attachment Filenames & Storage: Uploaded filenames must be safely generated/hashed to prevent collisions and directory traversal attacks.
+- BR-18: Transition to Lab 3: The Development Requester selector is a temporary mechanism for Lab 2 and will evolve into full role-based authentication in Lab 3.
 
 ## 6. UI Specification Summary
 - **Theme:** Zen Green Theme (Primary: #006B3C, Secondary: #0B7A46, Background: #F5F7F6).
@@ -56,12 +62,26 @@ The IT department needs the first version of the ticketing system for end-users 
 - **Reference:** Detailed UI specifications are documented in `docs/lab-02/ui-spec.md`.
 
 ## 7. Data Changes
+### 7.1. Database Models
 - **RequesterUser (New):** id, name, email, isActive, createdAt.
 - **Ticket (New):** id, ticketNumber (unique), requesterId (FK), categoryId (FK), relatedSystemId (FK), requestedPriority (Enum), itPriority (Enum, default: 'UNASSIGNED'), currentStatus (Enum), summary, description, createdAt, updatedAt.
 - **Attachment (New):** id, ticketId (FK), originalFilename, storedFilename, fileType, fileSize, uploadedAt, isRemoved, removalReason, removedAt.
 - **Category (New):** id, name, isActive.
 - **RelatedSystem (New):** id, name, isActive.
 - **Enums:** Priority (UNASSIGNED, LOW, MEDIUM, HIGH, CRITICAL), TicketStatus (NEW, OPEN, IN_PROGRESS, RESOLVED, CLOSED).
+
+### 7.2. Indexes and Constraints
+- Explicit indexes on frequently queried fields: `requesterId`, `ticketNumber`, `currentStatus`, `categoryId`, `createdAt`.
+- Unique constraint on `ticketNumber`.
+
+### 7.3. Design Justifications
+- **Decision:** The `isRemoved` boolean field and `removalReason` in the `Attachment` model implement soft-remove behavior efficiently without deleting records, satisfying BR-06 while keeping database integrity intact.
+
+### 7.4. Required Seed Data
+The seed data script must be idempotent and include:
+- **Categories (4 required):** Account and Access, Hardware, Software, Network.
+- **Related Systems (6+ realistic):** Email, Campus Wi-Fi, VPN, LEB2 App, Grade Submission App, Printer, Corporate Laptop.
+- **Requesters:** At least 4 active Development Requesters and at least 1 inactive Requester (must not appear in selector).
 
 ## 8. API Contract
 - `GET /api/requesters`: Retrieve active Development Requesters.
@@ -82,6 +102,12 @@ The IT department needs the first version of the ticketing system for end-users 
 - AC-05: Given an active attachment, when the Requester soft-removes it with a reason, then the attachment is marked as removed and can no longer be downloaded.
 - AC-06: Given the My Tickets screen, when the user enters a search term, then only tickets matching the term in the Summary or Ticket Number are displayed.
 - AC-07: Given the Create Ticket screen, when the user submits without a required field, then a field-level validation message is shown and the API is not called.
+- AC-08: Given a paginated list of tickets, when the user navigates pages or changes limits, then the list updates to reflect the correct slice of data.
+- AC-09: Given the My Tickets screen, when the user applies multiple filters (Category, Status) and sorting, then the list reflects the combination of all applied criteria.
+- AC-10: Given an active session, when the user switches the active Development Requester, then all previous ticket context is cleared and the new Requester's data is loaded.
+- AC-11: Given an existing ticket in the detail view, when the user uploads a valid attachment, then the file is added to the ticket.
+- AC-12: Given the Create Ticket form, when a backend API failure occurs during submission, then all form inputs are retained so the user does not lose their typed data.
+- AC-13: Given the Development Requester selection dropdown, when it is opened, then only active requesters are shown and inactive ones are excluded.
 
 ## 10. Definition of Done
 - All functional requirements and business rules are implemented.
