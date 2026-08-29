@@ -1,0 +1,35 @@
+/* Zen Green Theme Customizations */
+.btn-zen-primary {
+  background-color: #006B3C;
+  color: white;
+  border: 1px solid #006B3C;
+}
+
+.btn-zen-primary:hover {
+  background-color: #0B7A46;
+  border-color: #0B7A46;
+  color: white;
+}
+
+/* High contrast focus ring for primary buttons (e.g. Create Ticket) */
+.btn-zen-primary:focus,
+.btn-zen-primary:focus-visible {
+  outline: 3px solid #0B7A46 !important;
+  outline-offset: 3px !important;
+  box-shadow: none !important;
+}
+
+/* High contrast focus ring for Navbar items (e.g. Profile Name) on dark green background */
+.navbar .btn:focus-visible,
+.navbar .nav-link:focus-visible,
+.navbar .navbar-brand:focus-visible {
+  outline: 2px dashed white !important;
+  outline-offset: 4px !important;
+  border-radius: 4px;
+}
+
+/* Ensure inputs have the Zen Green focus ring */
+.form-control:focus, .form-select:focus {
+  border-color: #0B7A46 !important;
+  box-shadow: 0 0 0 0.25rem rgba(11, 122, 70, 0.25) !important;
+}

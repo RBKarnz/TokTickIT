@@ -103,14 +103,25 @@ export default function CreateTicketPage() {
               Your ticket number is <strong className="fs-4">{successTicket.ticketNumber}</strong>
             </p>
             <button 
-              className="btn text-white px-4 py-2" 
-              style={{ backgroundColor: '#006B3C' }}
+              className="btn btn-zen-primary px-4 py-2" 
               onClick={() => window.location.href = '/'}
             >
               Back to My Tickets
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (loadingData) {
+    return (
+      <div className="container py-5 text-center" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        <div className="spinner-border mb-3" style={{ color: '#006B3C', width: '3rem', height: '3rem' }} role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <h4 style={{ color: '#1E293B' }}>Loading Form...</h4>
+        <p className="text-muted">Fetching categories and systems</p>
       </div>
     );
   }
@@ -253,8 +264,8 @@ export default function CreateTicketPage() {
               </button>
               <button 
                 type="submit" 
-                className="btn text-white d-flex justify-content-center align-items-center" 
-                style={{ backgroundColor: '#006B3C', minWidth: '160px' }}
+                className="btn btn-zen-primary d-flex justify-content-center align-items-center" 
+                style={{ minWidth: '160px' }}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (

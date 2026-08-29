@@ -88,8 +88,8 @@ export default function RequesterSelectionPage() {
             <div className="d-flex justify-content-end gap-2 mt-4">
               <button className="btn" style={{ borderColor: '#006B3C', color: '#006B3C', minHeight: '44px', fontWeight: 500 }}>Cancel</button>
               <button 
-                className="btn text-white" 
-                style={{ backgroundColor: '#006B3C', minHeight: '44px', fontWeight: 500 }}
+                className="btn btn-zen-primary" 
+                style={{ minHeight: '44px', fontWeight: 500 }}
                 onClick={handleContinue}
               >
                 Continue <i className="bi bi-arrow-right ms-1"></i>
