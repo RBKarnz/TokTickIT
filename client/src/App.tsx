@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { RequesterProvider, useRequester } from "./RequesterContext.js";
 import RequesterSelectionPage from "./pages/RequesterSelectionPage.js";
-import { useState } from "react";
-import { checkSystem, Category } from "./api.js";
+import CreateTicketPage from "./pages/CreateTicketPage.js";
 
 function ProtectedLayout() {
   const { activeRequester, setActiveRequester } = useRequester();
@@ -45,6 +44,12 @@ function TempHome() {
         <p className="mb-0">You are currently testing as <strong>{activeRequester?.name}</strong> (ID: {activeRequester?.id}).</p>
         <p className="mb-0 small">The <code>X-Requester-Id</code> header will now be used for API requests.</p>
       </div>
+      
+      <div className="mt-4">
+        <a href="/tickets/create" className="btn text-white" style={{ backgroundColor: '#006B3C' }}>
+          Create New Ticket
+        </a>
+      </div>
     </div>
   );
 }
@@ -57,7 +62,7 @@ export default function App() {
           <Route path="/login" element={<RequesterSelectionPage />} />
           <Route element={<ProtectedLayout />}>
             <Route path="/" element={<TempHome />} />
-            {/* Future routes will be added here */}
+            <Route path="/tickets/create" element={<CreateTicketPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

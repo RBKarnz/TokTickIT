@@ -45,3 +45,40 @@ export async function fetchRequesters() {
   }
   return await res.json();
 }
+
+// Lab 2: Fetch active categories directly
+export async function fetchCategories() {
+  const res = await fetch(`${API_URL}/api/categories`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch categories.");
+  }
+  return await res.json();
+}
+
+// Lab 2: Fetch active systems
+export async function fetchSystems() {
+  const res = await fetch(`${API_URL}/api/systems`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch systems.");
+  }
+  return await res.json();
+}
+
+// Lab 2: Create ticket
+export async function createTicket(ticketData: any, requesterId: number) {
+  const res = await fetch(`${API_URL}/api/tickets`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requester-Id': requesterId.toString()
+    },
+    body: JSON.stringify(ticketData)
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error?.message || "Failed to create ticket.");
+  }
+  
+  return await res.json();
+}

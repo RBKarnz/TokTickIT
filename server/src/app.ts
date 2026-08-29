@@ -86,4 +86,55 @@ app.get('/api/requesters', async (req, res) => {
   }
 });
 
+// Lab 2: Create a ticket
+app.post('/api/tickets', async (req, res) => {
+  const requesterIdHeader = req.headers['x-requester-id'];
+  if (!requesterIdHeader) {
+    return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing X-Requester-Id header" } });
+  }
+
+  const requesterId = parseInt(requesterIdHeader as string);
+  const { categoryId, relatedSystemId, requestedPriority, summary, description } = req.body;
+
+  if (!categoryId || !relatedSystemId || !requestedPriority || !summary || !description) {
+    return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Missing required fields" } });
+  }
+
+  if (summary.length < 5 || summary.length > 100) {
+    return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Summary must be between 5 and 100 characters" } });
+  }
+
+  if (description.length < 10) {
+    return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Description must be at least 10 characters" } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    
+    // Generate ticket number: e.g. TKT-2026-000001
+    const count = await prisma.ticket.count();
+    const year = new Date().getFullYear();
+    const ticketNumber = `TKT-${year}-${String(count + 1).padStart(6, '0')}`;
+
+    const ticket = await prisma.ticket.create({
+      data: {
+        ticketNumber,
+        requesterId,
+        categoryId: parseInt(categoryId),
+        relatedSystemId: parseInt(relatedSystemId),
+        requestedPriority,
+        summary,
+        description,
+        currentStatus: "NEW",
+        itPriority: "UNASSIGNED",
+      },
+    });
+
+    res.status(201).json(ticket);
+  } catch (error) {
+    console.error("Error creating ticket:", error);
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to create ticket" } });
+  }
+});
+
 export default app;
