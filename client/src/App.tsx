@@ -5,6 +5,9 @@ import RequesterSelectionPage from "./pages/RequesterSelectionPage.js";
 import CreateTicketPage from "./pages/CreateTicketPage.js";
 import { checkSystem, Category } from "./api.js";
 
+import MyTicketsPage from "./pages/MyTicketsPage.js";
+
+// ProtectedLayout logic remains here...
 function ProtectedLayout() {
   const { activeRequester, setActiveRequester } = useRequester();
   
@@ -130,7 +133,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<RequesterSelectionPage />} />
           <Route element={<ProtectedLayout />}>
-            <Route path="/" element={<TempHome />} />
+            <Route path="/" element={<MyTicketsPage />} />
+            <Route path="/lab1-home" element={<TempHome />} />
             <Route path="/tickets/create" element={<CreateTicketPage />} />
           </Route>
         </Routes>
