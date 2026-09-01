@@ -39,12 +39,16 @@ export default function TicketDetailPage() {
   }
 
   if (error) {
+    const isNotFound = error.toLowerCase().includes('not found');
+    
     return (
       <div className="container py-5 d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
         <div className="card shadow border-danger" style={{ maxWidth: '600px', width: '100%' }}>
           <div className="card-body text-center p-5">
-            <i className="bi bi-shield-x text-danger" style={{ fontSize: '4rem' }}></i>
-            <h2 className="mt-3 text-danger fw-bold">Access Denied / Not Found</h2>
+            <i className={`bi ${isNotFound ? 'bi-search' : 'bi-shield-x'} text-danger`} style={{ fontSize: '4rem' }}></i>
+            <h2 className="mt-3 text-danger fw-bold">
+              {isNotFound ? 'Ticket Not Found' : 'Access Denied'}
+            </h2>
             <p className="lead text-muted mt-3 mb-4">{error}</p>
             <Link to="/" className="btn btn-outline-danger px-4 py-2 fw-bold">
               <i className="bi bi-arrow-left me-2"></i> Return to My Tickets
