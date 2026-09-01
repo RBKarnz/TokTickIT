@@ -89,71 +89,60 @@ async function main() {
     const augustFirst = new Date('2026-08-01T00:00:00Z');
     const today = new Date('2026-09-01T00:00:00Z');
 
-    // Jennifer's 15 tickets
-    const jenniferTicketsRaw = [
-      // Hardware
-      { catId: catHardware.id, sysId: sysPrinter.id, priority: "LOW", status: "NEW", summary: "Printer paper jam" },
-      { catId: catHardware.id, sysId: sysPrinter.id, priority: "LOW", status: "IN_PROGRESS", summary: "Need new toner" },
-      { catId: catHardware.id, sysId: sysPrinter.id, priority: "MEDIUM", status: "RESOLVED", summary: "Printer not responding" },
-      { catId: catHardware.id, sysId: sysPrinter.id, priority: "HIGH", status: "NEW", summary: "Printer smells like smoke" },
+    const statuses = ["NEW", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+    
+    // Jennifer: 128 tickets
+    const jenniferCategories = dbCategories.filter(c => c.name !== "Network"); // Exclude Network
+    const jenniferPriorities = ["LOW", "MEDIUM", "HIGH"]; // Exclude CRITICAL
+    
+    console.log("Seeding 128 tickets for Jennifer...");
+    for (let i = 0; i < 128; i++) {
+      const cat = jenniferCategories[Math.floor(Math.random() * jenniferCategories.length)];
+      const sys = dbSystems[Math.floor(Math.random() * dbSystems.length)];
+      const prio = jenniferPriorities[Math.floor(Math.random() * jenniferPriorities.length)];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
       
-      // Account
-      { catId: catAccount.id, sysId: sysEmail.id, priority: "HIGH", status: "NEW", summary: "Forgot email password" },
-      { catId: catAccount.id, sysId: sysEmail.id, priority: "MEDIUM", status: "IN_PROGRESS", summary: "Can't login to email" },
-      { catId: catAccount.id, sysId: sysWifi.id, priority: "LOW", status: "CLOSED", summary: "Guest wifi access" },
-      { catId: catAccount.id, sysId: sysEmail.id, priority: "HIGH", status: "NEW", summary: "Account locked out" }, // duplicate combo
-      { catId: catAccount.id, sysId: sysEmail.id, priority: "HIGH", status: "OPEN", summary: "Account hacked" },
-      
-      // Software
-      { catId: catSoftware.id, sysId: sysEmail.id, priority: "LOW", status: "NEW", summary: "Outlook keeps crashing" },
-      { catId: catSoftware.id, sysId: sysEmail.id, priority: "MEDIUM", status: "RESOLVED", summary: "How to add signature" },
-      { catId: catSoftware.id, sysId: sysWifi.id, priority: "LOW", status: "IN_PROGRESS", summary: "Wi-Fi disconnecting randomly" },
-      { catId: catSoftware.id, sysId: sysWifi.id, priority: "LOW", status: "NEW", summary: "Slow internet speed" },
-      { catId: catSoftware.id, sysId: sysEmail.id, priority: "MEDIUM", status: "NEW", summary: "Spam emails increasing" },
-      { catId: catSoftware.id, sysId: sysPrinter.id, priority: "MEDIUM", status: "CLOSED", summary: "Printer driver installation" }
-    ];
-
-    for (const t of jenniferTicketsRaw) {
-      const createdAt = getRandomDate(augustFirst, new Date(today.getTime() - 86400000 * 2)); // Create up to 2 days ago
-      // If status is NEW, updatedAt is same as createdAt. Else, updated recently.
-      const updatedAt = t.status === "NEW" ? createdAt : getRandomDate(createdAt, today);
+      const createdAt = getRandomDate(augustFirst, new Date(today.getTime() - 86400000 * 2));
+      const updatedAt = status === "NEW" ? createdAt : getRandomDate(createdAt, today);
       
       await prisma.ticket.create({
         data: {
           ticketNumber: getTicketNo(),
           requesterId: jennifer.id,
-          categoryId: t.catId,
-          relatedSystemId: t.sysId,
-          requestedPriority: t.priority as any,
-          currentStatus: t.status as any,
-          summary: t.summary,
-          description: `This is a test ticket for ${t.summary}`,
+          categoryId: cat.id,
+          relatedSystemId: sys.id,
+          requestedPriority: prio as any,
+          currentStatus: status as any,
+          summary: `System Issue Report #${i + 1}`,
+          description: `Automatically generated seed ticket for load testing.`,
           createdAt,
           updatedAt
         }
       });
     }
 
-    // Michael's 3 tickets
-    const michaelTicketsRaw = [
-      { catId: catHardware.id, sysId: sysPrinter.id, priority: "MEDIUM", status: "NEW", summary: "Broken mouse" },
-      { catId: catAccount.id, sysId: sysEmail.id, priority: "CRITICAL", status: "OPEN", summary: "Cannot access server" },
-      { catId: catSoftware.id, sysId: sysWifi.id, priority: "LOW", status: "CLOSED", summary: "Update required" }
-    ];
-
-    for (const t of michaelTicketsRaw) {
+    // Michael: 25 tickets
+    console.log("Seeding 25 tickets for Michael...");
+    const allPriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+    for (let i = 0; i < 25; i++) {
+      const cat = dbCategories[Math.floor(Math.random() * dbCategories.length)];
+      const sys = dbSystems[Math.floor(Math.random() * dbSystems.length)];
+      const prio = allPriorities[Math.floor(Math.random() * allPriorities.length)];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      
       const createdAt = getRandomDate(augustFirst, today);
-      const updatedAt = t.status === "NEW" ? createdAt : getRandomDate(createdAt, today);
+      const updatedAt = status === "NEW" ? createdAt : getRandomDate(createdAt, today);
+      
       await prisma.ticket.create({
         data: {
           ticketNumber: getTicketNo(),
           requesterId: michael.id,
-          categoryId: t.catId,
-          relatedSystemId: t.sysId,
-          requestedPriority: t.priority as any,
-          currentStatus: t.status as any,
-          summary: t.summary,
-          description: `This is a test ticket for ${t.summary}`,
+          categoryId: cat.id,
+          relatedSystemId: sys.id,
+          requestedPriority: prio as any,
+          currentStatus: status as any,
+          summary: `Support Request #${i + 1}`,
+          description: `Automatically generated seed ticket for pagination testing.`,
           createdAt,
           updatedAt
         }

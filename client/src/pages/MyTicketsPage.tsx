@@ -231,11 +231,57 @@ export default function MyTicketsPage() {
                   <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
                     <button className="page-link" onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</button>
                   </li>
-                  {[...Array(totalPages)].map((_, i) => (
-                    <li key={i} className={`page-item ${page === i + 1 ? 'active' : ''}`}>
-                      <button className="page-link" onClick={() => setPage(i + 1)} style={page === i + 1 ? { backgroundColor: '#0B7A46', borderColor: '#0B7A46' } : {}}>{i + 1}</button>
-                    </li>
-                  ))}
+                  
+                  {(() => {
+                    const items: (number | string)[] = [];
+                    if (totalPages <= 10) {
+                      for (let i = 1; i <= totalPages; i++) items.push(i);
+                    } else if (page <= 4) {
+                      items.push(1, 2, 3, 4, 5, 6, '...right', totalPages - 1, totalPages);
+                    } else if (page >= totalPages - 3) {
+                      items.push(1, 2, '...left', totalPages - 5, totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                    } else {
+                      items.push(1, 2, '...left', page - 1, page, page + 1, '...right', totalPages - 1, totalPages);
+                    }
+
+                    return items.map((item, index) => {
+                      if (typeof item === 'string') {
+                        return (
+                          <li key={`ellipsis-${index}`} className="page-item">
+                            <input 
+                              type="text" 
+                              className="page-link text-center px-1" 
+                              style={{ width: '50px', height: '100%', color: '#6c757d', outline: 'none', boxShadow: 'none' }}
+                              placeholder="..."
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  const val = parseInt((e.target as HTMLInputElement).value);
+                                  if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                                    setPage(val);
+                                  }
+                                  (e.target as HTMLInputElement).value = ''; // clear after jump
+                                }
+                              }}
+                              title="Type page number and press Enter"
+                            />
+                          </li>
+                        );
+                      }
+                      
+                      return (
+                        <li key={item} className={`page-item ${page === item ? 'active' : ''}`}>
+                          <button 
+                            className="page-link" 
+                            onClick={() => setPage(item)} 
+                            style={page === item ? { backgroundColor: '#0B7A46', borderColor: '#0B7A46' } : {}}
+                          >
+                            {item}
+                          </button>
+                        </li>
+                      );
+                    });
+                  })()}
+
                   <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
                     <button className="page-link" onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
                   </li>
