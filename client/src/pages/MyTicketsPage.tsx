@@ -140,6 +140,7 @@ export default function MyTicketsPage() {
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="priority">Highest Priority</option>
+                <option value="priority_asc">Lowest Priority</option>
               </select>
             </div>
             {/* Date Range Filter */}

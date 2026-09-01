@@ -4,7 +4,7 @@ import { useRequester, RequesterUser } from '../RequesterContext.js';
 import { fetchRequesters } from '../api.js';
 
 export default function RequesterSelectionPage() {
-  const { setActiveRequester } = useRequester();
+  const { activeRequester, setActiveRequester } = useRequester();
   const navigate = useNavigate();
   const [requesters, setRequesters] = useState<RequesterUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,13 @@ export default function RequesterSelectionPage() {
       try {
         const data = await fetchRequesters();
         setRequesters(data);
-        if (data.length > 0) setSelectedId(String(data[0].id));
+        if (data.length > 0) {
+          if (activeRequester && data.find(r => r.id === activeRequester.id)) {
+            setSelectedId(String(activeRequester.id));
+          } else {
+            setSelectedId(String(data[0].id));
+          }
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to load requesters');
       } finally {
@@ -86,7 +92,14 @@ export default function RequesterSelectionPage() {
             </div>
 
             <div className="d-flex justify-content-end gap-2 mt-4">
-              <button className="btn" style={{ borderColor: '#006B3C', color: '#006B3C', minHeight: '44px', fontWeight: 500 }}>Cancel</button>
+              <button 
+                className="btn" 
+                style={{ borderColor: activeRequester ? '#006B3C' : '#CBD5E1', color: activeRequester ? '#006B3C' : '#94A3B8', minHeight: '44px', fontWeight: 500 }}
+                disabled={!activeRequester}
+                onClick={() => navigate('/')}
+              >
+                Cancel
+              </button>
               <button 
                 className="btn btn-zen-primary" 
                 style={{ minHeight: '44px', fontWeight: 500 }}

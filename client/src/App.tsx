@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { RequesterProvider, useRequester } from "./RequesterContext.js";
 import RequesterSelectionPage from "./pages/RequesterSelectionPage.js";
 import CreateTicketPage from "./pages/CreateTicketPage.js";
@@ -10,6 +10,7 @@ import MyTicketsPage from "./pages/MyTicketsPage.js";
 // ProtectedLayout logic remains here...
 function ProtectedLayout() {
   const { activeRequester, setActiveRequester } = useRequester();
+  const navigate = useNavigate();
   
   if (!activeRequester) {
     return <Navigate to="/login" replace />;
@@ -38,7 +39,7 @@ function ProtectedLayout() {
               <ul className="dropdown-menu dropdown-menu-end shadow-sm">
                 <li><h6 className="dropdown-header">Context Menu</h6></li>
                 <li>
-                  <button className="dropdown-item text-danger" onClick={() => setActiveRequester(null)}>
+                  <button className="dropdown-item text-danger" onClick={() => navigate('/login')}>
                     <i className="bi bi-box-arrow-right me-2"></i> Switch Requester
                   </button>
                 </li>

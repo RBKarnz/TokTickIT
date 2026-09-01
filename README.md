@@ -13,12 +13,13 @@ npm run dev
 
 
 - Docker
-docker-compose up -d
+docker -compose up -d
 ใช้สร้างฐานข้อมูลและ Adminer ขึ้นมาใหม่
 
-docker-compose down -v
+docker -compose down -v
 ใช้ลบ
 
+docker -compose stop
 
 - Database Management 
 in server

@@ -186,7 +186,8 @@ app.get('/api/tickets', async (req, res) => {
     let orderBy: any = { updatedAt: 'desc' };
     if (sort === 'newest') orderBy = { createdAt: 'desc' };
     if (sort === 'oldest') orderBy = { createdAt: 'asc' };
-    if (sort === 'priority') orderBy = { requestedPriority: 'desc' }; // Simple alphabetical sort for now, or you could map it properly if needed
+    if (sort === 'priority') orderBy = { requestedPriority: 'desc' };
+    if (sort === 'priority_asc') orderBy = { requestedPriority: 'asc' };
 
     const pageNumber = parseInt(page as string);
     const limitNumber = parseInt(limit as string);
