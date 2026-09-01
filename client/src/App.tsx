@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from "rea
 import { RequesterProvider, useRequester } from "./RequesterContext.js";
 import RequesterSelectionPage from "./pages/RequesterSelectionPage.js";
 import CreateTicketPage from "./pages/CreateTicketPage.js";
+import TicketDetailPage from "./pages/TicketDetailPage.js";
 import { checkSystem, Category } from "./api.js";
 
 import MyTicketsPage from "./pages/MyTicketsPage.js";
@@ -137,6 +138,7 @@ export default function App() {
             <Route path="/" element={<MyTicketsPage />} />
             <Route path="/lab1-home" element={<TempHome />} />
             <Route path="/tickets/create" element={<CreateTicketPage />} />
+            <Route path="/tickets/:id" element={<TicketDetailPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
