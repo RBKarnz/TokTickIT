@@ -221,4 +221,47 @@ app.get('/api/tickets', async (req, res) => {
   }
 });
 
+app.get('/api/tickets/:id', async (req, res) => {
+  const requesterIdHeader = req.headers['x-requester-id'];
+  if (!requesterIdHeader) {
+    return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing X-Requester-Id header" } });
+  }
+
+  const requesterId = parseInt(requesterIdHeader as string);
+  const ticketId = parseInt(req.params.id);
+
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Invalid ticket ID" } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        category: true,
+        relatedSystem: true,
+        requester: true,
+        attachments: {
+          where: { isRemoved: false },
+          orderBy: { uploadedAt: 'desc' }
+        }
+      }
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
+    }
+
+    if (ticket.requesterId !== requesterId) {
+      return res.status(403).json({ error: { code: "FORBIDDEN", message: "You do not have permission to view this ticket" } });
+    }
+
+    res.json(ticket);
+  } catch (error) {
+    console.error("Error fetching ticket details:", error);
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch ticket details" } });
+  }
+});
+
 export default app;

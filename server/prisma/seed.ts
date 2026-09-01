@@ -93,7 +93,7 @@ async function main() {
     
     // Jennifer: 128 tickets
     const jenniferCategories = dbCategories.filter(c => c.name !== "Network"); // Exclude Network
-    const jenniferPriorities = ["LOW", "MEDIUM", "HIGH"]; // Exclude CRITICAL
+    const jenniferPriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
     
     console.log("Seeding 128 tickets for Jennifer...");
     for (let i = 0; i < 128; i++) {

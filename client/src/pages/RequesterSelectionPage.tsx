@@ -17,7 +17,7 @@ export default function RequesterSelectionPage() {
         const data = await fetchRequesters();
         setRequesters(data);
         if (data.length > 0) {
-          if (activeRequester && data.find(r => r.id === activeRequester.id)) {
+          if (activeRequester && data.find((r: any) => r.id === activeRequester.id)) {
             setSelectedId(String(activeRequester.id));
           } else {
             setSelectedId(String(data[0].id));

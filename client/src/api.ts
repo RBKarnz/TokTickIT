@@ -106,3 +106,19 @@ export async function fetchMyTickets(requesterId: number, params: any = {}) {
 
   return await res.json();
 }
+
+// Lab 2: Fetch specific ticket detail
+export async function fetchTicketDetail(ticketId: number, requesterId: number) {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}`, {
+    headers: {
+      'X-Requester-Id': requesterId.toString()
+    }
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || "Failed to fetch ticket detail.");
+  }
+
+  return await res.json();
+}

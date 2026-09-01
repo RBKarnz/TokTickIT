@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRequester } from '../RequesterContext.js';
 import { fetchMyTickets, fetchCategories, Category } from '../api.js';
+import { getPriorityBadge, getStatusBadge } from '../utils.js';
 
 interface Ticket {
   id: number;
@@ -15,6 +17,7 @@ interface Ticket {
 
 export default function MyTicketsPage() {
   const { activeRequester } = useRequester();
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,21 +80,7 @@ export default function MyTicketsPage() {
     loadCats();
   }, []);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'NEW': return <span className="badge" style={{ backgroundColor: '#EAF6EF', color: '#0B7A46' }}>NEW</span>;
-      case 'IN_PROGRESS': return <span className="badge bg-primary">IN PROGRESS</span>;
-      case 'RESOLVED': return <span className="badge bg-secondary">RESOLVED</span>;
-      default: return <span className="badge bg-dark">{status}</span>;
-    }
-  };
 
-  const getPriorityBadge = (priority: string) => {
-    if (priority === 'HIGH' || priority === 'CRITICAL') {
-      return <span className="badge bg-danger">{priority}</span>;
-    }
-    return <span>{priority}</span>;
-  };
 
   return (
     <div className="container py-4" style={{ maxWidth: '1200px' }}>
@@ -191,7 +180,7 @@ export default function MyTicketsPage() {
               </thead>
               <tbody>
                 {tickets.map(ticket => (
-                  <tr key={ticket.id} style={{ cursor: 'pointer' }} onClick={() => alert(`In Lab 3 you will go to ticket ${ticket.ticketNumber}`)}>
+                  <tr key={ticket.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/tickets/${ticket.id}`)}>
                     <td className="px-4 fw-medium" style={{ color: '#0B7A46' }}>{ticket.ticketNumber}</td>
                     <td>{ticket.summary.length > 40 ? ticket.summary.substring(0, 40) + '...' : ticket.summary}</td>
                     <td className="text-muted small">{ticket.category?.name}</td>
@@ -207,7 +196,7 @@ export default function MyTicketsPage() {
           {/* Mobile Card View */}
           <div className="d-block d-md-none">
             {tickets.map(ticket => (
-              <div key={ticket.id} className="card shadow-sm border-0 mb-3" onClick={() => alert(`In Lab 3 you will go to ticket ${ticket.ticketNumber}`)}>
+              <div key={ticket.id} className="card shadow-sm border-0 mb-3" onClick={() => navigate(`/tickets/${ticket.id}`)} style={{ cursor: 'pointer' }}>
                 <div className="card-body">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span className="fw-bold" style={{ color: '#0B7A46' }}>{ticket.ticketNumber}</span>
