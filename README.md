@@ -19,6 +19,7 @@ docker-compose up -d
 docker-compose down -v
 ใช้ลบ
 
+docker-compose stop
 
 - Database Management 
 in server

@@ -137,4 +137,88 @@ app.post('/api/tickets', async (req, res) => {
   }
 });
 
+// Lab 2: Get tickets for the active requester (My Tickets)
+app.get('/api/tickets', async (req, res) => {
+  const requesterIdHeader = req.headers['x-requester-id'];
+  if (!requesterIdHeader) {
+    return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing X-Requester-Id header" } });
+  }
+
+  const requesterId = parseInt(requesterIdHeader as string);
+  const { search, categoryId, status, sort, startDate, endDate, page = '1', limit = '10' } = req.query;
+
+  try {
+    const prisma = getPrisma();
+    
+    // Build the where clause
+    const whereClause: any = { requesterId };
+
+    if (search) {
+      whereClause.OR = [
+        { ticketNumber: { contains: search as string, mode: 'insensitive' } },
+        { summary: { contains: search as string, mode: 'insensitive' } }
+      ];
+    }
+
+    if (categoryId) {
+      whereClause.categoryId = parseInt(categoryId as string);
+    }
+
+    if (status) {
+      whereClause.currentStatus = status as string;
+    }
+    
+    // Date Range Filter (by updatedAt)
+    if (startDate || endDate) {
+      whereClause.updatedAt = {};
+      if (startDate) {
+        whereClause.updatedAt.gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        // To include the whole end day, set to 23:59:59.999
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        whereClause.updatedAt.lte = end;
+      }
+    }
+
+    // Determine sorting
+    let orderBy: any = { updatedAt: 'desc' };
+    if (sort === 'newest') orderBy = { createdAt: 'desc' };
+    if (sort === 'oldest') orderBy = { createdAt: 'asc' };
+    if (sort === 'priority') orderBy = { requestedPriority: 'desc' };
+    if (sort === 'priority_asc') orderBy = { requestedPriority: 'asc' };
+
+    const pageNumber = parseInt(page as string);
+    const limitNumber = parseInt(limit as string);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const [totalCount, tickets] = await Promise.all([
+      prisma.ticket.count({ where: whereClause }),
+      prisma.ticket.findMany({
+        where: whereClause,
+        orderBy,
+        skip,
+        take: limitNumber,
+        include: {
+          category: { select: { name: true } }
+        }
+      })
+    ]);
+
+    res.status(200).json({
+      data: tickets,
+      pagination: {
+        total: totalCount,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(totalCount / limitNumber)
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching tickets:", error);
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch tickets" } });
+  }
+});
+
 export default app;

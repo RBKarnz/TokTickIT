@@ -82,3 +82,27 @@ export async function createTicket(ticketData: any, requesterId: number) {
   
   return await res.json();
 }
+
+// Lab 2: Fetch my tickets with pagination and filters
+export async function fetchMyTickets(requesterId: number, params: any = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.append('search', params.search);
+  if (params.categoryId) query.append('categoryId', params.categoryId);
+  if (params.status) query.append('status', params.status);
+  if (params.sort) query.append('sort', params.sort);
+  if (params.startDate) query.append('startDate', params.startDate);
+  if (params.endDate) query.append('endDate', params.endDate);
+  if (params.page) query.append('page', params.page.toString());
+  
+  const res = await fetch(`${API_URL}/api/tickets?${query.toString()}`, {
+    headers: {
+      'X-Requester-Id': requesterId.toString()
+    }
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch tickets.");
+  }
+
+  return await res.json();
+}
