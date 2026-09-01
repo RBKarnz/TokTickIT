@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useRequester } from '../RequesterContext.js';
 import { fetchTicketDetail } from '../api.js';
+import { getPriorityBadge, getStatusBadge } from '../utils.js';
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,22 +32,7 @@ export default function TicketDetailPage() {
     loadTicket();
   }, [id, activeRequester]);
 
-  const renderBadge = (value: string, type: 'priority' | 'status') => {
-    if (type === 'status') {
-      const isNew = value === 'NEW';
-      return (
-        <span className="badge" style={{ backgroundColor: isNew ? '#EAF6EF' : '#F1F5F9', color: isNew ? '#0B7A46' : '#475569', border: '1px solid', borderColor: isNew ? '#A7F3D0' : '#CBD5E1' }}>
-          {value}
-        </span>
-      );
-    }
-    const isHigh = value === 'HIGH' || value === 'CRITICAL';
-    return (
-      <span className="badge" style={{ backgroundColor: isHigh ? '#FEF2F2' : '#F8FAFC', color: isHigh ? '#B91C1C' : '#334155', border: '1px solid', borderColor: isHigh ? '#FECACA' : '#E2E8F0' }}>
-        {value}
-      </span>
-    );
-  };
+
 
   if (loading) {
     return <div className="text-center py-5"><span className="spinner-border" style={{ color: '#0B7A46' }} role="status"></span></div>;
@@ -54,15 +40,16 @@ export default function TicketDetailPage() {
 
   if (error) {
     return (
-      <div className="container py-4" style={{ maxWidth: '900px' }}>
-        <div className="mb-4">
-          <Link to="/" className="text-decoration-none" style={{ color: '#0B7A46' }}>
-            <i className="bi bi-arrow-left me-1"></i> Back to My Tickets
-          </Link>
-        </div>
-        <div className="alert alert-danger shadow-sm border-0" style={{ backgroundColor: '#FEF2F2', color: '#B91C1C' }}>
-          <h4 className="alert-heading"><i className="bi bi-exclamation-triangle-fill me-2"></i>Access Error</h4>
-          <p className="mb-0">{error}</p>
+      <div className="container py-5 d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
+        <div className="card shadow border-danger" style={{ maxWidth: '600px', width: '100%' }}>
+          <div className="card-body text-center p-5">
+            <i className="bi bi-shield-x text-danger" style={{ fontSize: '4rem' }}></i>
+            <h2 className="mt-3 text-danger fw-bold">Access Denied / Not Found</h2>
+            <p className="lead text-muted mt-3 mb-4">{error}</p>
+            <Link to="/" className="btn btn-outline-danger px-4 py-2 fw-bold">
+              <i className="bi bi-arrow-left me-2"></i> Return to My Tickets
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -122,11 +109,11 @@ export default function TicketDetailPage() {
           <div className="row g-4 mb-4">
             <div className="col-6 col-md-4">
               <label className="form-label text-muted small fw-bold mb-1">Priority</label>
-              <div className="d-block mt-2">{renderBadge(ticket.requestedPriority, 'priority')}</div>
+              <div className="d-block mt-2">{getPriorityBadge(ticket.requestedPriority)}</div>
             </div>
             <div className="col-6 col-md-4">
               <label className="form-label text-muted small fw-bold mb-1">Status</label>
-              <div className="d-block mt-2">{renderBadge(ticket.currentStatus, 'status')}</div>
+              <div className="d-block mt-2">{getStatusBadge(ticket.currentStatus)}</div>
             </div>
             <div className="col-12 col-md-4">
               <label className="form-label text-muted small fw-bold mb-1">Last Updated</label>

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRequester } from '../RequesterContext.js';
 import { fetchMyTickets, fetchCategories, Category } from '../api.js';
+import { getPriorityBadge, getStatusBadge } from '../utils.js';
 
 interface Ticket {
   id: number;
@@ -79,21 +80,7 @@ export default function MyTicketsPage() {
     loadCats();
   }, []);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'NEW': return <span className="badge" style={{ backgroundColor: '#EAF6EF', color: '#0B7A46' }}>NEW</span>;
-      case 'IN_PROGRESS': return <span className="badge bg-primary">IN PROGRESS</span>;
-      case 'RESOLVED': return <span className="badge bg-secondary">RESOLVED</span>;
-      default: return <span className="badge bg-dark">{status}</span>;
-    }
-  };
 
-  const getPriorityBadge = (priority: string) => {
-    if (priority === 'HIGH' || priority === 'CRITICAL') {
-      return <span className="badge bg-danger">{priority}</span>;
-    }
-    return <span>{priority}</span>;
-  };
 
   return (
     <div className="container py-4" style={{ maxWidth: '1200px' }}>
