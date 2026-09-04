@@ -21,12 +21,12 @@ function ProtectedLayout() {
     <div style={{ backgroundColor: '#F5F7F6', minHeight: '100vh' }}>
       {/* Zen Green Theme Navbar */}
       <nav className="navbar navbar-expand-lg" style={{ backgroundColor: '#006B3C' }}>
-        <div className="container">
+        <div className="container d-flex justify-content-between">
           <a className="navbar-brand text-white fw-bold d-flex align-items-center" href="/">
             <i className="bi bi-clock-history me-2"></i>TokTickIT
           </a>
           
-          <div className="collapse navbar-collapse justify-content-end">
+          <div className="d-flex justify-content-end align-items-center">
             <div className="dropdown">
               <button 
                 className="btn text-white dropdown-toggle d-flex align-items-center border-0" 
