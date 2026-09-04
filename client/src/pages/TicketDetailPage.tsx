@@ -214,6 +214,30 @@ export default function TicketDetailPage() {
           </div>
         </div>
 
+        {/* Tabs Section - Lab 2 Placeholder Specs */}
+        <ul className="nav nav-tabs mb-3" style={{ borderBottomColor: '#E2E8F0' }}>
+          <li className="nav-item">
+            <button className="nav-link active fw-bold" style={{ color: '#0B7A46', borderBottomColor: '#F5F7F6' }}>
+              <i className="bi bi-paperclip me-1"></i> Attachments ({activeAttachments.length})
+            </button>
+          </li>
+          <li className="nav-item">
+            <button className="nav-link text-muted disabled" style={{ cursor: 'not-allowed' }}>
+              Public Comments <span className="badge bg-secondary ms-1">0</span>
+            </button>
+          </li>
+          <li className="nav-item">
+            <button className="nav-link text-muted disabled" style={{ cursor: 'not-allowed' }}>
+              Internal Notes
+            </button>
+          </li>
+          <li className="nav-item">
+            <button className="nav-link text-muted disabled" style={{ cursor: 'not-allowed' }}>
+              Actions Taken
+            </button>
+          </li>
+        </ul>
+
         <div className="card shadow-sm border-0 mb-5">
           <div className="card-body p-4">
             <div>

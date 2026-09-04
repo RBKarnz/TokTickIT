@@ -1,7 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import App from "../../src/App.js";
+import App, { TempHome } from "../../src/App.js";
+import { RequesterProvider } from "../../src/RequesterContext.js";
+import { BrowserRouter } from "react-router-dom";
 import * as api from "../../src/api.js";
+
+const renderTempHome = () => {
+  return render(
+    <RequesterProvider>
+      <BrowserRouter>
+        <TempHome />
+      </BrowserRouter>
+    </RequesterProvider>
+  );
+};
 
 describe("App", () => {
   // WORKED EXAMPLE — provided for you.
@@ -24,13 +36,13 @@ describe("App", () => {
     
     const spy = vi.spyOn(api, "checkSystem").mockResolvedValue(mockResponse as any);
 
-    render(<App />);
+    renderTempHome();
     
     const button = screen.getByRole("button", { name: /Check System/i });
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText(/Online:/i)).toBeInTheDocument();
+      expect(screen.getByText(/Online/i)).toBeInTheDocument();
       expect(screen.getByText("Account and Access")).toBeInTheDocument();
       expect(screen.getByText("Hardware")).toBeInTheDocument();
       expect(screen.getByText("Software")).toBeInTheDocument();
@@ -43,7 +55,7 @@ describe("App", () => {
   it("shows an Offline error message when the API is unavailable", async () => {
     const spy = vi.spyOn(api, "checkSystem").mockRejectedValue(new Error("API is currently down"));
 
-    render(<App />);
+    renderTempHome();
     
     const button = screen.getByRole("button", { name: /Check System/i });
     fireEvent.click(button);

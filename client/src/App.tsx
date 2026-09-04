@@ -57,7 +57,7 @@ function ProtectedLayout() {
 // Home Component restoring Lab 1 functionality
 type UiState = "idle" | "loading" | "success" | "error";
 
-function TempHome() {
+export function TempHome() {
   const { activeRequester } = useRequester();
   
   const [state, setState] = useState<UiState>("idle");

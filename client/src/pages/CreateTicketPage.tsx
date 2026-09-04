@@ -32,6 +32,7 @@ export default function CreateTicketPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [successTicket, setSuccessTicket] = useState<{ ticketNumber: string } | null>(null);
+  const [uploadWarning, setUploadWarning] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -59,50 +60,51 @@ export default function CreateTicketPage() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFileError('');
     if (!e.target.files) return;
+    const selectedFiles = Array.from(e.target.files);
     
-    const newFiles = Array.from(e.target.files);
-    if (attachments.length + newFiles.length > 5) {
-      setFileError('Maximum of 5 attachments allowed per ticket.');
+    // Check total files
+    if (attachments.length + selectedFiles.length > 5) {
+      setFileError('Maximum of 5 files can be attached.');
       return;
     }
 
-    const validFiles: File[] = [];
-    for (const file of newFiles) {
+    // Validate size and format
+    let errorMsg = '';
+    const validFiles = selectedFiles.filter(file => {
       if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-        setFileError(`Invalid format for ${file.name}. Only JPG, PNG, WEBP, and PDF are allowed.`);
-        return;
+        errorMsg = 'Invalid file format. Only JPG, PNG, WEBP, and PDF are allowed.';
+        return false;
       }
       if (file.size > MAX_FILE_SIZE) {
-        setFileError(`${file.name} exceeds the 5MB size limit.`);
-        return;
+        errorMsg = 'File size exceeds 5MB limit.';
+        return false;
       }
-      validFiles.push(file);
-    }
+      return true;
+    });
 
-    setAttachments([...attachments, ...validFiles]);
+    if (errorMsg) {
+      setFileError(errorMsg);
+    } else {
+      setFileError('');
+      setAttachments([...attachments, ...validFiles]);
+    }
+    e.target.value = '';
   };
 
-  const removeFilePreview = (index: number) => {
-    const newAtt = [...attachments];
-    newAtt.splice(index, 1);
-    setAttachments(newAtt);
+  const removeFile = (indexToRemove: number) => {
+    setAttachments(attachments.filter((_, index) => index !== indexToRemove));
     setFileError('');
   };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.categoryId) newErrors.categoryId = 'Category is required.';
-    if (!formData.relatedSystemId) newErrors.relatedSystemId = 'Related System is required.';
-    if (!formData.summary.trim()) {
-      newErrors.summary = 'Summary is required.';
-    } else if (formData.summary.trim().length < 5 || formData.summary.trim().length > 100) {
-      newErrors.summary = 'Summary must be between 5 and 100 characters.';
+    if (!formData.relatedSystemId) newErrors.relatedSystemId = 'System is required.';
+    if (formData.summary.trim().length < 5) {
+      newErrors.summary = 'Summary must be at least 5 characters.';
     }
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required.';
-    } else if (formData.description.trim().length < 10) {
+    if (formData.description.trim().length < 10) {
       newErrors.description = 'Description must be at least 10 characters.';
     }
     setErrors(newErrors);
@@ -122,13 +124,20 @@ export default function CreateTicketPage() {
       const ticket = await createTicket(formData, activeRequester.id);
       
       // 2. Upload attachments if any
+      let uploadFailed = false;
       if (attachments.length > 0) {
-        await Promise.all(attachments.map(file => uploadAttachment(ticket.id, file, activeRequester.id)));
+        try {
+          await Promise.all(attachments.map(file => uploadAttachment(ticket.id, file, activeRequester.id)));
+        } catch (uploadErr) {
+          console.error("Attachment upload failed:", uploadErr);
+          uploadFailed = true;
+          setUploadWarning(true);
+        }
       }
 
       setSuccessTicket(ticket);
     } catch (err: any) {
-      setApiError(err.message || 'An unexpected error occurred during submission.');
+      setApiError(err.message || 'An unexpected error occurred during ticket creation.');
     } finally {
       setIsSubmitting(false);
     }
@@ -146,6 +155,12 @@ export default function CreateTicketPage() {
             <p className="lead mb-4">
               Your ticket number is <strong className="fs-4">{successTicket.ticketNumber}</strong>
             </p>
+            {uploadWarning && (
+              <div className="alert alert-warning mb-4 mx-auto" style={{ maxWidth: '500px' }}>
+                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                Some files failed to upload. You can retry attaching them in the Ticket Detail view.
+              </div>
+            )}
             <button 
               className="btn btn-zen-primary px-4 py-2" 
               onClick={() => window.location.href = '/'}
@@ -325,7 +340,7 @@ export default function CreateTicketPage() {
                       <button 
                         type="button" 
                         className="btn btn-sm btn-link text-danger p-0"
-                        onClick={() => removeFilePreview(idx)}
+                        onClick={() => removeFile(idx)}
                         disabled={isSubmitting}
                       >
                         <i className="bi bi-x-circle-fill"></i>
