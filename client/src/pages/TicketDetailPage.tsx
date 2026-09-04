@@ -120,6 +120,14 @@ export default function TicketDetailPage() {
   if (!ticket) return null;
 
   const activeAttachments = ticket.attachments?.filter((a: any) => !a.isRemoved) || [];
+  
+  // Sort attachments: Active first, Removed later. Within each group: Oldest to Newest.
+  const sortedAttachments = [...(ticket.attachments || [])].sort((a: any, b: any) => {
+    if (a.isRemoved !== b.isRemoved) {
+      return a.isRemoved ? 1 : -1; // Active (-1) comes before Removed (1)
+    }
+    return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime(); // Ascending
+  });
 
   return (
     <>
@@ -236,7 +244,7 @@ export default function TicketDetailPage() {
                 </div>
               ) : (
                 <div className="list-group">
-                  {ticket.attachments.map((file: any) => (
+                  {sortedAttachments.map((file: any) => (
                     <div key={file.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3 border-0 rounded shadow-sm mb-2" style={{ backgroundColor: file.isRemoved ? '#F1F5F9' : '#F8FAFC' }}>
                       <div className="d-flex align-items-center text-truncate" style={{ maxWidth: '75%', opacity: file.isRemoved ? 0.6 : 1 }}>
                         <i className={`bi ${file.isRemoved ? 'bi-file-earmark-x' : 'bi-file-earmark-text'} fs-4 me-3`} style={{ color: file.isRemoved ? '#94A3B8' : '#006B3C' }}></i>
@@ -245,7 +253,7 @@ export default function TicketDetailPage() {
                             {file.originalFilename}
                           </h6>
                           <small className="text-muted">
-                            {(file.fileSize / 1024 / 1024).toFixed(2)} MB • Uploaded {new Date(file.uploadedAt).toLocaleDateString()}
+                            {(file.fileSize / 1024 / 1024).toFixed(2)} MB • Uploaded {new Date(file.uploadedAt).toLocaleString('en-US')}
                             {file.isRemoved && (
                               <span className="badge bg-danger ms-2">Removed</span>
                             )}
