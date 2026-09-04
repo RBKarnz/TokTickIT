@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRequester } from '../RequesterContext.js';
-import { fetchCategories, fetchSystems, createTicket, Category } from '../api.js';
+import { fetchCategories, fetchSystems, createTicket, uploadAttachment, Category } from '../api.js';
 
 interface System {
   id: number;
   name: string;
 }
+
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function CreateTicketPage() {
   const { activeRequester } = useRequester();
@@ -21,6 +24,9 @@ export default function CreateTicketPage() {
     summary: '',
     description: ''
   });
+
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [fileError, setFileError] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,10 +53,42 @@ export default function CreateTicketPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear error when user types
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: '' });
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileError('');
+    if (!e.target.files) return;
+    
+    const newFiles = Array.from(e.target.files);
+    if (attachments.length + newFiles.length > 5) {
+      setFileError('Maximum of 5 attachments allowed per ticket.');
+      return;
+    }
+
+    const validFiles: File[] = [];
+    for (const file of newFiles) {
+      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+        setFileError(`Invalid format for ${file.name}. Only JPG, PNG, WEBP, and PDF are allowed.`);
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setFileError(`${file.name} exceeds the 5MB size limit.`);
+        return;
+      }
+      validFiles.push(file);
+    }
+
+    setAttachments([...attachments, ...validFiles]);
+  };
+
+  const removeFilePreview = (index: number) => {
+    const newAtt = [...attachments];
+    newAtt.splice(index, 1);
+    setAttachments(newAtt);
+    setFileError('');
   };
 
   const validate = () => {
@@ -74,17 +112,23 @@ export default function CreateTicketPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     if (!activeRequester) return;
 
     setIsSubmitting(true);
     setApiError('');
 
     try {
-      const result = await createTicket(formData, activeRequester.id);
-      setSuccessTicket(result);
+      // 1. Create the ticket
+      const ticket = await createTicket(formData, activeRequester.id);
+      
+      // 2. Upload attachments if any
+      if (attachments.length > 0) {
+        await Promise.all(attachments.map(file => uploadAttachment(ticket.id, file, activeRequester.id)));
+      }
+
+      setSuccessTicket(ticket);
     } catch (err: any) {
-      setApiError(err.message || 'An unexpected error occurred.');
+      setApiError(err.message || 'An unexpected error occurred during submission.');
     } finally {
       setIsSubmitting(false);
     }
@@ -243,12 +287,57 @@ export default function CreateTicketPage() {
               {errors.description && <div className="invalid-feedback">{errors.description}</div>}
             </div>
 
-            {/* Attachments (Placeholder for next step) */}
-            <div className="mb-5 p-3 rounded" style={{ backgroundColor: '#F8FAFC', border: '1px dashed #CBD5E1' }}>
-              <div className="text-center text-muted py-3">
-                <i className="bi bi-paperclip fs-4 mb-2 d-block"></i>
-                <p className="mb-0">Attachment upload will be implemented in a future step.</p>
+            {/* Attachments UI */}
+            <div className="mb-5 p-4 rounded" style={{ backgroundColor: '#F8FAFC', border: '1px dashed #CBD5E1' }}>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <label className="form-label mb-0" style={{ fontWeight: 500, color: '#1E293B' }}>
+                  Attachments <span className="badge bg-secondary ms-2">{attachments.length} / 5</span>
+                </label>
+                <div>
+                  <input
+                    type="file"
+                    id="fileUpload"
+                    multiple
+                    className="d-none"
+                    onChange={handleFileChange}
+                    disabled={isSubmitting || attachments.length >= 5}
+                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                  />
+                  <label htmlFor="fileUpload" className={`btn btn-sm btn-outline-secondary ${isSubmitting || attachments.length >= 5 ? 'disabled' : ''}`}>
+                    <i className="bi bi-paperclip me-1"></i> Add Files
+                  </label>
+                </div>
               </div>
+              
+              {fileError && <div className="alert alert-danger py-2 small">{fileError}</div>}
+
+              {attachments.length > 0 ? (
+                <ul className="list-group list-group-flush border rounded">
+                  {attachments.map((file, idx) => (
+                    <li key={idx} className="list-group-item d-flex justify-content-between align-items-center bg-white">
+                      <div className="text-truncate me-3" style={{ maxWidth: '80%' }}>
+                        <i className="bi bi-file-earmark-text me-2 text-muted"></i>
+                        <span className="small">{file.name}</span>
+                        <span className="text-muted ms-2" style={{ fontSize: '0.75rem' }}>
+                          ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                        </span>
+                      </div>
+                      <button 
+                        type="button" 
+                        className="btn btn-sm btn-link text-danger p-0"
+                        onClick={() => removeFilePreview(idx)}
+                        disabled={isSubmitting}
+                      >
+                        <i className="bi bi-x-circle-fill"></i>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-center text-muted py-3">
+                  <p className="mb-0 small">No files selected. Upload up to 5 files (JPG, PNG, WEBP, PDF) under 5MB each.</p>
+                </div>
+              )}
             </div>
 
             {/* Actions */}

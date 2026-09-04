@@ -122,3 +122,53 @@ export async function fetchTicketDetail(ticketId: number, requesterId: number) {
 
   return await res.json();
 }
+
+export async function uploadAttachment(ticketId: number, file: File, requesterId: number) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
+    method: 'POST',
+    headers: { 'X-Requester-Id': requesterId.toString() },
+    body: formData
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Upload failed');
+  }
+  return await res.json();
+}
+
+export async function downloadAttachment(attachmentId: number, originalFilename: string, requesterId: number) {
+  const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
+    headers: { 'X-Requester-Id': requesterId.toString() }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Download failed');
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = originalFilename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function removeAttachment(attachmentId: number, reason: string, requesterId: number) {
+  const res = await fetch(`${API_URL}/api/attachments/${attachmentId}`, {
+    method: 'DELETE',
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-Requester-Id': requesterId.toString() 
+    },
+    body: JSON.stringify({ reason })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to remove attachment');
+  }
+  return await res.json();
+}
