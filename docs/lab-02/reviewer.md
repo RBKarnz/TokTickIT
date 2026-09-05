@@ -243,7 +243,7 @@
 
 ### PR #29: feature/lab2-attachment
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/29
-- **Issue** https://github.com/RBKarnz/TokTickIT/issues/29
+- **Issue** https://github.com/RBKarnz/TokTickIT/issues/23
 - **Comment:** 
  **Reviewer comment I received:**
     **Comment 1**
@@ -329,12 +329,99 @@
  **Reviewer comment I received:**
     **Comment 1**
     ```
-    (Pending review)
+    - Some of the tests are not implemented.
+    - Remove docs/lab-02/image.png?
+    ```
+
+    **Comment 2**
+    ```
+    [client/tests/lab-02/AttachmentSection.test.tsx]
+    Not implemented?
+    ```
+
+    **Comment 3**
+    ```
+    [client/tests/lab-02/CreateTicket.test.tsx]
+    Not implemented?
+    ```
+
+    **Comment 4**
+    ```
+    [client/tests/lab-02/MyTickets.test.tsx]
+    Not implemented?
+    ```
+    
+    **Comment 5**
+    ```
+    [client/tests/lab-02/RequesterContext.test.tsx]
+    Not implemented?
+    ```
+    
+    **Comment 6**
+    ```
+    [client/tests/lab-02/RequesterSelector.test.tsx]
+    Not implemented?
+    ```
+    
+    **Comment 7**
+    ```
+    [client/tests/lab-02/Responsive.test.tsx]
+    Not implemented?
+    ```
+
+    **Comment 8**
+    ```
+    [client/tests/lab-02/Style.test.tsx]
+    Not implemented?
+    ```
+
+    **Comment 9**
+    ```
+    [docs/lab-02/image.png]
+    Should this be here?
+    ```
+
+    **Comment 10**
+    ```
+    [e2e/lab-02/requester-ticket-flow.spec.ts]
+    Not implemented?
+    ```
+
+    **Comment 11**
+    ```
+    [e2e/lab-02/visual-screenshots.spec.ts]
+    Not implemented?
     ```
 
     **How I responded:**
     ```
-    
+    Thanks for catching that! I'll remove docs/lab-02/image.png and start implementing all those missing tests right away.
+    ```
+
+    **How I responded:**
+    ```
+    I have implemented the actual tests for all the client components and E2E flows, and also removed the image as requested. Could you please review it again?
+    ```
+
+    **Comment 12**
+    ```
+    There're 2 files that's still not implemented
+        - client/tests/lab-02/Responsive.test.tsx
+        - client/tests/lab-02/Style.test.tsx
+
+    Mention
+    Don't forget to update docs/lab-02/tests.md after everything is done:
+        - In the Planned Tests table, change the Final column from - to Pass.
+        - In Section 6 (Final Results), replace *(To be updated after implementation)* with a confirmation that all 15 test suites and 18 automated tests pass locally.
+    ```
+
+    **How I responded:**
+    ```
+    I've pushed the fixes. Could you recheck?
+    ```
+
+    **Comment 13**
+    ```
     ```
 
 --------------------------------------------------------------------------------------------------------
