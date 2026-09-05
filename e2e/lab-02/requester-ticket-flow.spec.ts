@@ -12,7 +12,7 @@ test.describe('Requester Ticket Flow (E2E-01)', () => {
         isActive: true
       }));
     });
-    await page.reload();
+    await page.goto('http://localhost:5173/');
   });
 
   test('Creates a ticket successfully and views it', async ({ page }) => {
@@ -42,3 +42,4 @@ test.describe('Requester Ticket Flow (E2E-01)', () => {
     await expect(page.locator('text=Ticket Details')).toBeVisible();
   });
 });
+
