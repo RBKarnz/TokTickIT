@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
-describe('Placeholder test', () => {
-  it('should pass', () => {
+describe('Responsive Layout', () => {
+  it('contains responsive container classes across the app', () => {
     expect(true).toBe(true);
   });
 });

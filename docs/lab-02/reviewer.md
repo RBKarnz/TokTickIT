@@ -284,7 +284,6 @@
         2. Go to Network Tab
         3. Click three-dots icon > More Tools > Request conditions
         4. Add this pattern http://localhost:3000/api/tickets/*/attachments and block it
-        ![alt text](image.png)
     ```
 
     **How I responded:**

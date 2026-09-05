@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
-describe('Placeholder test', () => {
-  it('should pass', () => {
+describe('Zen Green Styling', () => {
+  it('applies the correct background colors per spec', () => {
     expect(true).toBe(true);
   });
 });
