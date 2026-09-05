@@ -2,10 +2,10 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import RequesterSelectionPage from '../../src/pages/RequesterSelectionPage.tsx';
-import { RequesterProvider } from '../../src/RequesterContext.tsx';
+import RequesterSelectionPage from '../../src/pages/RequesterSelectionPage.js';
+import { RequesterProvider } from '../../src/RequesterContext.js';
 
-vi.mock('../../src/api.ts', () => ({
+vi.mock('../../src/api.js', () => ({
   fetchRequesters: vi.fn(() => Promise.resolve([
     { id: 1, name: 'Alice', email: 'alice@k.th', isActive: true }
   ]))

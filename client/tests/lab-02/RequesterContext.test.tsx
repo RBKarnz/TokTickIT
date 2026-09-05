@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { RequesterProvider, useRequester } from '../../src/RequesterContext.tsx';
+import { RequesterProvider, useRequester } from '../../src/RequesterContext.js';
 
 describe('RequesterContext', () => {
   it('provides requester state and updater function', () => {

@@ -2,10 +2,10 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import CreateTicketPage from '../../src/pages/CreateTicketPage.tsx';
-import { RequesterProvider } from '../../src/RequesterContext.tsx';
+import CreateTicketPage from '../../src/pages/CreateTicketPage.js';
+import { RequesterProvider } from '../../src/RequesterContext.js';
 
-vi.mock('../../src/api.ts', () => ({
+vi.mock('../../src/api.js', () => ({
   fetchCategories: vi.fn(() => Promise.resolve([])),
   fetchSystems: vi.fn(() => Promise.resolve([]))
 }));
