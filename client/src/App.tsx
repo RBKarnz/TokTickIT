@@ -33,9 +33,9 @@ function ProtectedLayout() {
                 type="button" 
                 data-bs-toggle="dropdown" 
                 aria-expanded="false"
-                style={{ backgroundColor: 'transparent' }}
+                style={{ backgroundColor: 'transparent', maxWidth: '150px' }}
               >
-                <i className="bi bi-person me-2 fs-5"></i> {activeRequester.name}
+                <i className="bi bi-person me-2 fs-5"></i> <span className="text-truncate">{activeRequester.name}</span>
               </button>
               <ul className="dropdown-menu dropdown-menu-end shadow-sm">
                 <li><h6 className="dropdown-header">Context Menu</h6></li>
