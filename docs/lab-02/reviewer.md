@@ -323,8 +323,8 @@
     ```
 
 ### PR #30: feature/lab2-final-tests
-- **Link:** https://github.com/RBKarnz/TokTickIT/pull/xxxxxxxxxxxxxxxxxxxxxxxx
-- **Issue** https://github.com/RBKarnz/TokTickIT/issues/xxxxxxxxxxxxxxxxx
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/30
+- **Issue** https://github.com/RBKarnz/TokTickIT/issues/24
 - **Comment:** 
  **Reviewer comment I received:**
     **Comment 1**
@@ -422,6 +422,35 @@
 
     **Comment 13**
     ```
+    - Minor mistake in docs/lab-02/reviewer.md (commented)
+    - Still unable to follow E2E tests instruction. There's no package.json in root directory so it don't know what to install **probably**
+    ```
+
+    **Comment 14**
+    ```
+    [docs/lab-02/reviewer.md]
+    (Issue #23 is the actual issue for Attachment Management; #29 was the PR number).
+    ```
+
+    **How I responded:**
+    ```
+    Changes pushed. Let me know what you think now.
+    ```
+
+    **Comment 15**
+    ```
+    The issue link should be changed from https://github.com/RBKarnz/TokTickIT/issues/29 to https://github.com/RBKarnz/TokTickIT/issues/23
+    ```
+
+    **Comment 16**
+    ```
+    Very minor mistake in Issue link.
+    The issue link should be changed from https://github.com/RBKarnz/TokTickIT/issues/29 to https://github.com/RBKarnz/TokTickIT/issues/23
+    ```
+
+    **How I responded:**
+    ```
+    Could you please check this again? Feel free to merge if everything looks good.
     ```
 
 --------------------------------------------------------------------------------------------------------
