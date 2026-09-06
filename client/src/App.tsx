@@ -1,63 +1,147 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom";
+import { RequesterProvider, useRequester } from "./RequesterContext.js";
+import RequesterSelectionPage from "./pages/RequesterSelectionPage.js";
+import CreateTicketPage from "./pages/CreateTicketPage.js";
+import TicketDetailPage from "./pages/TicketDetailPage.js";
 import { checkSystem, Category } from "./api.js";
 
-// UI states you must handle for Issue 4: idle, loading, success, error.
+import MyTicketsPage from "./pages/MyTicketsPage.js";
+
+// ProtectedLayout logic remains here...
+function ProtectedLayout() {
+  const { activeRequester, setActiveRequester } = useRequester();
+  const navigate = useNavigate();
+  
+  if (!activeRequester) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <div style={{ backgroundColor: '#F5F7F6', minHeight: '100vh' }}>
+      {/* Zen Green Theme Navbar */}
+      <nav className="navbar navbar-expand-lg" style={{ backgroundColor: '#006B3C' }}>
+        <div className="container d-flex justify-content-between">
+          <a className="navbar-brand text-white fw-bold d-flex align-items-center" href="/">
+            <i className="bi bi-clock-history me-2"></i>TokTickIT
+          </a>
+          
+          <div className="d-flex justify-content-end align-items-center">
+            <div className="dropdown">
+              <button 
+                className="btn text-white dropdown-toggle d-flex align-items-center border-0" 
+                type="button" 
+                data-bs-toggle="dropdown" 
+                aria-expanded="false"
+                style={{ backgroundColor: 'transparent', maxWidth: '150px' }}
+              >
+                <i className="bi bi-person me-2 fs-5"></i> <span className="text-truncate">{activeRequester.name}</span>
+              </button>
+              <ul className="dropdown-menu dropdown-menu-end shadow-sm">
+                <li><h6 className="dropdown-header">Context Menu</h6></li>
+                <li>
+                  <button className="dropdown-item text-danger" onClick={() => navigate('/login')}>
+                    <i className="bi bi-box-arrow-right me-2"></i> Switch Requester
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <Outlet />
+    </div>
+  );
+}
+
+// Home Component restoring Lab 1 functionality
 type UiState = "idle" | "loading" | "success" | "error";
 
-export default function App() {
+export function TempHome() {
+  const { activeRequester } = useRequester();
+  
   const [state, setState] = useState<UiState>("idle");
   const [categories, setCategories] = useState<Category[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
 
   async function handleCheck() {
-    // TODO(Issue 4): set loading, call checkSystem(), then either
-    //   - success: store categories and show Online + the list, or
-    //   - error: show Offline + a useful message.
     setState("loading");
     setErrorMessage("");
     try {
-      // ไปหา Backend (ทำงานร่วมกับ Issue 2)
       const data = await checkSystem();
       setCategories(data.categories || []);
       setState("success");
     } catch (error: any) {
-      // ถ้าไม่มี error.message ส่งมา ก็จะ fallback ไปใช้ข้อความด้านหลังทันที
       setErrorMessage(error?.message || "Unable to connect to the backend.");
-      // ถ้า Backend ปิดอยู่ หรือเชื่อมต่อไม่ได้
       setState("error");
     }
   }
 
   return (
-    <div className="container py-5" style={{ maxWidth: 640 }}>
-      <h1 className="h3 mb-4">
-        TokTickIT <span className="text-success">IT Service Desk</span>
-      </h1>
+    <div className="container py-5" style={{ maxWidth: '900px' }}>
+      <div className="card shadow-sm border-0">
+        <div className="card-body p-5">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h2 className="h4 mb-0" style={{ color: '#1E293B' }}>IT Service Desk Portal</h2>
+            <a href="/tickets/create" className="btn btn-zen-primary d-flex align-items-center shadow-sm">
+              <i className="bi bi-plus-circle me-2"></i> Create Ticket
+            </a>
+          </div>
+          <p className="text-muted mb-4 border-bottom pb-4">
+            Active Requester: <strong style={{ color: '#0F172A' }}>{activeRequester?.name}</strong>
+          </p>
+          
+          <div className="mb-3 text-muted">System Health & Catalog Status</div>
+          
+          <button 
+            className="btn btn-zen-primary mb-4 d-flex align-items-center" 
+            onClick={handleCheck} 
+            disabled={state === "loading"}
+          >
+            {state === "loading" ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Loading...
+              </>
+            ) : "Check System"}
+          </button>
 
-      <button className="btn btn-success" onClick={handleCheck} disabled={state === "loading"}>
-        {state === "loading" ? "Loading…" : "Check System"}
-      </button>
+          {state === "success" && (
+            <div className="alert p-4" style={{ backgroundColor: '#EAF6EF', color: '#0B7A46', borderColor: '#A7F3D0' }}>
+              <strong className="d-block mb-3">Status: Online</strong>
+              <ul className="mb-0 ps-3">
+                {categories.map((category) => (
+                  <li key={category.id} className="mb-1">{category.name}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-      {/* แสดงผล Online พร้อมกับ List ของ Categories */}
-      {state === "success" && (
-        <div className="alert alert-success mt-4">
-          <strong>Online:</strong> The TokTickIT backend is running successfully.
-          <ul className="mt-3 mb-0">
-            {categories.map((category) => (
-              <li key={category.id}>{category.name}</li>
-            ))}
-          </ul>
+          {state === "error" && (
+            <div className="alert alert-danger p-4">
+              <strong>Offline:</strong> {errorMessage}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* แสดงผล Offline */}
-      {state === "error" && (
-        <div className="alert alert-danger mt-4">
-          <strong>Offline:</strong> {errorMessage}
-        </div>
-      )}
-
-      {/* TODO(Issue 4): render loading / success (Online + categories) / error (Offline) states. */}
+      </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <RequesterProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<RequesterSelectionPage />} />
+          <Route element={<ProtectedLayout />}>
+            <Route path="/" element={<MyTicketsPage />} />
+            <Route path="/lab1-home" element={<TempHome />} />
+            <Route path="/tickets/create" element={<CreateTicketPage />} />
+            <Route path="/tickets/:id" element={<TicketDetailPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </RequesterProvider>
   );
 }

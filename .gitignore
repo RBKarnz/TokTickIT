@@ -12,3 +12,6 @@ server/prisma/*.db
 # logs & OSย
 *.log
 .DS_Store
+
+# uploaded files
+server/uploads/
