@@ -57,7 +57,7 @@ Email invitations, password-reset email, MFA, social login, SSO, self-registrati
 - **FR-09** All protected API operations MUST enforce authorization server-side.
 - **FR-10** The UI MUST render only role-permitted navigation/actions, but hidden UI MUST NOT be treated as authorization.
 - **FR-11** Requester Ticket and Attachment operations MUST derive ownership from the authenticated User, never from a client-controlled `requesterId`.
-- **FR-12** Internal Notes MUST be inaccessible to Requesters.
+- **FR-12** Internal Notes MUST be inaccessible to Requesters, but visible to IT Staff and Administrator.
 - **FR-13** Administrator User Management APIs MUST reject non-Administrators.
 
 ### Requester
@@ -88,6 +88,7 @@ Email invitations, password-reset email, MFA, social login, SSO, self-registrati
 - **FR-31** An Administrator MUST be able to set a new initial password that forces password change at next login.
 - **FR-32** Duplicate email addresses and invalid roles MUST be rejected.
 - **FR-33** Administrators MUST NOT delete users.
+- **FR-33b** The system MUST prevent deactivating or changing the role of the last active Administrator.
 
 ### Comments / Notes
 
@@ -102,10 +103,12 @@ Email invitations, password-reset email, MFA, social login, SSO, self-registrati
 ### Identity and Access
 
 - **BR-01** Only an active user with valid credentials may authenticate.
-- **BR-02** A user with `mustChangePassword=true` cannot enter normal application resources until a valid new password is saved.
-- **BR-03** Authenticated identity, not a client-supplied requesterId, determines Requester ownership.
-- **BR-04** Inactive users cannot log in and existing sessions are rejected once inactivity is detected.
-- **BR-05** Login failure responses MUST not reveal whether the email exists or whether the account is inactive.
+- **BR-02** A user marked as requiring a password change cannot enter the normal application until a new valid password is saved.
+- **BR-03** The authenticated user identity, not a requesterId supplied by the client, determines ownership of Requester operations.
+- **BR-04** Public Comments are visible to the Requester, IT Staff, and Administrator. Internal Notes are visible only to IT Staff and Administrator.
+- **BR-05** A Requester may indicate that the problem appears resolved, but cannot formally set the Ticket to Resolved or Closed.
+- **BR-05a** Inactive users cannot log in and existing sessions are rejected once inactivity is detected.
+- **BR-05b** Login failure responses MUST not reveal whether the email exists or whether the account is inactive.
 - **BR-06** Passwords are never returned by any API and are never written to logs.
 - **BR-07** Password confirmation is required on password creation/change screens but is never persisted.
 - **BR-08** Email addresses are normalized before uniqueness checking and storage: trim surrounding whitespace and compare/store in canonical lowercase.
@@ -116,7 +119,7 @@ Email invitations, password-reset email, MFA, social login, SSO, self-registrati
 
 ### Password Policy
 
-- **BR-13** Passwords MUST be 12–128 Unicode characters after trimming outer whitespace; leading/trailing whitespace is not part of the password.
+- **BR-13** Passwords MUST be 8–128 characters after trimming outer whitespace, and must include uppercase letters, lowercase letters, at least one number, and at least one special character; leading/trailing whitespace is not part of the password.
 - **BR-14** A new password MUST differ from the current password.
 - **BR-15** Passwords are hashed with Argon2id (preferred) or the strongest equivalent supported by the course stack; the selected implementation MUST use a unique salt per password.
 - **BR-16** Seed passwords are local-development credentials only and MUST come from environment/configuration outside committed source code.
@@ -181,7 +184,7 @@ No other transition is permitted.
 - **BR-48** An Administrator cannot assign an invalid role.
 - **BR-49** An Administrator cannot deactivate their own account.
 - **BR-50** The system must always retain at least one active Administrator.
-- **BR-51** Deactivating the last active Administrator is rejected.
+- **BR-51** Deactivating or changing the role of the last active Administrator away from ADMINISTRATOR is rejected.
 - **BR-52** User deactivation is represented by `isActive=false`; user deletion is not implemented.
 - **BR-53** Changing a user's email to an email already belonging to another user is rejected.
 - **BR-54** Setting a new initial password invalidates that user's previous sessions and forces password change at next login.
@@ -211,6 +214,7 @@ No other transition is permitted.
 | Status transitions | No | Yes | No |
 | Public Comments | Own Tickets | Any authorized staff Ticket | Only where the Administrator is otherwise authorized to view the Ticket |
 | Internal Notes | No | Yes | Only where the Administrator is otherwise authorized to view the Ticket |
+| View/Download Ticket Attachments | Own Tickets | Yes (any staff ticket) | Only where the Administrator is otherwise authorized to view the Ticket |
 | User list/search/filter | No | No | Yes |
 | Create user | No | No | Yes |
 | Edit user | No | No | Yes |
@@ -245,6 +249,7 @@ No other transition is permitted.
 - `itPriority` required after migration; initialize from Requested Priority if missing.
 - `requesterResolvedAt` nullable timestamp (or equivalent boolean + timestamp design; the implementation MUST preserve the timestamp of first indication).
 - `updatedAt` if not already present.
+- `resolutionSummary` nullable text for resolution details, populated when setting status to Resolved.
 - Status enumeration extended/preserved to the required Lab 3 values without deleting valid historical data.
 
 ### PublicComment
@@ -282,7 +287,7 @@ The exact migration MUST be additive and preserve existing records.
 4. Preserve Ticket requester relationships by mapping the existing requester identity to the new User ID.
 5. Initialize missing IT Priority from Requested Priority.
 6. Preserve Attachment foreign keys and file metadata unchanged.
-7. Create active/inactive states and initial-password state for migrated users according to the documented local migration procedure.
+7. Create active/inactive states and initial-password state for migrated users. The exact provisioning procedure is: set each migrated user's password to a known initial password (`Password123!`), hash it with Argon2id, and set `mustChangePassword=true` to force a password change upon their first login.
 8. Verify row counts and referential integrity.
 9. Verify every migrated Ticket still resolves to the same Requester.
 10. Only after successful migration, remove the Development Requester selector/client identity mechanism.
@@ -299,6 +304,14 @@ The local seed MUST be idempotent and provide:
 
 Seed credentials MUST be supplied through local configuration/environment, documented for development, and excluded from committed secrets.
 
+Development Seed Account Credentials:
+- Requesters (active): `requester1@toktickit.com`, `requester2@toktickit.com`, `requester3@toktickit.com`, `requester4@toktickit.com` (Default password: `Password123!`, `mustChangePassword=false`)
+- Requester (inactive): `requester.inactive@toktickit.com` (Default password: `Password123!`, `mustChangePassword=false`)
+- IT Staff (active): `staff1@toktickit.com`, `staff2@toktickit.com`, `staff3@toktickit.com` (Default password: `Password123!`, `mustChangePassword=false`)
+- IT Staff (inactive): `staff.inactive@toktickit.com` (Default password: `Password123!`, `mustChangePassword=false`)
+- Administrator (active): `admin@toktickit.com` (Default password: `Password123!`, `mustChangePassword=false`)
+- First-login test user: `firstlogin@toktickit.com` (Initial password: `Password123!`, `mustChangePassword=true`)
+
 ## 11. REST API Summary
 
 The detailed contract is in `api-spec.md`. The implementation MUST expose:
@@ -312,24 +325,26 @@ The detailed contract is in `api-spec.md`. The implementation MUST expose:
 
 Every endpoint MUST define authentication, authorization, validation, response shape, and safe errors.
 
-## 12. UI Summary
+## 12. UI Specification Summary
 
-The detailed screen specification is in `ui-spec.md`. Major screens:
-- Login;
-- Mandatory Change Password;
-- Requester Ticket screens;
-- IT Staff Ticket Queue;
-- IT Staff Ticket Detail;
-- Administrator User Management.
+| Screen | Structure & Modes | Controls & Role Behavior | Feedback & Responsive Rules |
+|---|---|---|---|
+| Login | Authentication mode. Email/Password inputs. | Password reveal toggle ("eye" icon). Submit button. Navigates based on role and password change requirement. | Busy state, safe failure, inline validation. Fully responsive across desktop, tablet, and mobile. |
+| Mandatory Change Password | Forced first-login action mode. | Current password, new password, confirm password (all with reveal toggles). Save Password action. | Mismatch validation, safe failure, success feedback. Prevents navigation into main app until completed. |
+| Requester Screens | Preserves Lab 2 screens; read + create + edit. | Authenticated identity used; Problem Appears Resolved button; Public Comments composer. | Inline validation, non-empty checks, responsive form layouts without horizontal overflow. |
+| Staff Ticket Queue | Read/list operational navigation mode. | Responsive table on desktop; stacked cards on mobile. Search, filter (Status, Priority, Ownership, Owner), sort, pagination. | Loading spinner, empty dataset ("no-work"), no search results, safe retryable failure. |
+| Staff Ticket Detail | Read + operational edit mode. | Claim/Assign IT Staff, IT Priority dropdown, Status transition with confirmation, Public Comments, Internal Notes, Resolution Summary, breadcrumb navigation, back button. | Distinct editable vs read-only fields, conflict handling, unmistakable separation between Public Comments and Internal Notes. |
+| Admin User Management | Minimalist list + create + edit mode. | Name/Email search, single role filter, create user form, edit user form, activate/deactivate toggle, set new initial password action. | Duplicate email validation, safety constraints feedback (cannot self-deactivate or remove last Admin). |
 
-All use existing Zen Green tokens/components and responsive/accessibility conventions from Lab 2.
+All use existing Zen Green tokens/components and responsive/accessibility conventions from Lab 2. See `ui-spec.md` for full details.
 
 ## 13. Acceptance Criteria
 
 - **AC-01** Active user with valid credentials receives authenticated access with safe user identity and role.
 - **AC-02** Initial-password user cannot access normal application screens until a valid new password is saved.
 - **AC-03** Invalid or inactive credentials cannot obtain authenticated access and responses do not enumerate accounts.
-- **AC-04** Logout invalidates the session and protected resources reject the old session.
+- **AC-04** Given a Requester account, when an Internal Note endpoint is requested, then the operation is rejected without exposing note content.
+- **AC-04b** Logout invalidates the session and protected resources reject the old session.
 - **AC-05** Current-user returns only safe identity fields; passwordHash/initial password/session token are never returned.
 - **AC-06** Requester APIs ignore client-supplied alternate requester identity and expose only authenticated ownership.
 - **AC-07** Requester cannot access another user's Ticket, Attachment, or Internal Note.
@@ -339,7 +354,7 @@ All use existing Zen Green tokens/components and responsive/accessibility conven
 - **AC-11** Only transitions in the approved status matrix succeed.
 - **AC-12** Requester “Problem Appears Resolved” does not formally resolve/close the Ticket.
 - **AC-13** Public Comments are readable by authorized Requester/IT Staff viewers and are append-only.
-- **AC-14** Internal Notes are readable only by IT Staff and are append-only.
+- **AC-14** Internal Notes are readable only by IT Staff and Administrator, and are append-only.
 - **AC-15** Non-Administrators cannot invoke User Management APIs.
 - **AC-16** Administrator can list/search/filter users and create/edit accounts within scope.
 - **AC-17** Duplicate email and invalid role values are rejected.
@@ -375,9 +390,9 @@ Every AC MUST map to at least one test in `tests.md`.
 2. **CSRF:** state-changing requests require same-origin `Origin` validation plus a CSRF token mechanism appropriate to the existing application architecture. The chosen implementation must be documented in code and tested.
 3. **Session timeout:** 8-hour inactivity, 24-hour absolute; logout/revocation immediately invalidates.
 4. **Administrator ticket operations:** not granted. Administrator responsibilities are intentionally separated from IT Staff ticket operations.
-5. **Internal Notes:** IT Staff only. This is the authorization-matrix decision for this specification.
+5. **Internal Notes:** IT Staff and Administrator. Visible only to IT Staff and Administrator; strictly inaccessible to Requesters. Administrators have read-only visibility for authorized tickets.
 6. **Comment/note limit:** 4000 characters, after trimming.
-7. **Password policy:** 12–128 characters, new password must differ from current password.
+7. **Password policy:** 8–128 characters, uppercase, lowercase, number, and special character; new password must differ from current password.
 8. **Queue default:** sort by `updatedAt DESC`, then Ticket number descending. Default page size 20; allowed page sizes 10/20/50.
 9. **Queue search:** Ticket number, Summary. Filters: status, Requested Priority, IT Priority, ownership state (assigned/unassigned), and owner. Sorting: Created Date, Updated Date, Requested Priority, IT Priority, Status, Ticket Number.
 10. **User list:** no pagination, one optional role filter, search by name/email.

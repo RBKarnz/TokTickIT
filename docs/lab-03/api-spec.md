@@ -159,13 +159,15 @@ Request:
 
 ```json
 {
+  "currentPassword": "current-password",
   "newPassword": "new-password",
   "confirmPassword": "new-password"
 }
 ```
 
 Rules:
-- 12–128 chars;
+- currentPassword required and verified against current user hash;
+- 8–128 chars, must include uppercase, lowercase, number, and special character;
 - outer whitespace normalized according to password policy;
 - new password differs from current;
 - confirmation matches;
@@ -295,7 +297,7 @@ Query parameters:
 - `itPriority` — optional one priority.
 - `ownership` — optional `assigned|unassigned`.
 - `ownerId` — optional active/inactive owner ID; server validates authorization.
-- `sortBy` — `createdAt|updatedAt|requestedPriority|itPriority|status|ticketNumber`.
+- `sortBy` — `createdAt|updatedAt|requestedPriority|itPriority|status|ticketNumber|category|owner`.
 - `sortOrder` — `asc|desc`.
 - `page` — positive integer, default `1`.
 - `pageSize` — `10|20|50`, default `20`.
@@ -338,6 +340,18 @@ No Internal Notes or sensitive credentials appear.
 
 ## 6. IT Staff Ticket Detail
 
+### GET `/staff/tickets/:ticketId/attachments`
+
+Roles: IT Staff, Administrator (only where authorized to view the Ticket).
+
+Returns all attachments associated with the ticket, including active and soft-removed metadata for operational auditing.
+
+### GET `/staff/attachments/:attachmentId/download`
+
+Roles: IT Staff, Administrator (only where authorized to view the Ticket).
+
+Downloads an active attachment file. Soft-removed attachments return `404 Not Found` or `410 Gone`.
+
 ### GET `/staff/tickets/:ticketId`
 
 Role: IT Staff.
@@ -349,6 +363,7 @@ Returns:
 - Requested Priority;
 - IT Priority;
 - status;
+- resolutionSummary (nullable string explaining resolution, visible to requester and staff);
 - Attachment data allowed by Lab 2;
 - Public Comments;
 - Internal Notes;
@@ -407,7 +422,8 @@ Request:
 
 ```json
 {
-  "status": "Resolved"
+  "status": "Resolved",
+  "resolutionSummary": "Replaced faulty RAM module on motherboard and verified memory test pass."
 }
 ```
 
@@ -452,7 +468,7 @@ Response `201` includes author/timestamp and content only for authorized IT Staf
 
 Roles:
 - IT Staff: permitted Staff Ticket.
-- Administrator: only when the Administrator is otherwise authorized to view the relevant Ticket by the approved authorization matrix.
+- Administrator: authorized to view read-only Internal Notes for relevant tickets as defined by BR-04.
 
 Returns Internal Notes only. Never include these in Requester responses.
 
@@ -508,7 +524,7 @@ Request:
 Rules:
 - one valid role;
 - unique canonical email;
-- valid initial password policy;
+- valid initial password policy (8–128 characters, uppercase, lowercase, number, special character);
 - stores password hash only;
 - sets `mustChangePassword=true`;
 - never returns initial password after the response.
@@ -542,7 +558,7 @@ Rules:
 - email canonicalized and unique;
 - role exactly one permitted role;
 - self-deactivation rejected;
-- deactivation of last active Administrator rejected;
+- deactivation or changing the role away from ADMINISTRATOR of the last active Administrator is rejected with 409 Conflict;
 - activating/deactivating a user does not delete data;
 - when a user becomes inactive, their active sessions are revoked.
 
@@ -582,6 +598,7 @@ Response `200` contains safe user state only.
 | Inactive owner assignment | 422 | No state mutation |
 | Self-deactivation | 409 | No state mutation |
 | Last active Administrator deactivation | 409 | No state mutation |
+| Last active Administrator role demotion | 409 | No state mutation |
 | Invalid queue query | 400 | Safe query error |
 | Missing Ticket for authorized Staff route | 404 | No sensitive detail |
 | Unexpected server failure | 500 | Generic safe message |

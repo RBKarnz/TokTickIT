@@ -60,7 +60,7 @@ Create/authentication mode.
 ### Controls
 
 - Email input.
-- Password input.
+- Password input with password visibility reveal/hide toggle ("eye" icon).
 - Sign In button.
 
 ### Validation
@@ -90,14 +90,15 @@ Forced first-login action.
 
 ### Controls
 
-- Current/initial password field only if the backend requires it for the flow.
-- New password.
-- Confirm new password.
-- Save Password.
+- Current (temporary) password input field with reveal/hide toggle ("eye" icon) (required).
+- New password input field with reveal/hide toggle ("eye" icon).
+- Confirm new password input field with reveal/hide toggle ("eye" icon).
+- Save Password button.
 
 ### Rules
 
-- New password 12–128 characters.
+- New password 8–128 characters.
+- Must include uppercase letters, lowercase letters, at least one number, and at least one special character.
 - New password must differ from current password.
 - Confirmation must exactly match.
 - Password values are never shown in application logs or URLs.
@@ -163,15 +164,15 @@ Read/list/operational navigation.
 ### Desktop representation
 
 Use a responsive table with only decision-useful columns:
-- Ticket Number
-- Created Date
+- Ticket Number (sortable)
+- Created Date (sortable)
 - Summary
-- Category
-- Requested Priority
-- IT Priority
-- Current Status
-- Ticket Owner
-- Last Updated
+- Category (sortable)
+- Requested Priority (sortable)
+- IT Priority (sortable)
+- Current Status (sortable)
+- Ticket Owner (sortable)
+- Last Updated (sortable)
 - Open Detail action
 
 Do not create a mega-grid.
@@ -204,6 +205,8 @@ Supported:
 - IT Priority
 - Status
 - Ticket Number
+- Category
+- Ticket Owner (Owner)
 
 Show current sort direction.
 
@@ -239,6 +242,11 @@ Use existing badge component/token rules for:
 
 ## 7. Screen: IT Staff Ticket Detail
 
+### Navigation
+
+- Breadcrumb navigation: `My Queue > Ticket Detail`
+- Action button: `<- Back to Queue` button linking back to the IT Staff Ticket Queue.
+
 ### Mode
 
 Read + operational edit.
@@ -251,6 +259,7 @@ Operational controls:
 - Ticket Owner;
 - IT Priority;
 - Status transition;
+- Resolution Summary (editable input/textarea when transitioning to Resolved; visible as read-only to Requester and Staff once resolved);
 - Public Comments;
 - Internal Notes.
 
@@ -292,7 +301,7 @@ Controls:
 ### Internal Notes
 
 - Strongly visually distinct from Public Comments.
-- Label `Internal Notes — IT Staff Only`.
+- Label `Internal Notes — IT Staff and Administrator Only`.
 - Existing entries read-only.
 - Composer available to IT Staff.
 - Append-only.
@@ -414,15 +423,20 @@ Screenshots for:
 Evidence must cover desktop/tablet/mobile as requested by the lab. Screenshots must be readable without extreme zoom.
 
 The final visual checklist must record:
-- Zen Green consistency;
-- role navigation;
-- badges;
-- editable/read-only distinction;
-- validation placement;
-- focus;
-- clipping;
-- overlap;
-- horizontal overflow.
+
+### Visual Inspection Checklist
+
+| Verification Item | Desktop (1280px+) | Tablet (768px - 1024px) | Mobile (375px - 414px) | Notes & Evaluation Criteria |
+|---|---|---|---|---|
+| Zen Green Consistency | [ ] Pass | [ ] Pass | [ ] Pass | Strict use of `#006B3C` primary, `#F4F9F5` background, consistent card & button styles |
+| Role Navigation | [ ] Pass | [ ] Pass | [ ] Pass | Navigation shows only role-permitted links; no unauthorized destinations rendered |
+| Status & Priority Badges | [ ] Pass | [ ] Pass | [ ] Pass | Badges use correct semantic color tokens and text labels without relying on color alone |
+| Editable vs Read-Only Distinction | [ ] Pass | [ ] Pass | [ ] Pass | Form inputs have clear borders and focus states; read-only fields have muted background |
+| Validation Placement | [ ] Pass | [ ] Pass | [ ] Pass | Inline validation messages appear directly beneath invalid input fields |
+| Focus Indicators | [ ] Pass | [ ] Pass | [ ] Pass | Visible outline/ring on keyboard navigation for all interactive controls |
+| No Text Clipping | [ ] Pass | [ ] Pass | [ ] Pass | All labels, ticket titles, dates, and comment texts wrap cleanly without clipping |
+| No Overlapping Controls | [ ] Pass | [ ] Pass | [ ] Pass | Buttons and dropdowns have adequate spacing and touch targets (>= 44px on touch) |
+| No Horizontal Overflow | [ ] Pass | [ ] Pass | [ ] Pass | Page width fits viewport; no horizontal scrollbar on mobile or tablet |
 
 ## 11. Explicit UI Non-Goals
 
