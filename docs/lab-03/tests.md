@@ -44,22 +44,22 @@ Test data should use a disposable test database and real application persistence
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
 | API-01 | API | AC-01 | Active user valid login | 200, authenticated session, safe user + role | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-02 | API | AC-03 | Wrong password | 401, generic safe error | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-03 | API | AC-03 | Unknown email | Same safe failure class/message as wrong password | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-04 | API | AC-03 | Inactive user login | 401, generic safe error | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-02 | API | AC-05 | Wrong password | 401, generic safe error | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-03 | API | AC-05 | Unknown email | Same safe failure class/message as wrong password | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-04 | API | AC-05 | Inactive user login | 401, generic safe error | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-05 | API | AC-02 | Initial-password login | Restricted session, `mustChangePassword=true` | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-06 | API | AC-02 | Forced session calls normal Ticket API | 403 | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-07 | API | AC-02 | Invalid new password | 422/400, password unchanged | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-08 | API | AC-04 | Requester requests Internal Notes | Forbidden; no note data returned | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
-| API-09 | API | AC-05 | `/auth/me` response | No passwordHash/session token | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-10 | API | AC-04 | Logout | Session revoked and cookie cleared | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-11 | Security | AC-04 | Reuse old session after logout | 401 | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-12 | Security | AC-05 | Credentials in error/log payloads | No credentials/secrets | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-13 | Security | AC-06 | Requester sends alternate requesterId | Authenticated identity still determines Ticket ownership | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| API-09 | API | AC-05b | `/auth/me` response | No passwordHash/session token | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-10 | API | AC-06 | Logout | Session revoked and cookie cleared | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-11 | Security | AC-06 | Reuse old session after logout | 401 | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-12 | Security | AC-05b | Credentials in error/log payloads | No credentials/secrets | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-13 | Security | AC-03 | Requester sends alternate requesterId | Authenticated identity still determines Ticket ownership | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-14 | Security | AC-07 | Requester reads another user's Ticket | 404/403 without protected data | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-15 | Security | AC-07 | Requester reads another user's Attachment | 404/403 without protected data | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-16 | Security | AC-07 | Requester calls Internal Notes | Forbidden and no note data | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
-| API-17 | Regression | AC-20 | Requester creates Ticket through authenticated identity | Persisted requester ID equals authenticated user | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| API-17 | Regression | AC-03, AC-20 | Requester creates Ticket through authenticated identity | Persisted requester ID equals authenticated user | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-18 | Regression | AC-20 | Existing Ticket retrieval | Old Ticket still available to correct Requester | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-19 | Regression | AC-20 | Existing Attachment flow | Existing Attachment ownership behavior preserved | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-20 | API | AC-08 | Staff queue default | Correct default ordering and pagination | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
@@ -287,12 +287,12 @@ Test passwords are generated/configured for tests and are not real personal cred
 | AC | Covered by |
 |---|---|
 | AC-01 | API-01, E2E-01 |
-| AC-02 | API-05..08, E2E-02, E2E-08 |
-| AC-03 | API-02..04, E2E-03..04 |
+| AC-02 | API-05..07, E2E-02, E2E-08 |
+| AC-03 | API-13, API-17 |
 | AC-04 | API-08, API-16, E2E-07 |
-| AC-04b | API-10..11, E2E-05 |
-| AC-05 | API-09, API-12 |
-| AC-06 | API-13, API-17 |
+| AC-05 | API-02..04, E2E-03..04 |
+| AC-05b | API-09, API-12 |
+| AC-06 | API-10..11, E2E-05 |
 | AC-07 | API-14..16, E2E-07 |
 | AC-08 | API-20..26, E2E-09..10 |
 | AC-09 | API-28..31, E2E-12..13 |

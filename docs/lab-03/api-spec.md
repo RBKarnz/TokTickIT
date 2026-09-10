@@ -446,7 +446,7 @@ UI confirmation does not replace backend validation.
 
 ### POST `/staff/tickets/:ticketId/internal-notes`
 
-Role: IT Staff only.
+Roles: IT Staff, Administrator (authorized for operational notes).
 
 Request:
 

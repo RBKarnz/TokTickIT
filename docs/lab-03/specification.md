@@ -340,13 +340,13 @@ All use existing Zen Green tokens/components and responsive/accessibility conven
 
 ## 13. Acceptance Criteria
 
-- **AC-01** Active user with valid credentials receives authenticated access with safe user identity and role.
-- **AC-02** Initial-password user cannot access normal application screens until a valid new password is saved.
-- **AC-03** Invalid or inactive credentials cannot obtain authenticated access and responses do not enumerate accounts.
+- **AC-01** Given an active user with valid credentials, when the user logs in, then the backend establishes authenticated access and returns the permitted user identity and role.
+- **AC-02** Given a user who must change the initial password, when login succeeds, then normal application screens remain unavailable until a valid new password is saved.
+- **AC-03** Given an authenticated Requester, when the client supplies another requesterId, then the backend still applies the authenticated identity and does not return another Requester’s data.
 - **AC-04** Given a Requester account, when an Internal Note endpoint is requested, then the operation is rejected without exposing note content.
-- **AC-04b** Logout invalidates the session and protected resources reject the old session.
-- **AC-05** Current-user returns only safe identity fields; passwordHash/initial password/session token are never returned.
-- **AC-06** Requester APIs ignore client-supplied alternate requester identity and expose only authenticated ownership.
+- **AC-05** Invalid or inactive credentials cannot obtain authenticated access and responses do not enumerate accounts.
+- **AC-05b** Current-user returns only safe identity fields; passwordHash/initial password/session token are never returned.
+- **AC-06** Logout invalidates the session and protected resources reject the old session.
 - **AC-07** Requester cannot access another user's Ticket, Attachment, or Internal Note.
 - **AC-08** IT Staff can retrieve queue data with search/filter/sort/pagination and open Ticket Detail.
 - **AC-09** IT Staff can claim/reassign only to active IT Staff users.
