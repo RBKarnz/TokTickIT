@@ -103,12 +103,12 @@ app.get('/api/systems', async (req, res) => {
   }
 });
 
-// Lab 2: Get active requesters
+// Lab 2: Get active requesters (uses User model after Lab 3 migration)
 app.get('/api/requesters', async (req, res) => {
   try {
     const prisma = getPrisma();
-    const requesters = await prisma.requesterUser.findMany({
-      where: { isActive: true },
+    const requesters = await prisma.user.findMany({
+      where: { isActive: true, role: 'REQUESTER' },
       select: { id: true, name: true, email: true, isActive: true },
       orderBy: { id: 'asc' }
     });

@@ -14,7 +14,7 @@ describe('GET /api/tickets/:id', () => {
     const ticket = await prisma.ticket.findFirst({ include: { requester: true } });
     ticketId = ticket?.id || 1;
     requesterId = ticket?.requesterId || 1;
-    const otherRequester = await prisma.requesterUser.findFirst({ where: { id: { not: requesterId } } });
+    const otherRequester = await prisma.user.findFirst({ where: { id: { not: requesterId }, role: 'REQUESTER' } });
     otherRequesterId = otherRequester?.id || 2;
   });
 
