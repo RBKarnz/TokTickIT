@@ -159,8 +159,15 @@ async function main() {
 
   const augustFirst = new Date("2026-08-01T00:00:00Z");
   const today = new Date("2026-09-01T00:00:00Z");
-  const statuses: Array<"NEW" | "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" | "WAITING_FOR_REQUESTER" | "REOPENED" | "CANCELLED"> = [
-    "NEW", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED",
+  const statuses: Array<"NEW" | "OPEN" | "IN_PROGRESS" | "WAITING_FOR_REQUESTER" | "RESOLVED" | "CLOSED" | "REOPENED" | "CANCELLED"> = [
+    "NEW",
+    "OPEN",
+    "IN_PROGRESS",
+    "WAITING_FOR_REQUESTER",
+    "RESOLVED",
+    "CLOSED",
+    "REOPENED",
+    "CANCELLED",
   ];
   const priorities: Array<"LOW" | "MEDIUM" | "HIGH" | "CRITICAL"> = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
@@ -202,7 +209,8 @@ async function main() {
     await prisma.ticket.upsert({
       where: { ticketNumber },
       update: {
-        ...(ownerId ? { ownerId } : {})
+        ...(ownerId ? { ownerId } : {}),
+        itPriority: prio, // Ensure itPriority is populated from requestedPriority (BR-29)
       },
       create: {
         ticketNumber,
@@ -240,7 +248,8 @@ async function main() {
     await prisma.ticket.upsert({
       where: { ticketNumber },
       update: {
-        ...(ownerId ? { ownerId } : {})
+        ...(ownerId ? { ownerId } : {}),
+        itPriority: prio, // Ensure itPriority is populated from requestedPriority (BR-29)
       },
       create: {
         ticketNumber,
@@ -289,7 +298,8 @@ async function main() {
     await prisma.ticket.upsert({
       where: { ticketNumber: t.ticketNumber },
       update: {
-        ...(t.ownerId ? { ownerId: t.ownerId } : {})
+        ...(t.ownerId ? { ownerId: t.ownerId } : {}),
+        itPriority: t.priority, // Ensure itPriority is populated from requestedPriority (BR-29)
       },
       create: {
         ticketNumber: t.ticketNumber,

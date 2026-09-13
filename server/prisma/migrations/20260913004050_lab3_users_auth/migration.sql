@@ -64,6 +64,12 @@ ALTER TABLE "Ticket" ADD COLUMN "ownerId" INTEGER;
 ALTER TABLE "Ticket" ADD COLUMN "requesterResolvedAt" TIMESTAMP(3);
 ALTER TABLE "Ticket" ADD COLUMN "resolutionSummary" TEXT;
 
+-- Initialize IT Priority from Requested Priority for existing tickets (BR-29)
+UPDATE "Ticket"
+SET "itPriority" = "requestedPriority"
+WHERE "itPriority" = 'UNASSIGNED';
+
+
 -- =========================================================================
 -- Step 6: Remap Ticket.requesterId from RequesterUser to User
 -- =========================================================================
