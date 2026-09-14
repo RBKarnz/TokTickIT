@@ -9,7 +9,7 @@ describe('GET /api/tickets', () => {
   let requesterId: number;
 
   beforeAll(async () => {
-    const requester = await prisma.requesterUser.findFirst();
+    const requester = await prisma.user.findFirst({ where: { role: 'REQUESTER' } });
     requesterId = requester?.id || 1;
   });
 
