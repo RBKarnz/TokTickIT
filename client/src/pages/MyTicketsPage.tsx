@@ -56,8 +56,8 @@ export default function MyTicketsPage() {
         endDate: endDate,
         page: page
       });
-      setTickets(data.data);
-      setTotalPages(data.pagination.totalPages || 1);
+      setTickets(data?.data || []);
+      setTotalPages(data?.pagination?.totalPages || 1);
     } catch (err: any) {
       setError(err.message || 'Failed to load tickets');
     } finally {
@@ -119,8 +119,13 @@ export default function MyTicketsPage() {
               <select className="form-select" value={selectedStatus} onChange={e => { setSelectedStatus(e.target.value); setPage(1); }}>
                 <option value="">All Statuses</option>
                 <option value="NEW">New</option>
+                <option value="OPEN">Open</option>
                 <option value="IN_PROGRESS">In Progress</option>
+                <option value="WAITING_FOR_REQUESTER">Waiting for Requester</option>
                 <option value="RESOLVED">Resolved</option>
+                <option value="CLOSED">Closed</option>
+                <option value="REOPENED">Reopened</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
             </div>
             <div className="col-12 col-md-3">

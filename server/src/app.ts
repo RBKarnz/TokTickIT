@@ -244,7 +244,7 @@ app.get('/api/tickets', async (req, res) => {
         total: totalCount,
         page: pageNumber,
         limit: limitNumber,
-        totalPages: Math.ceil(totalCount / limitNumber)
+        totalPages: Math.ceil(totalCount / limitNumber) || 1
       }
     });
   } catch (error) {
