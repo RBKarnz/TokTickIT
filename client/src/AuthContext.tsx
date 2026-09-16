@@ -14,16 +14,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     if (typeof authApi.fetchCurrentUser === 'function') {
       authApi.fetchCurrentUser()
         .then((u) => {
-          if (u) setUser(u);
+          if (mounted && u) setUser(u);
         })
-        .catch(() => setUser(null));
+        .catch(() => {
+          if (mounted) setUser(null);
+        })
+        .finally(() => {
+          if (mounted) setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
     }
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (

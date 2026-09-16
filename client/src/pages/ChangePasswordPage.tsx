@@ -64,12 +64,11 @@ export default function ChangePasswordPage() {
     if (!newPwd) {
       errs.newPassword = 'New password is required.';
     } else {
-      const t = newPwd.trim();
-      if (t.length < 8 || t.length > 128) errs.newPassword = 'Password must be 8–128 characters.';
-      else if (!/[A-Z]/.test(t)) errs.newPassword = 'Must include an uppercase letter.';
-      else if (!/[a-z]/.test(t)) errs.newPassword = 'Must include a lowercase letter.';
-      else if (!/[0-9]/.test(t)) errs.newPassword = 'Must include a number.';
-      else if (!/[^A-Za-z0-9]/.test(t)) errs.newPassword = 'Must include a special character.';
+      if (newPwd.length < 8 || newPwd.length > 128) errs.newPassword = 'Password must be 8–128 characters.';
+      else if (!/[A-Z]/.test(newPwd)) errs.newPassword = 'Must include an uppercase letter.';
+      else if (!/[a-z]/.test(newPwd)) errs.newPassword = 'Must include a lowercase letter.';
+      else if (!/[0-9]/.test(newPwd)) errs.newPassword = 'Must include a number.';
+      else if (!/[^A-Za-z0-9]/.test(newPwd)) errs.newPassword = 'Must include a special character.';
     }
     if (newPwd !== confirm) errs.confirmPassword = 'Passwords do not match.';
     setFieldErrors(errs);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext.js';
 import LoginPage from './pages/LoginPage.js';
 import ChangePasswordPage from './pages/ChangePasswordPage.js';
@@ -84,9 +84,9 @@ export function TempHome() {
 
 // Loading Spinner helper
 const Spinner = () => (
-  <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh', backgroundColor: '#F5F7F6' }}>
+  <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: '100vh', backgroundColor: '#F5F7F6' }}>
     <div className="spinner-border" style={{ color: '#006B3C', width: '3rem', height: '3rem' }} role="status">
-      <span className="visually-hidden">Loading...</span>
+      <span className="visually-hidden">TokTickIT Loading...</span>
     </div>
   </div>
 );
@@ -109,8 +109,70 @@ function RequirePasswordChange() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
-  if (!user.mustChangePassword) return <Navigate to="/" replace />;
+  if (!user.mustChangePassword) {
+    const landing = user.role === 'IT_STAFF' ? '/staff/queue'
+                  : user.role === 'ADMINISTRATOR' ? '/admin/users'
+                  : '/';
+    return <Navigate to={landing} replace />;
+  }
   return <Outlet />;
+}
+
+// ---------------------------------------------------------------------------
+// Role Landings
+// ---------------------------------------------------------------------------
+
+function RoleLandingRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'IT_STAFF') return <Navigate to="/staff/queue" replace />;
+  if (user?.role === 'ADMINISTRATOR') return <Navigate to="/admin/users" replace />;
+  return <MyTicketsPage />;
+}
+
+function StaffQueueLanding() {
+  const { user } = useAuth();
+  return (
+    <div className="container py-5" style={{ maxWidth: '900px' }}>
+      <div className="card shadow-sm border-0">
+        <div className="card-body p-5">
+          <div className="d-flex align-items-center mb-3">
+            <i className="bi bi-inbox-fill fs-2 me-3" style={{ color: '#006B3C' }}></i>
+            <div>
+              <h2 className="h4 mb-0" style={{ color: '#1E293B' }}>IT Staff Ticket Queue</h2>
+              <p className="text-muted small mb-0">Operational triage & resolution queue</p>
+            </div>
+          </div>
+          <div className="alert p-4 mb-0" style={{ backgroundColor: '#EAF6EF', color: '#0B7A46', borderColor: '#A7F3D0' }}>
+            <i className="bi bi-info-circle me-2"></i>
+            Logged in as <strong>{user?.name}</strong> (IT Staff). The triage queue interface is scheduled for implementation in Issue #36.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminUsersLanding() {
+  const { user } = useAuth();
+  return (
+    <div className="container py-5" style={{ maxWidth: '900px' }}>
+      <div className="card shadow-sm border-0">
+        <div className="card-body p-5">
+          <div className="d-flex align-items-center mb-3">
+            <i className="bi bi-people-fill fs-2 me-3" style={{ color: '#006B3C' }}></i>
+            <div>
+              <h2 className="h4 mb-0" style={{ color: '#1E293B' }}>Administrator User Management</h2>
+              <p className="text-muted small mb-0">Manage accounts, roles, and credentials</p>
+            </div>
+          </div>
+          <div className="alert p-4 mb-0" style={{ backgroundColor: '#EAF6EF', color: '#0B7A46', borderColor: '#A7F3D0' }}>
+            <i className="bi bi-info-circle me-2"></i>
+            Logged in as <strong>{user?.name}</strong> (Administrator). User management features are scheduled for implementation in Issue #38.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -131,13 +193,17 @@ function AppShell() {
                   : user?.role === 'IT_STAFF' ? 'IT Staff'
                   : 'Requester';
 
+  const landingUrl = user?.role === 'IT_STAFF' ? '/staff/queue'
+                   : user?.role === 'ADMINISTRATOR' ? '/admin/users'
+                   : '/';
+
   return (
     <div style={{ backgroundColor: '#F5F7F6', minHeight: '100vh' }}>
       <nav className="navbar navbar-expand-lg" style={{ backgroundColor: '#006B3C' }}>
         <div className="container d-flex justify-content-between">
-          <a className="navbar-brand text-white fw-bold d-flex align-items-center" href="/">
+          <Link className="navbar-brand text-white fw-bold d-flex align-items-center" to={landingUrl}>
             <i className="bi bi-clock-history me-2"></i>TokTickIT
-          </a>
+          </Link>
           <div className="d-flex align-items-center gap-3">
             <span className="badge bg-light text-dark">{roleBadge}</span>
             <span className="text-white small text-truncate" style={{ maxWidth: '150px' }}>
@@ -177,7 +243,9 @@ export default function App() {
           {/* Protected routes */}
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
-              <Route path="/" element={<MyTicketsPage />} />
+              <Route path="/" element={<RoleLandingRoute />} />
+              <Route path="/staff/queue" element={<StaffQueueLanding />} />
+              <Route path="/admin/users" element={<AdminUsersLanding />} />
               <Route path="/tickets/create" element={<CreateTicketPage />} />
               <Route path="/tickets/:id" element={<TicketDetailPage />} />
             </Route>

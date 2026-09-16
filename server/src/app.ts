@@ -158,7 +158,13 @@ app.post('/api/auth/login', async (req, res) => {
     res.cookie(COOKIE_NAME, token, getCookieOptions(isSecure));
 
     return res.status(200).json({
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: user.mustChangePassword,
+      },
       mustChangePassword: user.mustChangePassword,
     });
   } catch (err) {

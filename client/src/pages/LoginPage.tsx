@@ -28,12 +28,16 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const data = await login(email.trim(), password);
-      setUser(data.user);
-      if (data.mustChangePassword) {
+      const authUser = {
+        ...data.user,
+        mustChangePassword: data.mustChangePassword ?? data.user.mustChangePassword ?? false,
+      };
+      setUser(authUser);
+      if (authUser.mustChangePassword) {
         navigate('/change-password', { replace: true });
       } else {
-        const landing = data.user.role === 'IT_STAFF' ? '/staff/queue'
-                      : data.user.role === 'ADMINISTRATOR' ? '/admin/users'
+        const landing = authUser.role === 'IT_STAFF' ? '/staff/queue'
+                      : authUser.role === 'ADMINISTRATOR' ? '/admin/users'
                       : '/';
         navigate(landing, { replace: true });
       }
