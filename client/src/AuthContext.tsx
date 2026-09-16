@@ -50,30 +50,14 @@ export function useAuth(): AuthContextType {
     return ctx;
   }
 
-  // Graceful fallback for tests that mount components without AuthProvider
-  let fallbackUser: AuthUser = {
+  // Graceful fallback for isolated test renders that mount components without AuthProvider
+  const fallbackUser: AuthUser = {
     id: 1,
     name: 'Jennifer Miller',
     email: 'requester1@toktickit.com',
     role: 'REQUESTER',
     mustChangePassword: false,
   };
-
-  try {
-    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('activeRequester') : null;
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      fallbackUser = {
-        id: parsed.id ?? 1,
-        name: parsed.name ?? 'Jennifer Miller',
-        email: parsed.email ?? 'requester1@toktickit.com',
-        role: 'REQUESTER',
-        mustChangePassword: false,
-      };
-    }
-  } catch {
-    // Ignore JSON parse error
-  }
 
   return {
     user: fallbackUser,

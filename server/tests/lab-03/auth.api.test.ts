@@ -204,26 +204,100 @@ describe('Auth API (Lab 3)', () => {
     expect(res.status).toBe(401);
   });
 
-  // Full password change flow
-  it('Full flow: valid change-password clears mustChangePassword and allows normal ticket access', async () => {
+  // SEC-04 — Session cookie security attributes
+  it('SEC-04: session cookie has required security attributes (HttpOnly, SameSite=Lax, Path=/)', async () => {
+    const res = await login();
+    const cookieHeader = res.headers['set-cookie']?.[0] || '';
+    expect(cookieHeader).toContain('session_token=');
+    expect(cookieHeader).toMatch(/httponly/i);
+    expect(cookieHeader).toMatch(/samesite=lax/i);
+    expect(cookieHeader).toMatch(/path=\//i);
+  });
+
+  // UNIT-01 — boundary cases (7 rejected, 8 accepted, 128 accepted, 129 rejected)
+  it('UNIT-01: password policy boundary: 7 rejected, 8 accepted, 128 accepted, 129 rejected', async () => {
+    const { validatePasswordPolicy } = await import('../../src/auth.js');
+    // 7 chars -> rejected
+    expect(validatePasswordPolicy('Abc1!ef')).toBe('Password must be 8–128 characters.');
+    // 8 chars -> accepted
+    expect(validatePasswordPolicy('Abc1!efg')).toBeNull();
+    // 128 chars -> accepted
+    const pass128 = 'Abc1!' + 'x'.repeat(123);
+    expect(pass128.length).toBe(128);
+    expect(validatePasswordPolicy(pass128)).toBeNull();
+    // 129 chars -> rejected
+    const pass129 = 'Abc1!' + 'x'.repeat(124);
+    expect(pass129.length).toBe(129);
+    expect(validatePasswordPolicy(pass129)).toBe('Password must be 8–128 characters.');
+  });
+
+  // UNIT-17 — Session expiry logic (8-hour idle timeout & 24-hour absolute timeout)
+  it('UNIT-17: session expires after 8-hour idle timeout', async () => {
+    const cookie = await getCookie();
+    const tokenMatch = cookie.match(/session_token=([^;]+)/);
+    const token = tokenMatch![1];
+    const { hashToken } = await import('../../src/auth.js');
+    const tokenHash = hashToken(token);
+
+    // Set lastSeenAt to 9 hours ago (idle timeout)
+    const nineHoursAgo = new Date(Date.now() - 9 * 3600 * 1000);
+    await prisma.session.update({
+      where: { tokenHash },
+      data: { lastSeenAt: nineHoursAgo },
+    });
+
+    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    expect(res.status).toBe(401);
+  });
+
+  it('UNIT-17: session expires after 24-hour absolute timeout', async () => {
+    const cookie = await getCookie();
+    const tokenMatch = cookie.match(/session_token=([^;]+)/);
+    const token = tokenMatch![1];
+    const { hashToken } = await import('../../src/auth.js');
+    const tokenHash = hashToken(token);
+
+    // Set expiresAt to 1 minute in past
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    await prisma.session.update({
+      where: { tokenHash },
+      data: { expiresAt: oneMinuteAgo },
+    });
+
+    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    expect(res.status).toBe(401);
+  });
+
+  // Session Rotation on change-password
+  it('API-08 / Session Rotation: change-password rotates session token, revokes old session, issues new cookie', async () => {
     const loginRes = await login(FIRSTLOGIN, PASSWORD);
-    const cookie = loginRes.headers['set-cookie'][0];
-    expect(loginRes.body.mustChangePassword).toBe(true);
+    const oldCookie = loginRes.headers['set-cookie'][0];
+    const oldToken = oldCookie.match(/session_token=([^;]+)/)![1];
 
     const NEW_PASS = 'BrandNewSecretPass99!';
     const changeRes = await request(app)
       .post('/api/auth/change-password')
-      .set('Cookie', cookie)
+      .set('Cookie', oldCookie)
       .send({ currentPassword: PASSWORD, newPassword: NEW_PASS, confirmPassword: NEW_PASS });
     expect(changeRes.status).toBe(200);
 
-    // /auth/me now shows mustChangePassword = false
-    const meRes = await request(app).get('/api/auth/me').set('Cookie', cookie);
-    expect(meRes.status).toBe(200);
-    expect(meRes.body.user.mustChangePassword).toBe(false);
+    // New cookie issued
+    const newCookie = changeRes.headers['set-cookie']?.[0];
+    expect(newCookie).toBeDefined();
+    const newToken = newCookie.match(/session_token=([^;]+)/)![1];
+    expect(newToken).not.toBe(oldToken);
 
-    // Now permitted to access normal ticket routes
-    const ticketsRes = await request(app).get('/api/tickets').set('Cookie', cookie);
+    // Old session revoked -> 401
+    const oldRes = await request(app).get('/api/auth/me').set('Cookie', oldCookie);
+    expect(oldRes.status).toBe(401);
+
+    // New session active -> 200 and mustChangePassword = false
+    const newRes = await request(app).get('/api/auth/me').set('Cookie', newCookie);
+    expect(newRes.status).toBe(200);
+    expect(newRes.body.user.mustChangePassword).toBe(false);
+
+    // Now permitted to access normal ticket routes with new session
+    const ticketsRes = await request(app).get('/api/tickets').set('Cookie', newCookie);
     expect(ticketsRes.status).toBe(200);
   });
 });

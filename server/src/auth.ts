@@ -33,7 +33,7 @@ export function getCookieOptions(isSecure: boolean) {
     secure: isSecure,
     sameSite: 'lax' as const,
     path: '/',
-    maxAge: SESSION_IDLE_MS, // Express expects maxAge in milliseconds
+    maxAge: SESSION_ABSOLUTE_MS, // Express expects maxAge in milliseconds; 24-hr absolute window
   };
 }
 
@@ -185,22 +185,26 @@ declare global {
 
 /** Requires a valid session. Attaches sessionUser and sessionTokenHash to req. */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const token = req.cookies?.[COOKIE_NAME];
-  if (!token) {
-    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required.' } });
-    return;
-  }
+  try {
+    const token = req.cookies?.[COOKIE_NAME];
+    if (!token) {
+      res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required.' } });
+      return;
+    }
 
-  const user = await getSessionUser(token);
-  if (!user) {
-    res.clearCookie(COOKIE_NAME, { path: '/' });
-    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Session expired or invalid.' } });
-    return;
-  }
+    const user = await getSessionUser(token);
+    if (!user) {
+      res.clearCookie(COOKIE_NAME, { path: '/' });
+      res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Session expired or invalid.' } });
+      return;
+    }
 
-  req.sessionUser = user;
-  req.sessionTokenHash = hashToken(token);
-  next();
+    req.sessionUser = user;
+    req.sessionTokenHash = hashToken(token);
+    next();
+  } catch (err) {
+    next(err);
+  }
 }
 
 /** Like requireAuth, but also blocks first-login restricted sessions from normal routes. */

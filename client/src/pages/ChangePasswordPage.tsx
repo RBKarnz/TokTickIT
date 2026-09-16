@@ -64,13 +64,13 @@ export default function ChangePasswordPage() {
     navigate('/login', { replace: true });
   }
 
+  const trimmedNewPwd = newPwd.trim();
   const rules = [
-    { label: '8–128 characters', met: newPwd.length >= 8 && newPwd.length <= 128 },
-    { label: 'At least one uppercase letter (A-Z)', met: /[A-Z]/.test(newPwd) },
-    { label: 'At least one lowercase letter (a-z)', met: /[a-z]/.test(newPwd) },
-    { label: 'At least one number (0-9)', met: /[0-9]/.test(newPwd) },
-    { label: 'At least one special character (!@#$...)', met: /[^A-Za-z0-9]/.test(newPwd) },
-    { label: 'No more than 5 identical consecutive characters', met: newPwd.length > 0 && !/(.)\1{5,}/.test(newPwd) },
+    { label: '8–128 characters', met: trimmedNewPwd.length >= 8 && trimmedNewPwd.length <= 128 },
+    { label: 'At least one uppercase letter (A-Z)', met: /[A-Z]/.test(trimmedNewPwd) },
+    { label: 'At least one lowercase letter (a-z)', met: /[a-z]/.test(trimmedNewPwd) },
+    { label: 'At least one number (0-9)', met: /[0-9]/.test(trimmedNewPwd) },
+    { label: 'At least one special character (!@#$...)', met: /[^A-Za-z0-9]/.test(trimmedNewPwd) },
   ];
 
   function validateClient(): boolean {
@@ -79,12 +79,12 @@ export default function ChangePasswordPage() {
     if (!newPwd) {
       errs.newPassword = 'New password is required.';
     } else {
-      if (newPwd.length < 8 || newPwd.length > 128) errs.newPassword = 'Password must be 8–128 characters.';
-      else if (!/[A-Z]/.test(newPwd)) errs.newPassword = 'Must include an uppercase letter.';
-      else if (!/[a-z]/.test(newPwd)) errs.newPassword = 'Must include a lowercase letter.';
-      else if (!/[0-9]/.test(newPwd)) errs.newPassword = 'Must include a number.';
-      else if (!/[^A-Za-z0-9]/.test(newPwd)) errs.newPassword = 'Must include a special character.';
-      else if (/(.)\1{5,}/.test(newPwd)) errs.newPassword = 'Password cannot contain more than 5 identical consecutive characters.';
+      const t = newPwd.trim();
+      if (t.length < 8 || t.length > 128) errs.newPassword = 'Password must be 8–128 characters.';
+      else if (!/[A-Z]/.test(t)) errs.newPassword = 'Must include an uppercase letter.';
+      else if (!/[a-z]/.test(t)) errs.newPassword = 'Must include a lowercase letter.';
+      else if (!/[0-9]/.test(t)) errs.newPassword = 'Must include a number.';
+      else if (!/[^A-Za-z0-9]/.test(t)) errs.newPassword = 'Must include a special character.';
     }
     if (newPwd !== confirm) errs.confirmPassword = 'Passwords do not match.';
     setFieldErrors(errs);
@@ -102,8 +102,8 @@ export default function ChangePasswordPage() {
       await changePassword(current, newPwd, confirm);
       setSuccess(true);
       const updated = await fetchCurrentUser();
-      setUser(updated);
       setTimeout(() => {
+        setUser(updated);
         const landing = updated?.role === 'IT_STAFF' ? '/staff/queue'
                       : updated?.role === 'ADMINISTRATOR' ? '/admin/users'
                       : '/';

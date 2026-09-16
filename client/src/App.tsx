@@ -96,7 +96,7 @@ const Spinner = () => (
 // ---------------------------------------------------------------------------
 
 /** Blocks unauthenticated users and redirects first-login users to change password */
-function RequireAuth() {
+export function RequireAuth() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;

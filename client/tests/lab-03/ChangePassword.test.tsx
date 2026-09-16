@@ -1,9 +1,10 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Routes, Route } from 'react-router-dom';
 import ChangePasswordPage from '../../src/pages/ChangePasswordPage.js';
 import { AuthProvider } from '../../src/AuthContext.js';
+import { RequireAuth } from '../../src/App.js';
 import * as authApi from '../../src/authApi.js';
 
 const mockNavigate = vi.fn();
@@ -39,7 +40,7 @@ describe('ChangePassword Component (Lab 3)', () => {
     expect(screen.getByRole('button', { name: /save password/i })).toBeInTheDocument();
   });
 
-  // UI-08 & UI-10
+  // UI-08
   it('UI-08: displays password validation when new password does not meet policy', async () => {
     renderChangePassword();
     fireEvent.change(screen.getByLabelText(/current/i), { target: { value: 'CurrentPass1!' } });
@@ -59,6 +60,33 @@ describe('ChangePassword Component (Lab 3)', () => {
     fireEvent.click(screen.getByRole('button', { name: /save password/i }));
 
     expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
+  });
+
+  // UI-10
+  it('UI-10: prevents navigating into normal application while forced change remains', async () => {
+    vi.spyOn(authApi, 'fetchCurrentUser').mockResolvedValue({
+      id: 1,
+      name: 'First User',
+      email: 'first@toktickit.com',
+      role: 'REQUESTER',
+      mustChangePassword: true,
+    });
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Routes>
+            <Route element={<RequireAuth />}>
+              <Route path="/dashboard" element={<div>Protected Dashboard Content</div>} />
+            </Route>
+            <Route path="/change-password" element={<div>Forced Change Password Target</div>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    expect(await screen.findByText('Forced Change Password Target')).toBeInTheDocument();
+    expect(screen.queryByText('Protected Dashboard Content')).not.toBeInTheDocument();
   });
 
   // UI-11

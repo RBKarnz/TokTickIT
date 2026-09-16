@@ -207,14 +207,14 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
 
     if (newPassword !== confirmPassword) {
       return res.status(422).json({
-        error: { code: 'VALIDATION_ERROR', fieldErrors: { confirmPassword: 'Passwords do not match.' } }
+        error: { code: 'VALIDATION_ERROR', message: 'Validation failed.', fieldErrors: { confirmPassword: 'Passwords do not match.' } }
       });
     }
 
     const policyErr = validatePasswordPolicy(newPassword);
     if (policyErr) {
       return res.status(422).json({
-        error: { code: 'VALIDATION_ERROR', fieldErrors: { newPassword: policyErr } }
+        error: { code: 'VALIDATION_ERROR', message: 'Validation failed.', fieldErrors: { newPassword: policyErr } }
       });
     }
 
@@ -224,24 +224,23 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
     const currentValid = await verifyPassword(user.passwordHash, currentPassword);
     if (!currentValid) {
       return res.status(422).json({
-        error: { code: 'VALIDATION_ERROR', fieldErrors: { currentPassword: 'Current password is incorrect.' } }
+        error: { code: 'VALIDATION_ERROR', message: 'Validation failed.', fieldErrors: { currentPassword: 'Current password is incorrect.' } }
       });
     }
 
     const sameAsCurrent = await verifyPassword(user.passwordHash, newPassword.trim());
     if (sameAsCurrent) {
       return res.status(422).json({
-        error: { code: 'VALIDATION_ERROR', fieldErrors: { newPassword: 'New password must differ from current password.' } }
+        error: { code: 'VALIDATION_ERROR', message: 'Validation failed.', fieldErrors: { newPassword: 'New password must differ from current password.' } }
       });
     }
 
     const newHash = await hashPassword(newPassword);
-    const currentTokenHash = req.sessionTokenHash!;
 
     await prisma.$transaction(async (tx) => {
-      // Revoke all OTHER sessions for this user
+      // Invalidate all existing sessions for this user (including current restricted session)
       await tx.session.updateMany({
-        where: { userId, revokedAt: null, tokenHash: { not: currentTokenHash } },
+        where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
       // Clear mustChangePassword + store new hash
@@ -250,6 +249,11 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
         data: { passwordHash: newHash, mustChangePassword: false },
       });
     });
+
+    // Rotate session: issue a new normal authenticated session token and cookie
+    const newToken = await createSession(userId);
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    res.cookie(COOKIE_NAME, newToken, getCookieOptions(isSecure));
 
     return res.status(200).json({ message: 'Password changed successfully.' });
   } catch (err) {
@@ -409,12 +413,8 @@ app.get('/api/tickets/:id', requireNormalAuth, requireRole('REQUESTER'), async (
       }
     });
 
-    if (!ticket) {
+    if (!ticket || ticket.requesterId !== requesterId) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
-    }
-
-    if (ticket.requesterId !== requesterId) {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "You do not have permission to view this ticket" } });
     }
 
     res.json(ticket);
@@ -452,15 +452,10 @@ app.post('/api/tickets/:id/attachments', requireNormalAuth, requireRole('REQUEST
       include: { attachments: { where: { isRemoved: false } } }
     });
 
-    if (!ticket) {
+    if (!ticket || ticket.requesterId !== requesterId) {
       // Clean up uploaded file
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
-    }
-
-    if (ticket.requesterId !== requesterId) {
-      fs.unlinkSync(req.file.path);
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Not ticket owner" } });
     }
 
     if (ticket.attachments.length >= 5) {
@@ -493,11 +488,8 @@ async function getOwnedAttachment(id: number, requesterId: number): Promise<
     where: { id },
     include: { ticket: true },
   });
-  if (!attachment || attachment.isRemoved) {
+  if (!attachment || attachment.isRemoved || attachment.ticket.requesterId !== requesterId) {
     return { error: { status: 404, code: 'NOT_FOUND', message: 'Attachment not found' }, attachment: null };
-  }
-  if (attachment.ticket.requesterId !== requesterId) {
-    return { error: { status: 403, code: 'FORBIDDEN', message: 'Not ticket owner' }, attachment: null };
   }
   return { error: null, attachment };
 }

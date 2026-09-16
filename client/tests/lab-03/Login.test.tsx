@@ -53,7 +53,35 @@ describe('Login Component (Lab 3)', () => {
     expect(await screen.findByText(/password is required/i)).toBeInTheDocument();
   });
 
-  // UI-03 & UI-04
+  // UI-03
+  it('UI-03: disables duplicate submission while busy', async () => {
+    let resolveLogin!: (val: any) => void;
+    const pendingPromise = new Promise((resolve) => {
+      resolveLogin = resolve;
+    });
+    vi.spyOn(authApi, 'login').mockReturnValueOnce(pendingPromise as any);
+
+    renderLogin();
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'user@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'Password123!' } });
+
+    const submitBtn = screen.getByRole('button', { name: /sign in/i });
+    fireEvent.click(submitBtn);
+
+    expect(submitBtn).toBeDisabled();
+    expect(screen.getByText(/signing in\.\.\./i)).toBeInTheDocument();
+
+    resolveLogin({
+      user: { id: 1, name: 'Normal User', email: 'user@toktickit.com', role: 'REQUESTER', mustChangePassword: false },
+      mustChangePassword: false,
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+    });
+  });
+
+  // UI-04
   it('UI-04: displays generic failure on invalid credentials', async () => {
     vi.spyOn(authApi, 'login').mockRejectedValueOnce(new Error('Invalid email or password.'));
 
@@ -97,5 +125,30 @@ describe('Login Component (Lab 3)', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
     });
+  });
+
+  // SEC-05
+  it('SEC-05: session token is not stored in localStorage or sessionStorage', async () => {
+    localStorage.clear();
+    sessionStorage.clear();
+
+    vi.spyOn(authApi, 'login').mockResolvedValueOnce({
+      user: { id: 1, name: 'Normal User', email: 'user@toktickit.com', role: 'REQUESTER', mustChangePassword: false },
+      mustChangePassword: false,
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'user@toktickit.com' } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'Password123!' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalled();
+    });
+
+    expect(localStorage.getItem('session_token')).toBeNull();
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(sessionStorage.getItem('session_token')).toBeNull();
+    expect(sessionStorage.getItem('token')).toBeNull();
   });
 });
