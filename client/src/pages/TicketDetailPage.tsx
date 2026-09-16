@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useRequester } from '../RequesterContext.js';
+import { useAuth } from '../AuthContext.js';
 import { fetchTicketDetail, uploadAttachment, downloadAttachment, removeAttachment } from '../api.js';
 import { getPriorityBadge, getStatusBadge } from '../utils.js';
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { activeRequester } = useRequester();
+  const { user } = useAuth();
   
   const [ticket, setTicket] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -23,9 +23,9 @@ export default function TicketDetailPage() {
   const [removeReason, setRemoveReason] = useState('');
 
   const loadTicket = async () => {
-    if (!activeRequester || !id) return;
+    if (!user || !id) return;
     try {
-      const data = await fetchTicketDetail(parseInt(id), activeRequester.id);
+      const data = await fetchTicketDetail(parseInt(id));
       setTicket(data);
       setError('');
     } catch (err: any) {
@@ -38,7 +38,7 @@ export default function TicketDetailPage() {
   useEffect(() => {
     setLoading(true);
     loadTicket();
-  }, [id, activeRequester]);
+  }, [id, user]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -47,7 +47,7 @@ export default function TicketDetailPage() {
     setIsUploading(true);
 
     try {
-      await uploadAttachment(parseInt(id!), file, activeRequester!.id);
+      await uploadAttachment(parseInt(id!), file);
       await loadTicket();
     } catch (err: any) {
       setUploadError(err.message || 'Failed to upload attachment');
@@ -59,7 +59,7 @@ export default function TicketDetailPage() {
 
   const handleDownload = async (attachmentId: number, filename: string) => {
     try {
-      await downloadAttachment(attachmentId, filename, activeRequester!.id);
+      await downloadAttachment(attachmentId, filename);
     } catch (err: any) {
       alert(err.message || 'Failed to download file');
     }
@@ -79,7 +79,7 @@ export default function TicketDetailPage() {
     
     setRemovingId(fileToRemove);
     try {
-      await removeAttachment(fileToRemove!, removeReason, activeRequester!.id);
+      await removeAttachment(fileToRemove!, removeReason);
       await loadTicket();
       setShowRemoveModal(false);
       setFileToRemove(null);

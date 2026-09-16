@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useRequester } from '../RequesterContext.js';
+import { useAuth } from '../AuthContext.js';
 import { fetchCategories, fetchSystems, createTicket, uploadAttachment, Category } from '../api.js';
 
 interface System {
@@ -11,7 +11,7 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'applicatio
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function CreateTicketPage() {
-  const { activeRequester } = useRequester();
+  const { user } = useAuth();
   
   const [categories, setCategories] = useState<Category[]>([]);
   const [systems, setSystems] = useState<System[]>([]);
@@ -114,20 +114,20 @@ export default function CreateTicketPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    if (!activeRequester) return;
+    if (!user) return;
 
     setIsSubmitting(true);
     setApiError('');
 
     try {
       // 1. Create the ticket
-      const ticket = await createTicket(formData, activeRequester.id);
+      const ticket = await createTicket(formData);
       
       // 2. Upload attachments if any
       let uploadFailed = false;
       if (attachments.length > 0) {
         try {
-          await Promise.all(attachments.map(file => uploadAttachment(ticket.id, file, activeRequester.id)));
+          await Promise.all(attachments.map(file => uploadAttachment(ticket.id, file)));
         } catch (uploadErr) {
           console.error("Attachment upload failed:", uploadErr);
           uploadFailed = true;
@@ -209,7 +209,7 @@ export default function CreateTicketPage() {
                 <input 
                   type="text" 
                   className="form-control" 
-                  value={activeRequester?.name || ''} 
+                  value={user?.name || ''} 
                   readOnly 
                   style={{ backgroundColor: '#F1F5F9', color: '#1E293B', borderColor: '#E2E8F0' }} 
                 />

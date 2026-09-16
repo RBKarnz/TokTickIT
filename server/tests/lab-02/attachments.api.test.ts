@@ -9,12 +9,17 @@ const prisma = getPrisma();
 
 describe('Attachment APIs', () => {
   let ticketId: number;
-  let requesterId: number;
+  let cookie: string;
 
   beforeAll(async () => {
     const ticket = await prisma.ticket.findFirst({ include: { requester: true } });
     ticketId = ticket?.id || 1;
-    requesterId = ticket?.requesterId || 1;
+    const requester = ticket?.requester || (await prisma.user.findFirst({ where: { role: 'REQUESTER', isActive: true } }));
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: requester?.email || 'requester1@toktickit.com', password: 'Password123!' });
+    cookie = loginRes.headers['set-cookie']?.[0] || '';
   });
 
   it('should reject >5MB attachment (400)', async () => {
@@ -23,7 +28,7 @@ describe('Attachment APIs', () => {
     
     const res = await request(app)
       .post(`/api/tickets/${ticketId}/attachments`)
-      .set('X-Requester-Id', requesterId.toString())
+      .set('Cookie', cookie)
       .attach('file', dummyFilePath);
       
     fs.unlinkSync(dummyFilePath);
@@ -44,13 +49,13 @@ describe('Attachment APIs', () => {
 
     const delRes = await request(app)
       .delete(`/api/attachments/${attachment.id}`)
-      .set('X-Requester-Id', requesterId.toString())
+      .set('Cookie', cookie)
       .send({ reason: 'Test delete' });
     expect(delRes.status).toBe(200);
 
     const downRes = await request(app)
       .get(`/api/attachments/${attachment.id}/download`)
-      .set('X-Requester-Id', requesterId.toString());
+      .set('Cookie', cookie);
     expect(downRes.status).toBe(404);
   });
 });

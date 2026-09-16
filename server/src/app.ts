@@ -1,20 +1,35 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { getPrisma } from "./prisma.js";
-// getPrisma() is your lazy database handle. Call it INSIDE a route when you
-// need the DB (Issue 4). It is intentionally unused until then.
-void getPrisma;
+import {
+  requireAuth,
+  requireNormalAuth,
+  requireRole,
+  createSession,
+  revokeSession,
+  hashToken,
+  hashPassword,
+  verifyPassword,
+  dummyVerify,
+  validatePasswordPolicy,
+  COOKIE_NAME,
+  getCookieOptions,
+} from './auth.js';
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
 export const app = express();
 
-app.use(cors());          // already wired: lets the Vite dev server call this API
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+}));
+app.use(cookieParser());
 app.use(express.json());
-
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 
 // Setup multer storage
 const storage = multer.diskStorage({
@@ -46,11 +61,8 @@ const upload = multer({
 
 // ---------------------------------------------------------------------------
 // Issue 2 — API health check
-// Make the test in tests/lab-01/health.test.ts pass.
-// It must return HTTP 200 with JSON: { status: "ok", service: "TokTickIT API" }
 // ---------------------------------------------------------------------------
 app.get("/api/health", (_req: Request, res: Response) => {
-  // TODO(Issue 2): replace this stub with the required 200 response.
   res.status(200).json({
     status: "ok",
     service: "TokTickIT API"
@@ -59,16 +71,9 @@ app.get("/api/health", (_req: Request, res: Response) => {
 
 // ---------------------------------------------------------------------------
 // Issue 4 — Category list
-// Add:  GET /api/categories
-//   -> read categories from PostgreSQL via getPrisma().category.findMany(...)
-//   -> return each { id, name } in a predictable (id) order
-//   -> on failure, respond 500 with a safe message (no internal details)
-// TODO(Issue 4): implement the route here.
 // ---------------------------------------------------------------------------
-
 app.get('/api/categories', async (req, res) => {
   try {
-    // เรียกใช้ getPrisma() เพื่อดึงการเชื่อมต่อ Database มาใช้งาน
     const prisma = getPrisma();
 
     const categories = await prisma.category.findMany({
@@ -118,14 +123,152 @@ app.get('/api/requesters', async (req, res) => {
   }
 });
 
-// Lab 2: Create a ticket
-app.post('/api/tickets', async (req, res) => {
-  const requesterIdHeader = req.headers['x-requester-id'];
-  if (!requesterIdHeader) {
-    return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing X-Requester-Id header" } });
-  }
+// ---------------------------------------------------------------------------
+// Lab 3: Authentication Endpoints
+// ---------------------------------------------------------------------------
 
-  const requesterId = parseInt(requesterIdHeader as string);
+// POST /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+      return res.status(400).json({
+        error: { code: 'BAD_REQUEST', message: 'Email and password are required.' }
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const prisma = getPrisma();
+    const SAFE_ERROR = { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' } };
+
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    // Always run a hash operation to prevent timing attacks (BR-05b)
+    if (!user || !user.isActive) {
+      await dummyVerify(password);
+      return res.status(401).json(SAFE_ERROR);
+    }
+
+    const valid = await verifyPassword(user.passwordHash, password);
+    if (!valid) return res.status(401).json(SAFE_ERROR);
+
+    const token = await createSession(user.id);
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    res.cookie(COOKIE_NAME, token, getCookieOptions(isSecure));
+
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: user.mustChangePassword,
+      },
+      mustChangePassword: user.mustChangePassword,
+    });
+  } catch (err) {
+    console.error('Login error (no credentials logged)');
+    return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An error occurred.' } });
+  }
+});
+
+// POST /api/auth/logout
+app.post('/api/auth/logout', async (req, res) => {
+  try {
+    const token = req.cookies?.[COOKIE_NAME];
+    if (token) await revokeSession(hashToken(token));
+    res.clearCookie(COOKIE_NAME, { path: '/' });
+    return res.status(204).send();
+  } catch {
+    res.clearCookie(COOKIE_NAME, { path: '/' });
+    return res.status(204).send();
+  }
+});
+
+// GET /api/auth/me
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  const u = req.sessionUser!;
+  return res.status(200).json({
+    user: { id: u.id, name: u.name, email: u.email, role: u.role, mustChangePassword: u.mustChangePassword }
+  });
+});
+
+// POST /api/auth/change-password
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const userId = req.sessionUser!.id;
+    const prisma = getPrisma();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'All password fields are required.' } });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(422).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Validation failed.', fieldErrors: { confirmPassword: 'Passwords do not match.' } }
+      });
+    }
+
+    const policyErr = validatePasswordPolicy(newPassword);
+    if (policyErr) {
+      return res.status(422).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Validation failed.', fieldErrors: { newPassword: policyErr } }
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Session invalid.' } });
+
+    const currentValid = await verifyPassword(user.passwordHash, currentPassword);
+    if (!currentValid) {
+      return res.status(422).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Validation failed.', fieldErrors: { currentPassword: 'Current password is incorrect.' } }
+      });
+    }
+
+    const sameAsCurrent = await verifyPassword(user.passwordHash, newPassword.trim());
+    if (sameAsCurrent) {
+      return res.status(422).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Validation failed.', fieldErrors: { newPassword: 'New password must differ from current password.' } }
+      });
+    }
+
+    const newHash = await hashPassword(newPassword);
+
+    await prisma.$transaction(async (tx) => {
+      // Invalidate all existing sessions for this user (including current restricted session)
+      await tx.session.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      // Clear mustChangePassword + store new hash
+      await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash: newHash, mustChangePassword: false },
+      });
+    });
+
+    // Rotate session: issue a new normal authenticated session token and cookie
+    const newToken = await createSession(userId);
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    res.cookie(COOKIE_NAME, newToken, getCookieOptions(isSecure));
+
+    return res.status(200).json({ message: 'Password changed successfully.' });
+  } catch (err) {
+    console.error('Change-password error (no credentials logged)');
+    return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An error occurred.' } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 2 Ticket Endpoints (Migrated to Lab 3 Session Auth)
+// ---------------------------------------------------------------------------
+
+// Create a ticket
+app.post('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
+  const requesterId = req.sessionUser!.id;
   const { categoryId, relatedSystemId, requestedPriority, summary, description } = req.body;
 
   if (!categoryId || !relatedSystemId || !requestedPriority || !summary || !description) {
@@ -158,7 +301,7 @@ app.post('/api/tickets', async (req, res) => {
         summary,
         description,
         currentStatus: "NEW",
-        itPriority: "UNASSIGNED",
+        itPriority: requestedPriority, // Initialize itPriority from requestedPriority per Lab 3
       },
     });
 
@@ -169,14 +312,9 @@ app.post('/api/tickets', async (req, res) => {
   }
 });
 
-// Lab 2: Get tickets for the active requester (My Tickets)
-app.get('/api/tickets', async (req, res) => {
-  const requesterIdHeader = req.headers['x-requester-id'];
-  if (!requesterIdHeader) {
-    return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing X-Requester-Id header" } });
-  }
-
-  const requesterId = parseInt(requesterIdHeader as string);
+// Get tickets for the active requester (My Tickets)
+app.get('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
+  const requesterId = req.sessionUser!.id;
   const { search, categoryId, status, sort, startDate, endDate, page = '1', limit = '10' } = req.query;
 
   try {
@@ -253,13 +391,8 @@ app.get('/api/tickets', async (req, res) => {
   }
 });
 
-app.get('/api/tickets/:id', async (req, res) => {
-  const requesterIdHeader = req.headers['x-requester-id'];
-  if (!requesterIdHeader) {
-    return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing X-Requester-Id header" } });
-  }
-
-  const requesterId = parseInt(requesterIdHeader as string);
+app.get('/api/tickets/:id', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
+  const requesterId = req.sessionUser!.id;
   const ticketId = parseInt(req.params.id);
 
   if (isNaN(ticketId)) {
@@ -280,12 +413,8 @@ app.get('/api/tickets/:id', async (req, res) => {
       }
     });
 
-    if (!ticket) {
+    if (!ticket || ticket.requesterId !== requesterId) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
-    }
-
-    if (ticket.requesterId !== requesterId) {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "You do not have permission to view this ticket" } });
     }
 
     res.json(ticket);
@@ -296,7 +425,7 @@ app.get('/api/tickets/:id', async (req, res) => {
 });
 
 // Attachment endpoints
-app.post('/api/tickets/:id/attachments', (req, res, next) => {
+app.post('/api/tickets/:id/attachments', requireNormalAuth, requireRole('REQUESTER'), (req, res, next) => {
   upload.single('file')(req, res, function (err) {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -309,10 +438,7 @@ app.post('/api/tickets/:id/attachments', (req, res, next) => {
     next();
   });
 }, async (req, res) => {
-  const requesterIdHeader = req.headers['x-requester-id'];
-  if (!requesterIdHeader) return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing X-Requester-Id header" } });
-  
-  const requesterId = parseInt(requesterIdHeader as string);
+  const requesterId = req.sessionUser!.id;
   const ticketId = parseInt(req.params.id);
 
   if (!req.file) {
@@ -326,15 +452,10 @@ app.post('/api/tickets/:id/attachments', (req, res, next) => {
       include: { attachments: { where: { isRemoved: false } } }
     });
 
-    if (!ticket) {
+    if (!ticket || ticket.requesterId !== requesterId) {
       // Clean up uploaded file
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
-    }
-
-    if (ticket.requesterId !== requesterId) {
-      fs.unlinkSync(req.file.path);
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Not ticket owner" } });
     }
 
     if (ticket.attachments.length >= 5) {
@@ -359,99 +480,62 @@ app.post('/api/tickets/:id/attachments', (req, res, next) => {
   }
 });
 
-app.get('/api/attachments/:id', async (req, res) => {
-  const requesterIdHeader = req.headers['x-requester-id'];
-  if (!requesterIdHeader) return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing header" } });
-  
+async function getOwnedAttachment(id: number, requesterId: number): Promise<
+  | { error: { status: number; code: string; message: string }; attachment: null }
+  | { error: null; attachment: any }
+> {
+  const attachment = await getPrisma().attachment.findUnique({
+    where: { id },
+    include: { ticket: true },
+  });
+  if (!attachment || attachment.isRemoved || attachment.ticket.requesterId !== requesterId) {
+    return { error: { status: 404, code: 'NOT_FOUND', message: 'Attachment not found' }, attachment: null };
+  }
+  return { error: null, attachment };
+}
+
+app.get('/api/attachments/:id', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
   try {
-    const prisma = getPrisma();
-    const attachmentId = parseInt(req.params.id);
-    const attachment = await prisma.attachment.findUnique({
-      where: { id: attachmentId },
-      include: { ticket: true }
-    });
-
-    if (!attachment || attachment.isRemoved) {
-      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Attachment not found" } });
-    }
-
-    if (attachment.ticket.requesterId !== parseInt(requesterIdHeader as string)) {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Not ticket owner" } });
-    }
-
-    res.json(attachment);
-  } catch (error) {
+    const result = await getOwnedAttachment(parseInt(req.params.id), req.sessionUser!.id);
+    if (result.error) return res.status(result.error.status).json({ error: { code: result.error.code, message: result.error.message } });
+    res.json(result.attachment);
+  } catch {
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch attachment" } });
   }
 });
 
-app.get('/api/attachments/:id/download', async (req, res) => {
-  const requesterIdHeader = req.headers['x-requester-id'];
-  if (!requesterIdHeader) return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing header" } });
-
+app.get('/api/attachments/:id/download', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
   try {
-    const prisma = getPrisma();
-    const attachmentId = parseInt(req.params.id);
-    const attachment = await prisma.attachment.findUnique({
-      where: { id: attachmentId },
-      include: { ticket: true }
-    });
+    const result = await getOwnedAttachment(parseInt(req.params.id), req.sessionUser!.id);
+    if (result.error) return res.status(result.error.status).json({ error: { code: result.error.code, message: result.error.message } });
 
-    if (!attachment || attachment.isRemoved) {
-      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Attachment not found" } });
-    }
-
-    if (attachment.ticket.requesterId !== parseInt(requesterIdHeader as string)) {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Not ticket owner" } });
-    }
-
-    const filePath = path.join(process.cwd(), 'uploads', attachment.storedFilename);
+    const filePath = path.join(process.cwd(), 'uploads', result.attachment.storedFilename);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "File missing on disk" } });
     }
-
-    res.download(filePath, attachment.originalFilename);
-  } catch (error) {
+    res.download(filePath, result.attachment.originalFilename);
+  } catch {
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to download attachment" } });
   }
 });
 
-app.delete('/api/attachments/:id', async (req, res) => {
-  const requesterIdHeader = req.headers['x-requester-id'];
-  if (!requesterIdHeader) return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Missing header" } });
-
+app.delete('/api/attachments/:id', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
   const { reason } = req.body;
   if (!reason || reason.trim() === '') {
     return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Removal reason is required" } });
   }
 
   try {
-    const prisma = getPrisma();
     const attachmentId = parseInt(req.params.id);
-    const attachment = await prisma.attachment.findUnique({
+    const result = await getOwnedAttachment(attachmentId, req.sessionUser!.id);
+    if (result.error) return res.status(result.error.status).json({ error: { code: result.error.code, message: result.error.message } });
+
+    await getPrisma().attachment.update({
       where: { id: attachmentId },
-      include: { ticket: true }
+      data: { isRemoved: true, removalReason: reason, removedAt: new Date() }
     });
-
-    if (!attachment || attachment.isRemoved) {
-      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Attachment not found" } });
-    }
-
-    if (attachment.ticket.requesterId !== parseInt(requesterIdHeader as string)) {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Not ticket owner" } });
-    }
-
-    await prisma.attachment.update({
-      where: { id: attachmentId },
-      data: {
-        isRemoved: true,
-        removalReason: reason,
-        removedAt: new Date()
-      }
-    });
-
     res.json({ message: "Attachment removed successfully" });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to remove attachment" } });
   }
 });
