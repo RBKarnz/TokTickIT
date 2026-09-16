@@ -286,10 +286,27 @@ app.post('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req
   try {
     const prisma = getPrisma();
     
-    // Generate ticket number: e.g. TKT-2026-000001
-    const count = await prisma.ticket.count();
+    // Generate ticket number safely based on max existing sequence for the year
     const year = new Date().getFullYear();
-    const ticketNumber = `TKT-${year}-${String(count + 1).padStart(6, '0')}`;
+    const existingYearTickets = await prisma.ticket.findMany({
+      where: {
+        ticketNumber: {
+          startsWith: `TKT-${year}-`,
+        },
+      },
+      select: { ticketNumber: true },
+    });
+
+    let maxNum = 0;
+    for (const t of existingYearTickets) {
+      const match = t.ticketNumber.match(/^TKT-\d{4}-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+
+    const ticketNumber = `TKT-${year}-${String(maxNum + 1).padStart(6, '0')}`;
 
     const ticket = await prisma.ticket.create({
       data: {
