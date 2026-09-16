@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext.js';
-import { changePassword, fetchCurrentUser, ChangePasswordError } from '../authApi.js';
+import { changePassword, fetchCurrentUser, logout, ChangePasswordError } from '../authApi.js';
 
 function PasswordField({
   id,
@@ -48,7 +48,7 @@ function PasswordField({
 }
 
 export default function ChangePasswordPage() {
-  const { setUser } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [current, setCurrent] = useState('');
   const [newPwd, setNewPwd] = useState('');
@@ -57,6 +57,21 @@ export default function ChangePasswordPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  async function handleLogout() {
+    await logout();
+    setUser(null);
+    navigate('/login', { replace: true });
+  }
+
+  const rules = [
+    { label: '8–128 characters', met: newPwd.length >= 8 && newPwd.length <= 128 },
+    { label: 'At least one uppercase letter (A-Z)', met: /[A-Z]/.test(newPwd) },
+    { label: 'At least one lowercase letter (a-z)', met: /[a-z]/.test(newPwd) },
+    { label: 'At least one number (0-9)', met: /[0-9]/.test(newPwd) },
+    { label: 'At least one special character (!@#$...)', met: /[^A-Za-z0-9]/.test(newPwd) },
+    { label: 'No more than 5 identical consecutive characters', met: newPwd.length > 0 && !/(.)\1{5,}/.test(newPwd) },
+  ];
 
   function validateClient(): boolean {
     const errs: Record<string, string> = {};
@@ -69,6 +84,7 @@ export default function ChangePasswordPage() {
       else if (!/[a-z]/.test(newPwd)) errs.newPassword = 'Must include a lowercase letter.';
       else if (!/[0-9]/.test(newPwd)) errs.newPassword = 'Must include a number.';
       else if (!/[^A-Za-z0-9]/.test(newPwd)) errs.newPassword = 'Must include a special character.';
+      else if (/(.)\1{5,}/.test(newPwd)) errs.newPassword = 'Password cannot contain more than 5 identical consecutive characters.';
     }
     if (newPwd !== confirm) errs.confirmPassword = 'Passwords do not match.';
     setFieldErrors(errs);
@@ -95,6 +111,19 @@ export default function ChangePasswordPage() {
       }, 1500);
     } catch (err: any) {
       const e = err as ChangePasswordError;
+      const msg = e.message || '';
+      if (
+        msg.includes('Authentication required') ||
+        msg.includes('UNAUTHORIZED') ||
+        msg.toLowerCase().includes('session')
+      ) {
+        setError('Session expired or authentication required. Redirecting to login...');
+        setUser(null);
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 1500);
+        return;
+      }
       if (e.fieldErrors) {
         setFieldErrors(e.fieldErrors);
       } else {
@@ -107,68 +136,115 @@ export default function ChangePasswordPage() {
 
   return (
     <div style={{ backgroundColor: '#F4F9F5', minHeight: '100vh' }}>
-      <div className="container min-vh-100 d-flex align-items-center justify-content-center">
-        <div className="card shadow-sm" style={{ width: '440px', maxWidth: '100%', border: '1px solid #E2E8F0' }}>
-          <div className="card-body p-5">
-          <div className="text-center mb-4">
-            <i className="bi bi-shield-lock fs-1" style={{ color: '#006B3C' }}></i>
-            <h1 className="h4 mt-2 mb-1" style={{ color: '#1E293B' }}>Change Password</h1>
-            <p className="text-muted small">You must set a new password before continuing.</p>
-          </div>
-
-          {success && (
-            <div className="alert alert-success py-2 small">
-              <i className="bi bi-check-circle-fill me-2"></i>Password changed. Redirecting...
-            </div>
-          )}
-          {error && (
-            <div className="alert alert-danger py-2 small">
-              <i className="bi bi-exclamation-triangle-fill me-2"></i>{error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} noValidate>
-            <PasswordField
-              id="current"
-              label="Current (Temporary) Password"
-              value={current}
-              onChange={setCurrent}
-              error={fieldErrors.currentPassword}
-              disabled={isLoading || success}
-            />
-            <PasswordField
-              id="newPwd"
-              label="New Password"
-              value={newPwd}
-              onChange={setNewPwd}
-              error={fieldErrors.newPassword}
-              disabled={isLoading || success}
-            />
-            <PasswordField
-              id="confirm"
-              label="Confirm New Password"
-              value={confirm}
-              onChange={setConfirm}
-              error={fieldErrors.confirmPassword}
-              disabled={isLoading || success}
-            />
+      <nav className="navbar navbar-expand-lg" style={{ backgroundColor: '#006B3C' }}>
+        <div className="container d-flex justify-content-between align-items-center">
+          <span className="navbar-brand text-white fw-bold d-flex align-items-center mb-0">
+            <i className="bi bi-clock-history me-2"></i>TokTickIT
+          </span>
+          <div className="d-flex align-items-center gap-3">
+            <span className="badge bg-warning text-dark">Password Change Required</span>
+            <span className="text-white small text-truncate" style={{ maxWidth: '180px' }}>
+              <i className="bi bi-person me-1"></i>{user?.name || user?.email}
+            </span>
             <button
-              type="submit"
-              className="btn btn-zen-primary w-100 mt-2"
-              style={{ backgroundColor: '#006B3C', borderColor: '#006B3C', color: '#FFFFFF' }}
-              disabled={isLoading || success}
+              type="button"
+              className="btn btn-sm btn-outline-light d-flex align-items-center"
+              onClick={handleLogout}
             >
-              {isLoading ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Saving...
-                </>
-              ) : 'Save Password'}
+              <i className="bi bi-box-arrow-right me-1"></i>Sign Out
             </button>
-          </form>
+          </div>
+        </div>
+      </nav>
+
+      <div className="container py-5 d-flex align-items-center justify-content-center" style={{ minHeight: 'calc(100vh - 56px)' }}>
+        <div className="card shadow-sm" style={{ width: '460px', maxWidth: '100%', border: '1px solid #E2E8F0' }}>
+          <div className="card-body p-4 p-md-5">
+            <div className="text-center mb-4">
+              <i className="bi bi-shield-lock fs-1" style={{ color: '#006B3C' }}></i>
+              <h1 className="h4 mt-2 mb-1" style={{ color: '#1E293B' }}>Change Password</h1>
+              <p className="text-muted small mb-0">You must set a new password before accessing TokTickIT.</p>
+            </div>
+
+            {success && (
+              <div className="alert alert-success py-2 small">
+                <i className="bi bi-check-circle-fill me-2"></i>Password changed. Redirecting...
+              </div>
+            )}
+            {error && (
+              <div className="alert alert-danger py-2 small">
+                <i className="bi bi-exclamation-triangle-fill me-2"></i>{error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} noValidate>
+              <PasswordField
+                id="current"
+                label="Current (Temporary) Password"
+                value={current}
+                onChange={setCurrent}
+                error={fieldErrors.currentPassword}
+                disabled={isLoading || success}
+              />
+              <PasswordField
+                id="newPwd"
+                label="New Password"
+                value={newPwd}
+                onChange={setNewPwd}
+                error={fieldErrors.newPassword}
+                disabled={isLoading || success}
+              />
+
+              {newPwd.length > 0 && (
+                <div className="card bg-light border-0 p-3 mb-3 small">
+                  <div className="fw-semibold text-muted mb-2">Password Requirements:</div>
+                  <div className="row g-1">
+                    {rules.map((r, i) => (
+                      <div key={i} className={`col-12 d-flex align-items-center ${r.met ? 'text-success' : 'text-muted'}`}>
+                        <i className={`bi bi-${r.met ? 'check-circle-fill' : 'circle'} me-2`}></i>
+                        <span>{r.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <PasswordField
+                id="confirm"
+                label="Confirm New Password"
+                value={confirm}
+                onChange={setConfirm}
+                error={fieldErrors.confirmPassword}
+                disabled={isLoading || success}
+              />
+              <button
+                type="submit"
+                className="btn btn-zen-primary w-100 mt-2"
+                style={{ backgroundColor: '#006B3C', borderColor: '#006B3C', color: '#FFFFFF' }}
+                disabled={isLoading || success}
+              >
+                {isLoading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Saving...
+                  </>
+                ) : 'Save Password'}
+              </button>
+
+              <div className="text-center mt-3">
+                <button
+                  type="button"
+                  className="btn btn-link text-muted text-decoration-none small"
+                  onClick={handleLogout}
+                  disabled={isLoading || success}
+                >
+                  <i className="bi bi-box-arrow-left me-1"></i>Sign out and return to login
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }
