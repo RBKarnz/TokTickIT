@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext.js';
-import { fetchTicketDetail, uploadAttachment, downloadAttachment, removeAttachment } from '../api.js';
+import { fetchTicketDetail, uploadAttachment, downloadAttachment, removeAttachment, fetchPublicComments, postPublicComment, markProblemResolved, PublicComment } from '../api.js';
 import { getPriorityBadge, getStatusBadge } from '../utils.js';
 
 export default function TicketDetailPage() {
@@ -22,12 +22,38 @@ export default function TicketDetailPage() {
   const [fileToRemove, setFileToRemove] = useState<number | null>(null);
   const [removeReason, setRemoveReason] = useState('');
 
+  // Public Comments state
+  const [activeTab, setActiveTab] = useState<'attachments' | 'comments'>('attachments');
+  const [comments, setComments] = useState<PublicComment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [commentError, setCommentError] = useState('');
+
+  // Problem Appears Resolved state
+  const [isMarkingResolved, setIsMarkingResolved] = useState(false);
+  const [resolveSuccessMsg, setResolveSuccessMsg] = useState('');
+  const [resolveError, setResolveError] = useState('');
+
+  const loadComments = async (ticketId: number) => {
+    setLoadingComments(true);
+    try {
+      const data = await fetchPublicComments(ticketId);
+      setComments(data);
+    } catch (err: any) {
+      console.error('Failed to load comments:', err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
   const loadTicket = async () => {
     if (!user || !id) return;
     try {
       const data = await fetchTicketDetail(parseInt(id));
       setTicket(data);
       setError('');
+      loadComments(data.id);
     } catch (err: any) {
       setError(err.message || 'Failed to load ticket details');
     } finally {
@@ -90,6 +116,42 @@ export default function TicketDetailPage() {
       setRemovingId(null);
     }
   };
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || newComment.length > 4000) return;
+    setIsPostingComment(true);
+    setCommentError('');
+    try {
+      const created = await postPublicComment(ticket.id, newComment.trim());
+      setComments((prev) => [...prev, created]);
+      setNewComment('');
+    } catch (err: any) {
+      setCommentError(err.message || 'Failed to post comment');
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleProblemResolved = async () => {
+    if (!ticket) return;
+    setIsMarkingResolved(true);
+    setResolveError('');
+    setResolveSuccessMsg('');
+    try {
+      const result = await markProblemResolved(ticket.id);
+      setTicket((prev: any) => ({
+        ...prev,
+        requesterResolvedAt: result.requesterResolvedAt,
+      }));
+      setResolveSuccessMsg('You indicated that the problem appears resolved. IT Staff has been notified.');
+    } catch (err: any) {
+      setResolveError(err.message || 'Failed to mark problem as resolved');
+    } finally {
+      setIsMarkingResolved(false);
+    }
+  };
+
 
 
   if (loading) {
@@ -211,104 +273,264 @@ export default function TicketDetailPage() {
                 {ticket.description}
               </div>
             </div>
+
+            {/* Problem Appears Resolved Section */}
+            {ticket.requesterResolvedAt ? (
+              <div className="alert alert-success d-flex align-items-center mt-3 py-2 px-3 small" role="alert">
+                <i className="bi bi-check-circle-fill fs-5 me-2" style={{ color: '#006B3C' }}></i>
+                <span>
+                  <strong>Problem marked as resolved:</strong> You indicated this issue appears resolved on {new Date(ticket.requesterResolvedAt).toLocaleString()}. Note: formal ticket status is determined by IT Staff.
+                </span>
+              </div>
+            ) : (
+              user?.role === 'REQUESTER' &&
+              ticket.requesterId === user.id &&
+              ticket.currentStatus !== 'CLOSED' &&
+              ticket.currentStatus !== 'CANCELLED' && (
+                <div className="mt-3 pt-3 border-top">
+                  {resolveError && <div className="alert alert-danger py-1 small mb-2">{resolveError}</div>}
+                  {resolveSuccessMsg && <div className="alert alert-success py-1 small mb-2">{resolveSuccessMsg}</div>}
+                  <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+                    <div>
+                      <h6 className="mb-0 fw-bold" style={{ color: '#1E293B', fontSize: '0.9rem' }}>Is your issue resolved?</h6>
+                      <small className="text-muted">
+                        Notifies IT staff that your issue may be resolved. This does not immediately close the ticket.
+                      </small>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-success d-flex align-items-center flex-shrink-0"
+                      style={{ borderColor: '#006B3C', color: '#006B3C' }}
+                      onClick={handleProblemResolved}
+                      disabled={isMarkingResolved}
+                    >
+                      {isMarkingResolved ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-check2-circle me-2"></i>
+                          Problem Appears Resolved
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
           </div>
         </div>
 
-        {/* Tabs Section - Lab 2 Placeholder Specs */}
+        {/* Tabs Section */}
         <ul className="nav nav-tabs mb-3" style={{ borderBottomColor: '#E2E8F0' }}>
           <li className="nav-item">
-            <button className="nav-link active fw-bold" style={{ color: '#0B7A46', borderBottomColor: '#F5F7F6' }}>
+            <button
+              className={`nav-link fw-bold ${activeTab === 'attachments' ? 'active' : 'text-muted'}`}
+              style={{
+                color: activeTab === 'attachments' ? '#0B7A46' : undefined,
+                borderBottomColor: activeTab === 'attachments' ? '#F5F7F6' : undefined,
+              }}
+              onClick={() => setActiveTab('attachments')}
+            >
               <i className="bi bi-paperclip me-1"></i> Attachments ({activeAttachments.length})
             </button>
           </li>
           <li className="nav-item">
-            <button className="nav-link text-muted disabled" style={{ cursor: 'not-allowed' }}>
-              Public Comments <span className="badge bg-secondary ms-1">0</span>
-            </button>
-          </li>
-          <li className="nav-item">
-            <button className="nav-link text-muted disabled" style={{ cursor: 'not-allowed' }}>
-              Internal Notes
-            </button>
-          </li>
-          <li className="nav-item">
-            <button className="nav-link text-muted disabled" style={{ cursor: 'not-allowed' }}>
-              Actions Taken
+            <button
+              className={`nav-link fw-bold ${activeTab === 'comments' ? 'active' : 'text-muted'}`}
+              style={{
+                color: activeTab === 'comments' ? '#0B7A46' : undefined,
+                borderBottomColor: activeTab === 'comments' ? '#F5F7F6' : undefined,
+              }}
+              onClick={() => setActiveTab('comments')}
+            >
+              <i className="bi bi-chat-left-text me-1"></i> Public Comments <span className="badge bg-secondary ms-1">{comments.length}</span>
             </button>
           </li>
         </ul>
 
         <div className="card shadow-sm border-0 mb-5">
           <div className="card-body p-4">
-            <div>
-              <div className="d-flex justify-content-between align-items-center mb-4">
-                <h6 className="mb-0" style={{ color: '#1E293B' }}>Attached Files <span className="badge bg-secondary ms-2">{activeAttachments.length} / 5</span></h6>
-                <div>
-                  <input
-                    type="file"
-                    id="detailUpload"
-                    className="d-none"
-                    onChange={handleFileUpload}
-                    disabled={isUploading || activeAttachments.length >= 5}
-                    accept=".jpg,.jpeg,.png,.webp,.pdf"
-                  />
-                  <label htmlFor="detailUpload" className={`btn btn-sm btn-outline-secondary d-flex align-items-center ${isUploading || activeAttachments.length >= 5 ? 'disabled' : ''}`} style={{ borderColor: '#006B3C', color: '#006B3C', cursor: activeAttachments.length >= 5 ? 'not-allowed' : 'pointer' }}>
-                    {isUploading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-plus-circle me-2"></i>}
-                    Add Attachment
-                  </label>
+            {activeTab === 'attachments' && (
+              <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h6 className="mb-0" style={{ color: '#1E293B' }}>Attached Files <span className="badge bg-secondary ms-2">{activeAttachments.length} / 5</span></h6>
+                  <div>
+                    <input
+                      type="file"
+                      id="detailUpload"
+                      className="d-none"
+                      onChange={handleFileUpload}
+                      disabled={isUploading || activeAttachments.length >= 5}
+                      accept=".jpg,.jpeg,.png,.webp,.pdf"
+                    />
+                    <label htmlFor="detailUpload" className={`btn btn-sm btn-outline-secondary d-flex align-items-center ${isUploading || activeAttachments.length >= 5 ? 'disabled' : ''}`} style={{ borderColor: '#006B3C', color: '#006B3C', cursor: activeAttachments.length >= 5 ? 'not-allowed' : 'pointer' }}>
+                      {isUploading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-plus-circle me-2"></i>}
+                      Add Attachment
+                    </label>
+                  </div>
                 </div>
-              </div>
 
-              {uploadError && <div className="alert alert-danger py-2 small">{uploadError}</div>}
+                {uploadError && <div className="alert alert-danger py-2 small">{uploadError}</div>}
 
-              {(!ticket.attachments || ticket.attachments.length === 0) ? (
-                <div className="text-center py-4 rounded" style={{ backgroundColor: '#F8FAFC', border: '1px dashed #CBD5E1' }}>
-                  <i className="bi bi-file-earmark-x fs-3 text-muted mb-2 d-block"></i>
-                  <p className="text-muted small mb-0">No attachments found for this ticket.</p>
-                </div>
-              ) : (
-                <div className="list-group">
-                  {sortedAttachments.map((file: any) => (
-                    <div key={file.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3 border-0 rounded shadow-sm mb-2" style={{ backgroundColor: file.isRemoved ? '#F1F5F9' : '#F8FAFC' }}>
-                      <div className="d-flex align-items-center text-truncate" style={{ maxWidth: '75%', opacity: file.isRemoved ? 0.6 : 1 }}>
-                        <i className={`bi ${file.isRemoved ? 'bi-file-earmark-x' : 'bi-file-earmark-text'} fs-4 me-3`} style={{ color: file.isRemoved ? '#94A3B8' : '#006B3C' }}></i>
-                        <div className="text-truncate">
-                          <h6 className="mb-0 text-truncate" style={{ color: '#1E293B', fontSize: '0.95rem', textDecoration: file.isRemoved ? 'line-through' : 'none' }}>
-                            {file.originalFilename}
-                          </h6>
-                          <small className="text-muted">
-                            {(file.fileSize / 1024 / 1024).toFixed(2)} MB • Uploaded {new Date(file.uploadedAt).toLocaleString('en-US')}
-                            {file.isRemoved && (
-                              <span className="badge bg-danger ms-2">Removed</span>
-                            )}
-                          </small>
+                {(!ticket.attachments || ticket.attachments.length === 0) ? (
+                  <div className="text-center py-4 rounded" style={{ backgroundColor: '#F8FAFC', border: '1px dashed #CBD5E1' }}>
+                    <i className="bi bi-file-earmark-x fs-3 text-muted mb-2 d-block"></i>
+                    <p className="text-muted small mb-0">No attachments found for this ticket.</p>
+                  </div>
+                ) : (
+                  <div className="list-group">
+                    {sortedAttachments.map((file: any) => (
+                      <div key={file.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3 border-0 rounded shadow-sm mb-2" style={{ backgroundColor: file.isRemoved ? '#F1F5F9' : '#F8FAFC' }}>
+                        <div className="d-flex align-items-center text-truncate" style={{ maxWidth: '75%', opacity: file.isRemoved ? 0.6 : 1 }}>
+                          <i className={`bi ${file.isRemoved ? 'bi-file-earmark-x' : 'bi-file-earmark-text'} fs-4 me-3`} style={{ color: file.isRemoved ? '#94A3B8' : '#006B3C' }}></i>
+                          <div className="text-truncate">
+                            <h6 className="mb-0 text-truncate" style={{ color: '#1E293B', fontSize: '0.95rem', textDecoration: file.isRemoved ? 'line-through' : 'none' }}>
+                              {file.originalFilename}
+                            </h6>
+                            <small className="text-muted">
+                              {(file.fileSize / 1024 / 1024).toFixed(2)} MB • Uploaded {new Date(file.uploadedAt).toLocaleString('en-US')}
+                              {file.isRemoved && (
+                                <span className="badge bg-danger ms-2">Removed</span>
+                              )}
+                            </small>
+                          </div>
+                        </div>
+                        <div className="d-flex">
+                          {!file.isRemoved && (
+                            <>
+                              <button 
+                                className="btn btn-sm btn-light me-2" 
+                                title="Download"
+                                onClick={() => handleDownload(file.id, file.originalFilename)}
+                              >
+                                <i className="bi bi-download text-primary"></i>
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-light" 
+                                title="Remove"
+                                onClick={() => openRemoveModal(file.id)}
+                              >
+                                <i className="bi bi-trash text-danger"></i>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="d-flex">
-                        {!file.isRemoved && (
-                          <>
-                            <button 
-                              className="btn btn-sm btn-light me-2" 
-                              title="Download"
-                              onClick={() => handleDownload(file.id, file.originalFilename)}
-                            >
-                              <i className="bi bi-download text-primary"></i>
-                            </button>
-                            <button 
-                              className="btn btn-sm btn-light" 
-                              title="Remove"
-                              onClick={() => openRemoveModal(file.id)}
-                            >
-                              <i className="bi bi-trash text-danger"></i>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'comments' && (
+              <div>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h6 className="mb-0 fw-bold" style={{ color: '#1E293B' }}>
+                    <i className="bi bi-chat-left-text me-2" style={{ color: '#006B3C' }}></i>
+                    Public Comments
+                  </h6>
+                  <small className="text-muted">Comments are visible to you and IT Staff</small>
                 </div>
-              )}
-            </div>
+
+                {commentError && (
+                  <div className="alert alert-danger py-2 small mb-3">
+                    <i className="bi bi-exclamation-triangle-fill me-2"></i>{commentError}
+                  </div>
+                )}
+
+                {loadingComments ? (
+                  <div className="text-center py-4">
+                    <span className="spinner-border spinner-border-sm text-success me-2"></span>
+                    <span className="text-muted small">Loading comments...</span>
+                  </div>
+                ) : comments.length === 0 ? (
+                  <div className="text-center py-4 rounded mb-4" style={{ backgroundColor: '#F8FAFC', border: '1px dashed #CBD5E1' }}>
+                    <i className="bi bi-chat-dots fs-3 text-muted mb-2 d-block"></i>
+                    <p className="text-muted small mb-0">No public comments yet.</p>
+                  </div>
+                ) : (
+                  <div className="mb-4">
+                    {comments.map((cmt) => (
+                      <div
+                        key={cmt.id}
+                        className="card mb-3 border-0 shadow-sm"
+                        style={{ backgroundColor: cmt.author?.role === 'REQUESTER' ? '#F8FAFC' : '#F0FDF4' }}
+                      >
+                        <div className="card-body p-3">
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <div className="d-flex align-items-center">
+                              <span className="fw-bold me-2" style={{ color: '#1E293B', fontSize: '0.9rem' }}>
+                                {cmt.author?.name || 'User'}
+                              </span>
+                              <span
+                                className={`badge ${
+                                  cmt.author?.role === 'REQUESTER'
+                                    ? 'bg-secondary'
+                                    : cmt.author?.role === 'IT_STAFF'
+                                    ? 'bg-success'
+                                    : 'bg-primary'
+                                }`}
+                                style={{ fontSize: '0.75rem' }}
+                              >
+                                {cmt.author?.role === 'IT_STAFF' ? 'IT Staff' : cmt.author?.role === 'ADMINISTRATOR' ? 'Admin' : 'Requester'}
+                              </span>
+                            </div>
+                            <small className="text-muted" style={{ fontSize: '0.8rem' }}>
+                              {new Date(cmt.createdAt).toLocaleString()}
+                            </small>
+                          </div>
+                          <p className="mb-0 text-break" style={{ whiteSpace: 'pre-wrap', color: '#334155', fontSize: '0.95rem' }}>
+                            {cmt.content}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Compose Comment Form */}
+                <form onSubmit={handlePostComment} className="mt-4 pt-3 border-top">
+                  <label htmlFor="newCommentContent" className="form-label fw-bold small text-muted">
+                    Add a Public Comment
+                  </label>
+                  <textarea
+                    id="newCommentContent"
+                    className="form-control mb-2"
+                    rows={3}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Provide additional details, respond to questions, or update IT staff..."
+                    disabled={isPostingComment}
+                    maxLength={4000}
+                  ></textarea>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <small className={`small ${newComment.length > 3900 ? 'text-danger fw-bold' : 'text-muted'}`}>
+                      {newComment.length} / 4000 characters
+                    </small>
+                    <button
+                      type="submit"
+                      className="btn btn-sm btn-zen-primary"
+                      style={{ backgroundColor: '#006B3C', borderColor: '#006B3C', color: '#FFFFFF' }}
+                      disabled={isPostingComment || newComment.trim().length === 0 || newComment.length > 4000}
+                    >
+                      {isPostingComment ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                          Posting...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-send me-1"></i> Post Comment
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       </div>
