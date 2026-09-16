@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRequester } from '../RequesterContext.js';
+import { useAuth } from '../AuthContext.js';
 import { fetchMyTickets, fetchCategories, Category } from '../api.js';
 import { getPriorityBadge, getStatusBadge } from '../utils.js';
 
@@ -16,7 +16,7 @@ interface Ticket {
 }
 
 export default function MyTicketsPage() {
-  const { activeRequester } = useRequester();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -44,10 +44,10 @@ export default function MyTicketsPage() {
   }, [searchTerm]);
 
   const loadTickets = useCallback(async () => {
-    if (!activeRequester) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const data = await fetchMyTickets(activeRequester.id, {
+      const data = await fetchMyTickets({
         search: debouncedSearch,
         categoryId: selectedCategory,
         status: selectedStatus,
@@ -63,7 +63,7 @@ export default function MyTicketsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeRequester, debouncedSearch, selectedCategory, selectedStatus, sort, startDate, endDate, page]);
+  }, [user, debouncedSearch, selectedCategory, selectedStatus, sort, startDate, endDate, page]);
 
   useEffect(() => {
     loadTickets();

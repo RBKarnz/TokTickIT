@@ -10,29 +10,23 @@ export interface SystemStatus {
   categories?: Category[];
 }
 
-// Issue 2 + Issue 4 — call the backend.
-// Steps: fetch `${API_URL}/api/health`; if not ok, throw.
-//        then fetch `${API_URL}/api/categories`; if not ok, throw.
-//        return { online: true, categories }.
-// Throwing on failure lets the UI show a single Offline/error state.
+export * from './authApi.js';
+
+// ---------------------------------------------------------------------------
+// Issue 2 + Issue 4: Health and Categories
+// ---------------------------------------------------------------------------
 
 export async function checkSystem(): Promise<SystemStatus> {
-  // TODO(Issue 2 & 4): implement the two fetch calls described above.
-
-  // สั่ง API ไปเช็คสถานะหลังบ้าน (Issue 2)
   const healthRes = await fetch(`${API_URL}/api/health`);
-  // ถ้าหลังบ้านปิดอยู่หรือส่ง Status อื่นที่ไม่ใช่ 200(ok) ให้ดักจับและแจ้ง Error
-    if (!healthRes.ok) {
-      throw new Error("Backend is unavailable (health check failed)");
-    }
+  if (!healthRes.ok) {
+    throw new Error("Backend is unavailable (health check failed)");
+  }
   
-  // ดึงข้อมูล Category จาก API ใหม่ (Issue 4)
   const catRes = await fetch(`${API_URL}/api/categories`);
   if (!catRes.ok) {
     throw new Error("Failed to fetch categories.");
   }
 
-  // แปลงข้อมูลและส่งกลับไปให้ App.tsx
   const categories = await catRes.json();
   return { online: true, categories: categories };
 }
@@ -64,15 +58,19 @@ export async function fetchSystems() {
   return await res.json();
 }
 
-// Lab 2: Create ticket
-export async function createTicket(ticketData: any, requesterId: number) {
+// ---------------------------------------------------------------------------
+// Lab 2 & 3: Ticket Endpoints (Using Session Auth)
+// ---------------------------------------------------------------------------
+
+// Create ticket
+export async function createTicket(ticketData: any, _requesterId?: number) {
   const res = await fetch(`${API_URL}/api/tickets`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Requester-Id': requesterId.toString()
     },
-    body: JSON.stringify(ticketData)
+    credentials: 'include',
+    body: JSON.stringify(ticketData),
   });
   
   if (!res.ok) {
@@ -83,8 +81,9 @@ export async function createTicket(ticketData: any, requesterId: number) {
   return await res.json();
 }
 
-// Lab 2: Fetch my tickets with pagination and filters
-export async function fetchMyTickets(requesterId: number, params: any = {}) {
+// Fetch my tickets with pagination and filters
+export async function fetchMyTickets(paramsOrId?: any, maybeParams?: any) {
+  const params = typeof paramsOrId === 'object' && paramsOrId !== null ? paramsOrId : (maybeParams || {});
   const query = new URLSearchParams();
   if (params.search) query.append('search', params.search);
   if (params.categoryId) query.append('categoryId', params.categoryId);
@@ -95,9 +94,7 @@ export async function fetchMyTickets(requesterId: number, params: any = {}) {
   if (params.page) query.append('page', params.page.toString());
   
   const res = await fetch(`${API_URL}/api/tickets?${query.toString()}`, {
-    headers: {
-      'X-Requester-Id': requesterId.toString()
-    }
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -107,12 +104,10 @@ export async function fetchMyTickets(requesterId: number, params: any = {}) {
   return await res.json();
 }
 
-// Lab 2: Fetch specific ticket detail
-export async function fetchTicketDetail(ticketId: number, requesterId: number) {
+// Fetch specific ticket detail
+export async function fetchTicketDetail(ticketId: number, _requesterId?: number) {
   const res = await fetch(`${API_URL}/api/tickets/${ticketId}`, {
-    headers: {
-      'X-Requester-Id': requesterId.toString()
-    }
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -123,13 +118,13 @@ export async function fetchTicketDetail(ticketId: number, requesterId: number) {
   return await res.json();
 }
 
-export async function uploadAttachment(ticketId: number, file: File, requesterId: number) {
+export async function uploadAttachment(ticketId: number, file: File, _requesterId?: number) {
   const formData = new FormData();
   formData.append('file', file);
   const res = await fetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
     method: 'POST',
-    headers: { 'X-Requester-Id': requesterId.toString() },
-    body: formData
+    credentials: 'include',
+    body: formData,
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
@@ -138,9 +133,9 @@ export async function uploadAttachment(ticketId: number, file: File, requesterId
   return await res.json();
 }
 
-export async function downloadAttachment(attachmentId: number, originalFilename: string, requesterId: number) {
+export async function downloadAttachment(attachmentId: number, originalFilename: string, _requesterId?: number) {
   const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
-    headers: { 'X-Requester-Id': requesterId.toString() }
+    credentials: 'include',
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
@@ -157,14 +152,14 @@ export async function downloadAttachment(attachmentId: number, originalFilename:
   window.URL.revokeObjectURL(url);
 }
 
-export async function removeAttachment(attachmentId: number, reason: string, requesterId: number) {
+export async function removeAttachment(attachmentId: number, reason: string, _requesterId?: number) {
   const res = await fetch(`${API_URL}/api/attachments/${attachmentId}`, {
     method: 'DELETE',
     headers: { 
       'Content-Type': 'application/json',
-      'X-Requester-Id': requesterId.toString() 
     },
-    body: JSON.stringify({ reason })
+    credentials: 'include',
+    body: JSON.stringify({ reason }),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
