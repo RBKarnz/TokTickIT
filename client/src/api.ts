@@ -240,6 +240,7 @@ export interface StaffQueueTicket {
 
 export interface QueueQueryParams {
   search?: string;
+  categoryId?: number | string;
   status?: string;
   requestedPriority?: string;
   itPriority?: string;
@@ -247,6 +248,9 @@ export interface QueueQueryParams {
   ownerId?: number | '';
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  sort?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   pageSize?: number;
 }
@@ -264,6 +268,7 @@ export interface StaffQueueResponse {
 export async function fetchStaffQueue(params: QueueQueryParams = {}): Promise<StaffQueueResponse> {
   const query = new URLSearchParams();
   if (params.search && params.search.trim()) query.set('search', params.search.trim());
+  if (params.categoryId) query.set('categoryId', String(params.categoryId));
   if (params.status) query.set('status', params.status);
   if (params.requestedPriority) query.set('requestedPriority', params.requestedPriority);
   if (params.itPriority) query.set('itPriority', params.itPriority);
@@ -271,6 +276,9 @@ export async function fetchStaffQueue(params: QueueQueryParams = {}): Promise<St
   if (params.ownerId !== undefined && params.ownerId !== '') query.set('ownerId', String(params.ownerId));
   if (params.sortBy) query.set('sortBy', params.sortBy);
   if (params.sortOrder) query.set('sortOrder', params.sortOrder);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.startDate) query.set('startDate', params.startDate);
+  if (params.endDate) query.set('endDate', params.endDate);
   if (params.page) query.set('page', String(params.page));
   if (params.pageSize) query.set('pageSize', String(params.pageSize));
 

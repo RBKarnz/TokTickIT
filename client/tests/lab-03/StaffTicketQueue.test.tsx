@@ -5,6 +5,15 @@ import { MemoryRouter } from 'react-router-dom';
 import StaffTicketQueuePage from '../../src/pages/StaffTicketQueuePage.js';
 import * as api from '../../src/api.js';
 
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<any>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 const mockTickets: api.StaffQueueTicket[] = [
   {
     id: 1,
@@ -32,6 +41,11 @@ const mockTickets: api.StaffQueueTicket[] = [
   },
 ];
 
+const mockCategories: api.Category[] = [
+  { id: 1, name: 'Network' },
+  { id: 2, name: 'Hardware' },
+];
+
 const mockStaffUsers = [
   { id: 5, name: 'Alice Staff', email: 'alice@toktickit.com' },
   { id: 6, name: 'Bob Staff', email: 'bob@toktickit.com' },
@@ -48,10 +62,12 @@ function renderQueue() {
 describe('StaffTicketQueue UI Component (Lab 3)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockReset();
+    vi.spyOn(api, 'fetchCategories').mockResolvedValue(mockCategories);
     vi.spyOn(api, 'fetchStaffUsers').mockResolvedValue({ users: mockStaffUsers });
   });
 
-  it('UI-12: Desktop queue table renders required columns', async () => {
+  it('UI-12: Desktop queue table renders required columns without redundant Action column', async () => {
     vi.spyOn(api, 'fetchStaffQueue').mockResolvedValue({
       items: mockTickets,
       pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 },
@@ -66,20 +82,20 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
     const summaryElements = screen.getAllByText('VPN authentication failure');
     expect(summaryElements.length).toBeGreaterThanOrEqual(1);
 
-    // Verify column headers exist
-    expect(screen.getByRole('button', { name: /Sort by Ticket Number/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sort by Created Date/i })).toBeInTheDocument();
+    // Verify column headers match Zen Green table layout
+    expect(screen.getByText('Ticket No.')).toBeInTheDocument();
     expect(screen.getByText('Summary')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sort by Category/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sort by Requested Priority/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sort by IT Priority/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sort by Status/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sort by Owner/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sort by Updated Date/i })).toBeInTheDocument();
-    expect(screen.getByText('Action')).toBeInTheDocument();
+    expect(screen.getByText('Category')).toBeInTheDocument();
+    expect(screen.getByText('Priority')).toBeInTheDocument();
+    expect(screen.getByText('Status')).toBeInTheDocument();
+    expect(screen.getByText('Owner')).toBeInTheDocument();
+    expect(screen.getByText('Last Updated')).toBeInTheDocument();
+
+    // Verify Action column was removed
+    expect(screen.queryByText('Action')).not.toBeInTheDocument();
   });
 
-  it('UI-13: Renders search, filter controls, sort controls, and pagination', async () => {
+  it('UI-13: Renders search, filter controls, sort controls, and date range', async () => {
     vi.spyOn(api, 'fetchStaffQueue').mockResolvedValue({
       items: mockTickets,
       pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 },
@@ -88,21 +104,16 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
     renderQueue();
 
     // Search input
-    expect(await screen.findByPlaceholderText('Ticket number or summary...')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Search summary or ticket no...')).toBeInTheDocument();
 
     // Filter dropdown selects
+    expect(screen.getByRole('combobox', { name: /^category$/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /^status$/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /^requested priority$/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /^it priority$/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /^ownership$/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /^owner$/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /^sort$/i })).toBeInTheDocument();
 
-    // Reset button
-    expect(screen.getByRole('button', { name: /Reset Filters/i })).toBeInTheDocument();
-
-    // Pagination controls
-    expect(screen.getByLabelText(/Ticket queue navigation/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Per page:/i)).toBeInTheDocument();
+    // Date range labels
+    expect(screen.getByText(/Updated Between:/i)).toBeInTheDocument();
   });
 
   it('UI-14: Renders assigned/unassigned and status/priority badges', async () => {
@@ -121,7 +132,6 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
 
     // Priority badges
     expect(screen.getAllByText('CRITICAL').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('HIGH').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('LOW').length).toBeGreaterThanOrEqual(1);
 
     // Assigned owner name & Unassigned badge
@@ -169,14 +179,14 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
 
     renderQueue();
 
-    // Filter by status to trigger active filter empty state
-    const statusSelect = await screen.findByRole('combobox', { name: /^status$/i });
-    fireEvent.change(statusSelect, { target: { value: 'Closed' } });
+    expect(await screen.findByText(/No tickets in the queue/i)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByText(/No matching tickets found/i)).toBeInTheDocument();
-      expect(screen.getByText(/No tickets match your active filter criteria/i)).toBeInTheDocument();
-    });
+    // Filter by status to trigger active filter empty state
+    const statusSelect = screen.getByRole('combobox', { name: /^status$/i });
+    fireEvent.change(statusSelect, { target: { value: 'CLOSED' } });
+
+    expect(await screen.findByText(/No matching tickets found/i)).toBeInTheDocument();
+    expect(screen.getByText(/No tickets match your active filter criteria/i)).toBeInTheDocument();
   });
 
   it('UI-18: Displays error message on API failure with retry', async () => {
@@ -201,7 +211,7 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
-  it('UI-19: Renders stacked cards on mobile viewport', async () => {
+  it('UI-19: Navigates to ticket details upon clicking table row or mobile card', async () => {
     vi.spyOn(api, 'fetchStaffQueue').mockResolvedValue({
       items: mockTickets,
       pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 },
@@ -209,25 +219,30 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
 
     renderQueue();
 
-    expect((await screen.findAllByText('TKT-2026-000001'))[0]).toBeInTheDocument();
+    const ticketNumbers = await screen.findAllByText('TKT-2026-000001');
+    expect(ticketNumbers.length).toBeGreaterThanOrEqual(1);
 
-    // Verify Open Detail buttons rendered in card footers
-    const openDetailButtons = screen.getAllByRole('link', { name: /Open Detail/i });
-    expect(openDetailButtons.length).toBe(2);
-    expect(openDetailButtons[0]).toHaveAttribute('href', '/tickets/1');
-    expect(openDetailButtons[1]).toHaveAttribute('href', '/tickets/2');
+    // Click the ticket number cell or row
+    fireEvent.click(ticketNumbers[0]);
+    expect(mockNavigate).toHaveBeenCalledWith('/tickets/1');
   });
 
-  it('STYLE-01..03: Adheres to Zen Green tokens and displays record count info', async () => {
-    vi.spyOn(api, 'fetchStaffQueue').mockResolvedValue({
+  it('UI-20: Supports pagination navigation when totalPages > 1', async () => {
+    const fetchSpy = vi.spyOn(api, 'fetchStaffQueue').mockResolvedValue({
       items: mockTickets,
-      pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 },
+      pagination: { page: 1, pageSize: 20, totalItems: 40, totalPages: 2 },
     });
 
     renderQueue();
 
-    expect(await screen.findByText(/Showing/i)).toBeInTheDocument();
-    expect(screen.getByText(/of/i)).toBeInTheDocument();
-    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(1);
+    const ticketNumbers = await screen.findAllByText('TKT-2026-000001');
+    expect(ticketNumbers.length).toBeGreaterThanOrEqual(1);
+    const nextBtn = screen.getByRole('button', { name: /Next/i });
+    expect(nextBtn).toBeInTheDocument();
+
+    fireEvent.click(nextBtn);
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
+    });
   });
 });

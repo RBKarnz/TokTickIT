@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   fetchStaffQueue,
   fetchStaffUsers,
+  fetchCategories,
+  Category,
   StaffQueueTicket,
-  QueueQueryParams,
 } from '../api.js';
 import { getPriorityBadge, getStatusBadge } from '../utils.js';
 
@@ -20,29 +21,26 @@ export default function StaffTicketQueuePage() {
   // Filters & Search & Pagination state
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [selectedRequestedPriority, setSelectedRequestedPriority] = useState('');
-  const [selectedItPriority, setSelectedItPriority] = useState('');
-  const [selectedOwnership, setSelectedOwnership] = useState<'assigned' | 'unassigned' | ''>('');
-  const [selectedOwnerId, setSelectedOwnerId] = useState<number | ''>('');
-  const [sortBy, setSortBy] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sort, setSort] = useState('updated_desc');
+  const [selectedOwner, setSelectedOwner] = useState(''); // "" = all, "unassigned", or user id
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Data state
   const [tickets, setTickets] = useState<StaffQueueTicket[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Fetch active IT Staff once for Owner dropdown
+  // Load categories and staff users on mount
   useEffect(() => {
-    fetchStaffUsers()
-      .then((data) => setStaffUsers(data.users || []))
-      .catch(() => setStaffUsers([]));
+    fetchCategories().then(setCategories).catch(console.error);
+    fetchStaffUsers().then((d) => setStaffUsers(d.users || [])).catch(console.error);
   }, []);
 
   // Debounce search (500ms matching MyTicketsPage)
@@ -59,70 +57,53 @@ export default function StaffTicketQueuePage() {
     setLoading(true);
     setError('');
     try {
-      const params: QueueQueryParams = {
-        search: debouncedSearch,
-        status: selectedStatus || undefined,
-        requestedPriority: selectedRequestedPriority || undefined,
-        itPriority: selectedItPriority || undefined,
-        ownership: selectedOwnership || undefined,
-        ownerId: selectedOwnerId !== '' ? selectedOwnerId : undefined,
-        sortBy,
-        sortOrder,
-        page,
-        pageSize,
-      };
+      const ownership = selectedOwner === 'unassigned' ? 'unassigned' : undefined;
+      const ownerId = selectedOwner && selectedOwner !== 'unassigned' ? parseInt(selectedOwner, 10) : undefined;
 
-      const data = await fetchStaffQueue(params);
+      const data = await fetchStaffQueue({
+        search: debouncedSearch,
+        categoryId: selectedCategory || undefined,
+        status: selectedStatus || undefined,
+        sort: sort,
+        ownership,
+        ownerId,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        page,
+      });
+
       setTickets(data?.items || []);
-      setTotalItems(data?.pagination?.totalItems ?? 0);
-      setTotalPages(data?.pagination?.totalPages ?? 0);
+      setTotalPages(data?.pagination?.totalPages || 1);
     } catch (err: any) {
       setError(err?.message || 'Failed to load ticket queue');
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedStatus, selectedRequestedPriority, selectedItPriority, selectedOwnership, selectedOwnerId, sortBy, sortOrder, page, pageSize]);
+  }, [debouncedSearch, selectedCategory, selectedStatus, sort, selectedOwner, startDate, endDate, page]);
 
   useEffect(() => {
     loadQueue();
   }, [loadQueue]);
 
-  // Sort handler
-  const handleSort = (field: string) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-    setPage(1);
-  };
-
   // Reset filters
   const handleResetFilters = () => {
     setSearchTerm('');
     setDebouncedSearch('');
+    setSelectedCategory('');
     setSelectedStatus('');
-    setSelectedRequestedPriority('');
-    setSelectedItPriority('');
-    setSelectedOwnership('');
-    setSelectedOwnerId('');
-    setSortBy('updatedAt');
-    setSortOrder('desc');
+    setSort('updated_desc');
+    setSelectedOwner('');
+    setStartDate('');
+    setEndDate('');
     setPage(1);
-    setPageSize(20);
   };
 
   const hasActiveFilters = Boolean(
-    debouncedSearch || selectedStatus || selectedRequestedPriority || selectedItPriority || selectedOwnership || selectedOwnerId !== ''
+    debouncedSearch || selectedCategory || selectedStatus || selectedOwner || startDate || endDate || sort !== 'updated_desc'
   );
 
-  // Normalize status string (e.g. "In Progress" -> "IN_PROGRESS") for getStatusBadge
+  // Normalize status string for getStatusBadge
   const normalizeStatus = (statusStr: string) => statusStr?.toUpperCase().replace(/ /g, '_');
-
-  // Pagination display indices
-  const startItem = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
-  const endItem = totalItems === 0 ? 0 : Math.min(page * pageSize, totalItems);
 
   return (
     <div className="container py-4" style={{ maxWidth: '1200px' }}>
@@ -134,173 +115,132 @@ export default function StaffTicketQueuePage() {
         </div>
       </div>
 
-      {/* Filter Card (identical border, bg-light, and Zen Green input styling) */}
+      {/* Filter Card (identical layout to MyTicketsPage) */}
       <div className="card shadow-sm mb-4" style={{ border: '1px solid #E2E8F0' }}>
         <div className="card-body bg-light">
           <div className="row g-3">
             {/* Search */}
             <div className="col-12 col-md-4">
-              <label htmlFor="queue-search" className="visually-hidden">Search</label>
               <div className="input-group">
                 <span className="input-group-text bg-white border-end-0">
                   <i className="bi bi-search text-muted"></i>
                 </span>
                 <input
-                  id="queue-search"
                   type="text"
                   className="form-control border-start-0 ps-0"
-                  placeholder="Ticket number or summary..."
+                  placeholder="Search summary or ticket no..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                {searchTerm && (
-                  <button
-                    className="btn btn-outline-secondary border-start-0 bg-white"
-                    type="button"
-                    onClick={() => setSearchTerm('')}
-                    aria-label="Clear search"
-                  >
-                    <i className="bi bi-x text-muted"></i>
-                  </button>
-                )}
               </div>
             </div>
 
-            {/* Status Filter */}
+            {/* Categories Filter */}
             <div className="col-6 col-md-2">
-              <label htmlFor="filter-status" className="visually-hidden">Status</label>
               <select
-                id="filter-status"
+                aria-label="Category"
+                className="form-select"
+                value={selectedCategory}
+                onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }}
+              >
+                <option value="">All Categories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Statuses Filter */}
+            <div className="col-6 col-md-2">
+              <select
                 aria-label="Status"
                 className="form-select"
                 value={selectedStatus}
                 onChange={(e) => { setSelectedStatus(e.target.value); setPage(1); }}
               >
                 <option value="">All Statuses</option>
-                <option value="New">New</option>
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Waiting for Requester">Waiting for Requester</option>
-                <option value="Resolved">Resolved</option>
-                <option value="Closed">Closed</option>
-                <option value="Reopened">Reopened</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="NEW">New</option>
+                <option value="OPEN">Open</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="WAITING_FOR_REQUESTER">Waiting for Requester</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="CLOSED">Closed</option>
+                <option value="REOPENED">Reopened</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
             </div>
 
-            {/* Requested Priority Filter */}
+            {/* Owner Filter (Merged All Owners + Unassigned) */}
             <div className="col-6 col-md-2">
-              <label htmlFor="filter-req-priority" className="visually-hidden">Requested Priority</label>
               <select
-                id="filter-req-priority"
-                aria-label="Requested Priority"
-                className="form-select"
-                value={selectedRequestedPriority}
-                onChange={(e) => { setSelectedRequestedPriority(e.target.value); setPage(1); }}
-              >
-                <option value="">All Req. Priorities</option>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="CRITICAL">Critical</option>
-              </select>
-            </div>
-
-            {/* IT Priority Filter */}
-            <div className="col-6 col-md-2">
-              <label htmlFor="filter-it-priority" className="visually-hidden">IT Priority</label>
-              <select
-                id="filter-it-priority"
-                aria-label="IT Priority"
-                className="form-select"
-                value={selectedItPriority}
-                onChange={(e) => { setSelectedItPriority(e.target.value); setPage(1); }}
-              >
-                <option value="">All IT Priorities</option>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="CRITICAL">Critical</option>
-              </select>
-            </div>
-
-            {/* Ownership Filter */}
-            <div className="col-6 col-md-2">
-              <label htmlFor="filter-ownership" className="visually-hidden">Ownership</label>
-              <select
-                id="filter-ownership"
-                aria-label="Ownership"
-                className="form-select"
-                value={selectedOwnership}
-                onChange={(e) => {
-                  setSelectedOwnership(e.target.value as any);
-                  if (e.target.value === 'unassigned') setSelectedOwnerId('');
-                  setPage(1);
-                }}
-              >
-                <option value="">All Ownership</option>
-                <option value="assigned">Assigned</option>
-                <option value="unassigned">Unassigned</option>
-              </select>
-            </div>
-
-            {/* Owner Filter */}
-            <div className="col-6 col-md-3">
-              <label htmlFor="filter-owner" className="visually-hidden">Owner</label>
-              <select
-                id="filter-owner"
                 aria-label="Owner"
                 className="form-select"
-                value={selectedOwnerId}
-                onChange={(e) => {
-                  setSelectedOwnerId(e.target.value ? parseInt(e.target.value, 10) : '');
-                  setPage(1);
-                }}
-                disabled={selectedOwnership === 'unassigned'}
+                value={selectedOwner}
+                onChange={(e) => { setSelectedOwner(e.target.value); setPage(1); }}
               >
                 <option value="">All Owners</option>
+                <option value="unassigned">Unassigned</option>
                 {staffUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
+                  <option key={u.id} value={u.id.toString()}>{u.name}</option>
                 ))}
               </select>
             </div>
 
-            {/* Per Page Selector */}
-            <div className="col-6 col-md-2 d-flex align-items-center gap-2">
-              <label htmlFor="page-size-select" className="text-muted small mb-0 text-nowrap">
-                Per page:
-              </label>
+            {/* Sort Dropdown (identical to Photo 3) */}
+            <div className="col-6 col-md-2">
               <select
-                id="page-size-select"
-                aria-label="Per page:"
-                className="form-select form-select-sm"
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(parseInt(e.target.value, 10));
-                  setPage(1);
-                }}
-                style={{ width: '80px' }}
+                aria-label="Sort"
+                className="form-select"
+                value={sort}
+                onChange={(e) => { setSort(e.target.value); setPage(1); }}
               >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
+                <option value="updated_desc">Recently Updated</option>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="priority">Highest Priority</option>
+                <option value="priority_asc">Lowest Priority</option>
               </select>
             </div>
 
-            {/* Reset Filters Button */}
-            <div className="col-12 col-md-3 ms-auto d-flex justify-content-end align-items-center">
-              <button
-                type="button"
-                className="btn btn-sm btn-link text-decoration-none"
-                style={{ color: hasActiveFilters ? '#0B7A46' : '#94A3B8' }}
-                onClick={handleResetFilters}
-                disabled={!hasActiveFilters}
-                aria-label="Reset Filters"
-              >
-                <i className="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
-              </button>
+            {/* Date Range Filter (identical to MyTicketsPage) */}
+            <div className="col-12 d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top">
+              <label className="text-muted small mb-0 text-nowrap">
+                <i className="bi bi-calendar-event me-1"></i> Updated Between:
+              </label>
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                style={{ width: 'auto' }}
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+              />
+              <span className="text-muted small">to</span>
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                style={{ width: 'auto' }}
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+              />
+              {(startDate || endDate) && (
+                <button
+                  className="btn btn-sm btn-link text-decoration-none ms-2"
+                  onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }}
+                >
+                  Clear Dates
+                </button>
+              )}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-link text-decoration-none ms-auto"
+                  style={{ color: '#0B7A46' }}
+                  onClick={handleResetFilters}
+                  aria-label="Reset Filters"
+                >
+                  <i className="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -333,7 +273,7 @@ export default function StaffTicketQueuePage() {
         <div className="text-center py-5 bg-white rounded shadow-sm border" style={{ borderColor: '#E2E8F0' }}>
           <i className="bi bi-inbox text-muted mb-3 d-block" style={{ fontSize: '3rem' }}></i>
           <h4 style={{ color: '#1E293B' }}>{hasActiveFilters ? "No matching tickets found" : "No tickets in the queue"}</h4>
-          <p className="text-muted">{hasActiveFilters ? "No tickets match your active filter criteria." : "There are currently no tickets requiring triage."}</p>
+          <p className="text-muted">{hasActiveFilters ? "No tickets match your active filter criteria. Try adjusting your filters." : "There are currently no tickets requiring triage."}</p>
           {hasActiveFilters && (
             <button className="btn btn-zen-primary btn-sm px-3 mt-2" onClick={handleResetFilters}>
               Reset Filters
@@ -342,117 +282,18 @@ export default function StaffTicketQueuePage() {
         </div>
       ) : (
         <>
-          {/* Desktop Table View (Identical Zen Green table design to MyTicketsPage) */}
+          {/* Desktop Table View (Clean headers matching MyTicketsPage, NO redundant Action column) */}
           <div className="d-none d-md-block bg-white rounded shadow-sm border" style={{ borderColor: '#E2E8F0', overflow: 'hidden' }}>
             <table className="table table-hover mb-0 align-middle">
               <thead style={{ backgroundColor: '#F8FAFC' }}>
                 <tr>
-                  <th className="py-3 px-4 text-muted" style={{ fontWeight: 500 }}>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fw-medium text-muted d-flex align-items-center"
-                      onClick={() => handleSort('ticketNumber')}
-                      aria-label="Sort by Ticket Number"
-                    >
-                      Ticket #
-                      {sortBy === 'ticketNumber' && (
-                        <i className={`bi bi-arrow-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`} style={{ color: '#0B7A46' }}></i>
-                      )}
-                    </button>
-                  </th>
-                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fw-medium text-muted d-flex align-items-center"
-                      onClick={() => handleSort('createdAt')}
-                      aria-label="Sort by Created Date"
-                    >
-                      Created
-                      {sortBy === 'createdAt' && (
-                        <i className={`bi bi-arrow-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`} style={{ color: '#0B7A46' }}></i>
-                      )}
-                    </button>
-                  </th>
+                  <th className="py-3 px-4 text-muted" style={{ fontWeight: 500 }}>Ticket No.</th>
                   <th className="py-3 text-muted" style={{ fontWeight: 500 }}>Summary</th>
-                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fw-medium text-muted d-flex align-items-center"
-                      onClick={() => handleSort('category')}
-                      aria-label="Sort by Category"
-                    >
-                      Category
-                      {sortBy === 'category' && (
-                        <i className={`bi bi-arrow-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`} style={{ color: '#0B7A46' }}></i>
-                      )}
-                    </button>
-                  </th>
-                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fw-medium text-muted d-flex align-items-center"
-                      onClick={() => handleSort('requestedPriority')}
-                      aria-label="Sort by Requested Priority"
-                    >
-                      Req. Priority
-                      {sortBy === 'requestedPriority' && (
-                        <i className={`bi bi-arrow-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`} style={{ color: '#0B7A46' }}></i>
-                      )}
-                    </button>
-                  </th>
-                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fw-medium text-muted d-flex align-items-center"
-                      onClick={() => handleSort('itPriority')}
-                      aria-label="Sort by IT Priority"
-                    >
-                      IT Priority
-                      {sortBy === 'itPriority' && (
-                        <i className={`bi bi-arrow-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`} style={{ color: '#0B7A46' }}></i>
-                      )}
-                    </button>
-                  </th>
-                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fw-medium text-muted d-flex align-items-center"
-                      onClick={() => handleSort('status')}
-                      aria-label="Sort by Status"
-                    >
-                      Status
-                      {sortBy === 'status' && (
-                        <i className={`bi bi-arrow-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`} style={{ color: '#0B7A46' }}></i>
-                      )}
-                    </button>
-                  </th>
-                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fw-medium text-muted d-flex align-items-center"
-                      onClick={() => handleSort('owner')}
-                      aria-label="Sort by Owner"
-                    >
-                      Owner
-                      {sortBy === 'owner' && (
-                        <i className={`bi bi-arrow-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`} style={{ color: '#0B7A46' }}></i>
-                      )}
-                    </button>
-                  </th>
-                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fw-medium text-muted d-flex align-items-center"
-                      onClick={() => handleSort('updatedAt')}
-                      aria-label="Sort by Updated Date"
-                    >
-                      Updated
-                      {sortBy === 'updatedAt' && (
-                        <i className={`bi bi-arrow-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`} style={{ color: '#0B7A46' }}></i>
-                      )}
-                    </button>
-                  </th>
-                  <th className="py-3 px-4 text-muted text-end" style={{ fontWeight: 500 }}>Action</th>
+                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>Category</th>
+                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>Priority</th>
+                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>Status</th>
+                  <th className="py-3 text-muted" style={{ fontWeight: 500 }}>Owner</th>
+                  <th className="py-3 px-4 text-muted" style={{ fontWeight: 500 }}>Last Updated</th>
                 </tr>
               </thead>
               <tbody>
@@ -465,15 +306,11 @@ export default function StaffTicketQueuePage() {
                     <td className="px-4 fw-medium" style={{ color: '#0B7A46' }}>
                       {ticket.ticketNumber}
                     </td>
-                    <td className="text-muted small">
-                      {new Date(ticket.createdAt).toLocaleDateString()}
-                    </td>
                     <td>
-                      {ticket.summary.length > 35 ? ticket.summary.substring(0, 35) + '...' : ticket.summary}
+                      {ticket.summary.length > 40 ? ticket.summary.substring(0, 40) + '...' : ticket.summary}
                     </td>
                     <td className="text-muted small">{ticket.category}</td>
-                    <td>{getPriorityBadge(ticket.requestedPriority)}</td>
-                    <td>{getPriorityBadge(ticket.itPriority)}</td>
+                    <td>{getPriorityBadge(ticket.itPriority || ticket.requestedPriority)}</td>
                     <td>{getStatusBadge(normalizeStatus(ticket.status))}</td>
                     <td className="text-muted small">
                       {ticket.owner ? (
@@ -487,18 +324,8 @@ export default function StaffTicketQueuePage() {
                         </span>
                       )}
                     </td>
-                    <td className="text-muted small">
+                    <td className="px-4 text-muted small">
                       {new Date(ticket.updatedAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 text-end">
-                      <Link
-                        to={`/tickets/${ticket.id}`}
-                        className="btn btn-sm btn-link p-0 text-decoration-none fw-medium"
-                        style={{ color: '#0B7A46' }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Open
-                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -506,7 +333,7 @@ export default function StaffTicketQueuePage() {
             </table>
           </div>
 
-          {/* Mobile Card View (Identical card layout to MyTicketsPage) */}
+          {/* Mobile Card View (Identical card layout to MyTicketsPage, clicking card opens ticket) */}
           <div className="d-block d-md-none">
             {tickets.map((ticket) => (
               <div
@@ -526,10 +353,7 @@ export default function StaffTicketQueuePage() {
                   <div className="d-flex flex-wrap gap-2 mb-2">
                     <span className="badge bg-light text-dark border">{ticket.category}</span>
                     <span className="small text-muted d-flex align-items-center">
-                      IT: {getPriorityBadge(ticket.itPriority)}
-                    </span>
-                    <span className="small text-muted d-flex align-items-center">
-                      Req: {getPriorityBadge(ticket.requestedPriority)}
+                      Priority: {getPriorityBadge(ticket.itPriority || ticket.requestedPriority)}
                     </span>
                   </div>
                   <div className="d-flex justify-content-between text-muted small mt-3 pt-3 border-top">
@@ -539,39 +363,21 @@ export default function StaffTicketQueuePage() {
                     </span>
                     <span>{new Date(ticket.updatedAt).toLocaleDateString()}</span>
                   </div>
-                  <div className="mt-3 pt-2 border-top text-end">
-                    <Link
-                      to={`/tickets/${ticket.id}`}
-                      className="btn btn-sm btn-outline-success w-100 d-flex align-items-center justify-content-center"
-                      style={{ color: '#0B7A46', borderColor: '#0B7A46', minHeight: '44px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Open Detail
-                    </Link>
-                  </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Record Count Feedback */}
-          <div className="d-flex justify-content-between align-items-center mt-3 text-muted small px-1">
-            <span>
-              Showing <strong className="text-dark">{startItem}</strong>–<strong className="text-dark">{endItem}</strong> of{' '}
-              <strong className="text-dark">{totalItems}</strong> tickets
-            </span>
-          </div>
-
-          {/* Pagination (Exact Zen Green numbered pagination with jump input from MyTicketsPage) */}
-          {totalPages >= 1 && (
+          {/* Pagination (Exact Zen Green numbered pagination from MyTicketsPage) */}
+          {totalPages > 1 && (
             <div className="d-flex justify-content-center mt-4">
               <nav aria-label="Ticket queue navigation">
                 <ul className="pagination">
-                  <li className={`page-item ${page <= 1 ? 'disabled' : ''}`}>
+                  <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
                     <button
                       className="page-link"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page <= 1}
+                      disabled={page === 1}
                     >
                       Previous
                     </button>
@@ -627,11 +433,11 @@ export default function StaffTicketQueuePage() {
                     });
                   })()}
 
-                  <li className={`page-item ${page >= totalPages ? 'disabled' : ''}`}>
+                  <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
                     <button
                       className="page-link"
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page >= totalPages}
+                      disabled={page === totalPages}
                     >
                       Next
                     </button>

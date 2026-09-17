@@ -408,10 +408,12 @@ app.get('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req,
   }
 });
 
-app.get('/api/tickets/:id', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
-  const requesterId = req.sessionUser!.id;
-  const ticketId = parseInt(req.params.id);
+app.get('/api/tickets/:id', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role === 'ADMINISTRATOR') {
+    return res.status(403).json({ error: { code: "FORBIDDEN", message: "Administrators cannot view tickets." } });
+  }
 
+  const ticketId = parseInt(req.params.id);
   if (isNaN(ticketId)) {
     return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Invalid ticket ID" } });
   }
@@ -424,13 +426,18 @@ app.get('/api/tickets/:id', requireNormalAuth, requireRole('REQUESTER'), async (
         category: true,
         relatedSystem: true,
         requester: true,
+        owner: true,
         attachments: {
           orderBy: { uploadedAt: 'desc' }
         }
       }
     });
 
-    if (!ticket || ticket.requesterId !== requesterId) {
+    if (!ticket) {
+      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
+    }
+
+    if (req.sessionUser!.role === 'REQUESTER' && ticket.requesterId !== req.sessionUser!.id) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
     }
 
@@ -521,16 +528,28 @@ app.get('/api/attachments/:id', requireNormalAuth, requireRole('REQUESTER'), asy
   }
 });
 
-app.get('/api/attachments/:id/download', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
+app.get('/api/attachments/:id/download', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role === 'ADMINISTRATOR') {
+    return res.status(403).json({ error: { code: "FORBIDDEN", message: "Forbidden" } });
+  }
   try {
-    const result = await getOwnedAttachment(parseInt(req.params.id), req.sessionUser!.id);
-    if (result.error) return res.status(result.error.status).json({ error: { code: result.error.code, message: result.error.message } });
+    const attachmentId = parseInt(req.params.id);
+    const attachment = await getPrisma().attachment.findUnique({
+      where: { id: attachmentId },
+      include: { ticket: true },
+    });
+    if (!attachment || attachment.isRemoved) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Attachment not found' } });
+    }
+    if (req.sessionUser!.role === 'REQUESTER' && attachment.ticket.requesterId !== req.sessionUser!.id) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Attachment not found' } });
+    }
 
-    const filePath = path.join(process.cwd(), 'uploads', result.attachment.storedFilename);
+    const filePath = path.join(process.cwd(), 'uploads', attachment.storedFilename);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "File missing on disk" } });
     }
-    res.download(filePath, result.attachment.originalFilename);
+    res.download(filePath, attachment.originalFilename);
   } catch {
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to download attachment" } });
   }
@@ -918,6 +937,15 @@ app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
       }
     }
 
+    if (req.query.sort !== undefined && typeof req.query.sort === 'string') {
+      const s = req.query.sort.trim();
+      if (s === 'updated_desc') { sortBy = 'updatedAt'; sortOrder = 'desc'; }
+      else if (s === 'newest') { sortBy = 'createdAt'; sortOrder = 'desc'; }
+      else if (s === 'oldest') { sortBy = 'createdAt'; sortOrder = 'asc'; }
+      else if (s === 'priority') { sortBy = 'itPriority'; sortOrder = 'desc'; }
+      else if (s === 'priority_asc') { sortBy = 'itPriority'; sortOrder = 'asc'; }
+    }
+
     if (req.query.sortBy !== undefined) {
       if (typeof req.query.sortBy !== 'string') {
         return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid sortBy parameter.' } });
@@ -949,6 +977,28 @@ app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
         { ticketNumber: { contains: searchTerm, mode: 'insensitive' } },
         { summary: { contains: searchTerm, mode: 'insensitive' } },
       ];
+    }
+
+    if (req.query.categoryId !== undefined) {
+      if (typeof req.query.categoryId !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid categoryId parameter.' } });
+      }
+      const parsedCatId = parseInt(req.query.categoryId, 10);
+      if (!isNaN(parsedCatId)) {
+        where.categoryId = parsedCatId;
+      }
+    }
+
+    if (req.query.startDate || req.query.endDate) {
+      where.updatedAt = {};
+      if (req.query.startDate && typeof req.query.startDate === 'string') {
+        where.updatedAt.gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate && typeof req.query.endDate === 'string') {
+        const end = new Date(req.query.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.updatedAt.lte = end;
+      }
     }
 
     if (mappedStatus) {
