@@ -6,6 +6,7 @@ import ChangePasswordPage from './pages/ChangePasswordPage.js';
 import MyTicketsPage from './pages/MyTicketsPage.js';
 import CreateTicketPage from './pages/CreateTicketPage.js';
 import TicketDetailPage from './pages/TicketDetailPage.js';
+import StaffTicketQueuePage from './pages/StaffTicketQueuePage.js';
 import { logout, checkSystem, Category } from './api.js';
 
 // Home Component restoring Lab 1 functionality
@@ -205,6 +206,11 @@ function AppShell() {
             <i className="bi bi-clock-history me-2"></i>TokTickIT
           </Link>
           <div className="d-flex align-items-center gap-3">
+            {user?.role === 'IT_STAFF' && (
+              <Link className="text-white text-decoration-none fw-semibold me-2" to="/staff/queue">
+                <i className="bi bi-inbox me-1"></i>Ticket Queue
+              </Link>
+            )}
             <span className="badge bg-light text-dark">{roleBadge}</span>
             <span className="text-white small text-truncate" style={{ maxWidth: '150px' }}>
               <i className="bi bi-person me-1"></i>{user?.name}
@@ -244,7 +250,7 @@ export default function App() {
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
               <Route path="/" element={<RoleLandingRoute />} />
-              <Route path="/staff/queue" element={<StaffQueueLanding />} />
+              <Route path="/staff/queue" element={<StaffTicketQueuePage />} />
               <Route path="/admin/users" element={<AdminUsersLanding />} />
               <Route path="/tickets/create" element={<CreateTicketPage />} />
               <Route path="/tickets/:id" element={<TicketDetailPage />} />

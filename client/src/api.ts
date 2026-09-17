@@ -221,3 +221,69 @@ export async function markProblemResolved(ticketId: number): Promise<{ ticketId:
   return await res.json();
 }
 
+// ---------------------------------------------------------------------------
+// Lab 3: IT Staff Queue Endpoints
+// ---------------------------------------------------------------------------
+
+export interface StaffQueueTicket {
+  id: number;
+  ticketNumber: string;
+  createdAt: string;
+  updatedAt: string;
+  summary: string;
+  category: string;
+  requestedPriority: string;
+  itPriority: string;
+  status: string;
+  owner: { id: number; name: string } | null;
+}
+
+export interface QueueQueryParams {
+  search?: string;
+  status?: string;
+  requestedPriority?: string;
+  itPriority?: string;
+  ownership?: 'assigned' | 'unassigned' | '';
+  ownerId?: number | '';
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface StaffQueueResponse {
+  items: StaffQueueTicket[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+export async function fetchStaffQueue(params: QueueQueryParams = {}): Promise<StaffQueueResponse> {
+  const query = new URLSearchParams();
+  if (params.search && params.search.trim()) query.set('search', params.search.trim());
+  if (params.status) query.set('status', params.status);
+  if (params.requestedPriority) query.set('requestedPriority', params.requestedPriority);
+  if (params.itPriority) query.set('itPriority', params.itPriority);
+  if (params.ownership) query.set('ownership', params.ownership);
+  if (params.ownerId !== undefined && params.ownerId !== '') query.set('ownerId', String(params.ownerId));
+  if (params.sortBy) query.set('sortBy', params.sortBy);
+  if (params.sortOrder) query.set('sortOrder', params.sortOrder);
+  if (params.page) query.set('page', String(params.page));
+  if (params.pageSize) query.set('pageSize', String(params.pageSize));
+
+  const res = await fetch(`${API_URL}/api/staff/tickets?${query.toString()}`, { credentials: 'include' });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || `Failed to fetch ticket queue (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchStaffUsers(): Promise<{ users: { id: number; name: string; email: string }[] }> {
+  const res = await fetch(`${API_URL}/api/staff/users`, { credentials: 'include' });
+  if (!res.ok) return { users: [] };
+  return res.json();
+}
