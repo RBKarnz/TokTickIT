@@ -286,10 +286,27 @@ app.post('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req
   try {
     const prisma = getPrisma();
     
-    // Generate ticket number: e.g. TKT-2026-000001
-    const count = await prisma.ticket.count();
+    // Generate ticket number safely based on max existing sequence for the year
     const year = new Date().getFullYear();
-    const ticketNumber = `TKT-${year}-${String(count + 1).padStart(6, '0')}`;
+    const existingYearTickets = await prisma.ticket.findMany({
+      where: {
+        ticketNumber: {
+          startsWith: `TKT-${year}-`,
+        },
+      },
+      select: { ticketNumber: true },
+    });
+
+    let maxNum = 0;
+    for (const t of existingYearTickets) {
+      const match = t.ticketNumber.match(/^TKT-\d{4}-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+
+    const ticketNumber = `TKT-${year}-${String(maxNum + 1).padStart(6, '0')}`;
 
     const ticket = await prisma.ticket.create({
       data: {
@@ -537,6 +554,231 @@ app.delete('/api/attachments/:id', requireNormalAuth, requireRole('REQUESTER'), 
     res.json({ message: "Attachment removed successfully" });
   } catch {
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to remove attachment" } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Comments and Notes (Lab 3)
+// ---------------------------------------------------------------------------
+
+// POST /api/tickets/:id/public-comments
+app.post('/api/tickets/:id/public-comments', requireNormalAuth, async (req, res) => {
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  if (typeof req.body.content !== 'string') {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content must be a string.' } });
+  }
+
+  const content = req.body.content.trim();
+  if (content.length === 0) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content is required.' } });
+  }
+  if (content.length > 4000) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content cannot exceed 4000 characters.' } });
+  }
+
+  if (req.sessionUser!.role === 'ADMINISTRATOR') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Administrators are not permitted to post public comments.' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    if (req.sessionUser!.role === 'REQUESTER' && ticket.requesterId !== req.sessionUser!.id) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    const comment = await prisma.publicComment.create({
+      data: {
+        ticketId,
+        authorId: req.sessionUser!.id,
+        content,
+      },
+      include: {
+        author: {
+          select: { id: true, name: true, role: true },
+        },
+      },
+    });
+
+    res.status(201).json({ comment });
+  } catch (error) {
+    console.error('Error creating public comment:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create comment' } });
+  }
+});
+
+// GET /api/tickets/:id/public-comments
+app.get('/api/tickets/:id/public-comments', requireNormalAuth, async (req, res) => {
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    if (req.sessionUser!.role === 'REQUESTER' && ticket.requesterId !== req.sessionUser!.id) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    const comments = await prisma.publicComment.findMany({
+      where: { ticketId },
+      include: {
+        author: {
+          select: { id: true, name: true, role: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json({ comments });
+  } catch (error) {
+    console.error('Error fetching public comments:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch comments' } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Internal Notes (Mounted under /api/staff/tickets/:id/internal-notes per spec,
+// with /api/tickets/:id/internal-notes alias for compatibility)
+// ---------------------------------------------------------------------------
+
+const handleCreateInternalNote = async (req: express.Request, res: express.Response) => {
+  if (req.sessionUser!.role === 'REQUESTER') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Requesters are not permitted to access internal notes.' } });
+  }
+
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  if (typeof req.body.content !== 'string') {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content must be a string.' } });
+  }
+
+  const content = req.body.content.trim();
+  if (content.length === 0) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content is required.' } });
+  }
+  if (content.length > 4000) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content cannot exceed 4000 characters.' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    const note = await prisma.internalNote.create({
+      data: {
+        ticketId,
+        authorId: req.sessionUser!.id,
+        content,
+      },
+      include: {
+        author: {
+          select: { id: true, name: true, role: true },
+        },
+      },
+    });
+
+    res.status(201).json({ note });
+  } catch (error) {
+    console.error('Error creating internal note:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create internal note' } });
+  }
+};
+
+app.post('/api/staff/tickets/:id/internal-notes', requireNormalAuth, handleCreateInternalNote);
+app.post('/api/tickets/:id/internal-notes', requireNormalAuth, handleCreateInternalNote);
+
+const handleGetInternalNotes = async (req: express.Request, res: express.Response) => {
+  if (req.sessionUser!.role === 'REQUESTER') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Requesters are not permitted to access internal notes.' } });
+  }
+
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    const notes = await prisma.internalNote.findMany({
+      where: { ticketId },
+      include: {
+        author: {
+          select: { id: true, name: true, role: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json({ notes });
+  } catch (error) {
+    console.error('Error fetching internal notes:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch internal notes' } });
+  }
+};
+
+app.get('/api/staff/tickets/:id/internal-notes', requireNormalAuth, handleGetInternalNotes);
+app.get('/api/tickets/:id/internal-notes', requireNormalAuth, handleGetInternalNotes);
+
+// POST /api/tickets/:id/problem-appears-resolved
+app.post('/api/tickets/:id/problem-appears-resolved', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role !== 'REQUESTER') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only requesters can perform this action.' } });
+  }
+
+  const ticketId = parseInt(req.params.id);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket || ticket.requesterId !== req.sessionUser!.id) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    if (ticket.currentStatus === 'CLOSED' || ticket.currentStatus === 'CANCELLED') {
+      return res.status(409).json({ error: { code: 'CONFLICT', message: 'Cannot mark a closed or cancelled ticket as resolved.' } });
+    }
+
+    let resolvedAt = ticket.requesterResolvedAt;
+    if (!resolvedAt) {
+      resolvedAt = new Date();
+      await prisma.ticket.update({
+        where: { id: ticketId },
+        data: { requesterResolvedAt: resolvedAt },
+      });
+    }
+
+    res.json({ ticketId, requesterResolvedAt: resolvedAt });
+  } catch (error) {
+    console.error('Error marking problem as resolved:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to mark problem as resolved' } });
   }
 });
 

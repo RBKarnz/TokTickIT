@@ -167,3 +167,57 @@ export async function removeAttachment(attachmentId: number, reason: string, _re
   }
   return await res.json();
 }
+
+export interface PublicComment {
+  id: number;
+  ticketId: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    name: string;
+    role: string;
+  };
+}
+
+export async function fetchPublicComments(ticketId: number): Promise<PublicComment[]> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to fetch comments');
+  }
+  const data = await res.json();
+  return data.comments || [];
+}
+
+export async function postPublicComment(ticketId: number, content: string): Promise<PublicComment> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to post comment');
+  }
+  const data = await res.json();
+  return data.comment;
+}
+
+export async function markProblemResolved(ticketId: number): Promise<{ ticketId: number; requesterResolvedAt: string }> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/problem-appears-resolved`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to mark problem as resolved');
+  }
+  return await res.json();
+}
+
