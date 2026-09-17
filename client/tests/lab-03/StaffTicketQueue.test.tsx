@@ -309,4 +309,16 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
       expect(fetchSpy).toHaveBeenCalledWith(expect.objectContaining({ page: 7 }));
     });
   });
+
+  it('redirects to /tickets if API returns Only IT Staff error', async () => {
+    vi.spyOn(api, 'fetchStaffQueue').mockRejectedValue(
+      new Error('Only IT Staff can access the ticket queue.')
+    );
+
+    renderQueue();
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/tickets', { replace: true });
+    });
+  });
 });

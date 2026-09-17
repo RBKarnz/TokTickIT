@@ -103,6 +103,10 @@ export default function StaffTicketQueuePage() {
       setTickets(data?.items || []);
       setTotalPages(data?.pagination?.totalPages || 1);
     } catch (err: any) {
+      if (err?.message?.includes('Only IT Staff can access the ticket queue')) {
+        navigate('/tickets', { replace: true });
+        return;
+      }
       setError(err?.message || 'Failed to load ticket queue');
     } finally {
       setLoading(false);

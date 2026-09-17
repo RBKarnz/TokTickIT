@@ -130,6 +130,15 @@ function RoleLandingRoute() {
   return <MyTicketsPage />;
 }
 
+function RequireStaffQueue() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
+  if (user.role !== 'IT_STAFF') return <Navigate to="/" replace />;
+  return <StaffTicketQueuePage />;
+}
+
 function StaffQueueLanding() {
   const { user } = useAuth();
   return (
@@ -250,7 +259,9 @@ export default function App() {
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
               <Route path="/" element={<RoleLandingRoute />} />
-              <Route path="/staff/queue" element={<StaffTicketQueuePage />} />
+              <Route path="/tickets" element={<RoleLandingRoute />} />
+              <Route path="/ticket" element={<Navigate to="/tickets" replace />} />
+              <Route path="/staff/queue" element={<RequireStaffQueue />} />
               <Route path="/admin/users" element={<AdminUsersLanding />} />
               <Route path="/tickets/create" element={<CreateTicketPage />} />
               <Route path="/tickets/:id" element={<TicketDetailPage />} />
