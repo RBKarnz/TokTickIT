@@ -133,10 +133,8 @@ export default function StaffTicketQueuePage() {
     setPage(1);
   };
 
-  const filteredStaff = staffUsers.filter(
-    (u) =>
-      u.name.toLowerCase().includes(staffSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(staffSearch.toLowerCase())
+  const filteredStaff = staffUsers.filter((u) =>
+    u.name.toLowerCase().includes(staffSearch.toLowerCase())
   );
 
   const getOwnerButtonLabel = () => {

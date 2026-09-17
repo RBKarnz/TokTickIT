@@ -277,9 +277,10 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
     // Type "Bob"
     fireEvent.change(searchInput, { target: { value: 'Bob' } });
 
-    // Filtered option "Bob Staff" appears
+    // Filtered option "Bob Staff" appears, but "Alice Staff" is not shown
     const bobOption = await screen.findByRole('button', { name: /Bob Staff/i });
     expect(bobOption).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Alice Staff/i })).not.toBeInTheDocument();
 
     // Click Bob Staff to select
     fireEvent.click(bobOption);
