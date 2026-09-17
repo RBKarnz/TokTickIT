@@ -24,9 +24,11 @@ export default function StaffTicketQueuePage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [sort, setSort] = useState('updated_desc');
-  const [selectedOwner, setSelectedOwner] = useState(''); // "" = all, "unassigned", or user id
-  const [ownerSearch, setOwnerSearch] = useState('');
+  // selectedOwner: "" (all) | "assigned" | "unassigned" | string(staffId)
+  const [selectedOwner, setSelectedOwner] = useState('');
   const [isOwnerDropdownOpen, setIsOwnerDropdownOpen] = useState(false);
+  const [isStaffSubmenuOpen, setIsStaffSubmenuOpen] = useState(false);
+  const [staffSearch, setStaffSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
@@ -40,6 +42,7 @@ export default function StaffTicketQueuePage() {
     function handleClickOutside(event: MouseEvent) {
       if (ownerDropdownRef.current && !ownerDropdownRef.current.contains(event.target as Node)) {
         setIsOwnerDropdownOpen(false);
+        setIsStaffSubmenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -73,8 +76,16 @@ export default function StaffTicketQueuePage() {
     setLoading(true);
     setError('');
     try {
-      const ownership = selectedOwner === 'unassigned' ? 'unassigned' : undefined;
-      const ownerId = selectedOwner && selectedOwner !== 'unassigned' ? parseInt(selectedOwner, 10) : undefined;
+      let ownership: 'assigned' | 'unassigned' | undefined = undefined;
+      let ownerId: number | undefined = undefined;
+
+      if (selectedOwner === 'assigned') {
+        ownership = 'assigned';
+      } else if (selectedOwner === 'unassigned') {
+        ownership = 'unassigned';
+      } else if (selectedOwner) {
+        ownerId = parseInt(selectedOwner, 10);
+      }
 
       const data = await fetchStaffQueue({
         search: debouncedSearch,
@@ -110,78 +121,30 @@ export default function StaffTicketQueuePage() {
     setSelectedStatus('');
     setSort('updated_desc');
     setSelectedOwner('');
-    setOwnerSearch('');
+    setStaffSearch('');
     setIsOwnerDropdownOpen(false);
+    setIsStaffSubmenuOpen(false);
     setStartDate('');
     setEndDate('');
     setPage(1);
   };
 
-  const handleOwnerChange = (val: string) => {
-    setOwnerSearch(val);
-    setIsOwnerDropdownOpen(true);
-    const trimmed = val.trim().toLowerCase();
-    if (!trimmed || trimmed === 'all' || trimmed === 'all owners') {
-      setSelectedOwner('');
-      setPage(1);
-      return;
-    }
-    if (trimmed === 'unassigned') {
-      setSelectedOwner('unassigned');
-      setPage(1);
-      return;
-    }
-    const byId = staffUsers.find((u) => u.id.toString() === val.trim());
-    if (byId) {
-      setSelectedOwner(byId.id.toString());
-      setOwnerSearch(byId.name);
-      setPage(1);
-      return;
-    }
-    const byName = staffUsers.find((u) => u.name.toLowerCase() === trimmed);
-    if (byName) {
-      setSelectedOwner(byName.id.toString());
-      setPage(1);
-      return;
-    }
-  };
-
-  const handleOwnerInputSubmit = (value: string) => {
-    const trimmed = value.trim().toLowerCase();
-    if (!trimmed || trimmed === 'all' || trimmed === 'all owners') {
-      setSelectedOwner('');
-      setOwnerSearch('');
-      setIsOwnerDropdownOpen(false);
-      setPage(1);
-    } else if (trimmed === 'unassigned') {
-      setSelectedOwner('unassigned');
-      setOwnerSearch('Unassigned');
-      setIsOwnerDropdownOpen(false);
-      setPage(1);
-    } else {
-      const match = staffUsers.find(
-        (u) => u.name.toLowerCase() === trimmed || u.name.toLowerCase().includes(trimmed)
-      );
-      if (match) {
-        setSelectedOwner(match.id.toString());
-        setOwnerSearch(match.name);
-        setIsOwnerDropdownOpen(false);
-        setPage(1);
-      }
-    }
-  };
-
   const filteredStaff = staffUsers.filter(
     (u) =>
-      u.name.toLowerCase().includes(ownerSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(ownerSearch.toLowerCase())
+      u.name.toLowerCase().includes(staffSearch.toLowerCase()) ||
+      u.email.toLowerCase().includes(staffSearch.toLowerCase())
   );
 
-  const showAllOption = !ownerSearch || 'all owners'.includes(ownerSearch.toLowerCase());
-  const showUnassignedOption = !ownerSearch || 'unassigned'.includes(ownerSearch.toLowerCase());
+  const getOwnerButtonLabel = () => {
+    if (!selectedOwner) return 'All Owners';
+    if (selectedOwner === 'assigned') return 'Assigned';
+    if (selectedOwner === 'unassigned') return 'Unassigned';
+    const found = staffUsers.find((u) => u.id.toString() === selectedOwner);
+    return found ? found.name : 'All Owners';
+  };
 
   const hasActiveFilters = Boolean(
-    debouncedSearch || selectedCategory || selectedStatus || selectedOwner || ownerSearch || startDate || endDate || sort !== 'updated_desc'
+    debouncedSearch || selectedCategory || selectedStatus || selectedOwner || startDate || endDate || sort !== 'updated_desc'
   );
 
   // Normalize status string for getStatusBadge
@@ -252,112 +215,166 @@ export default function StaffTicketQueuePage() {
               </select>
             </div>
 
-            {/* Owner Filter (Searchable Combobox) */}
+            {/* Owner Filter (Fixed 4 options: All, Assigned, Unassigned, By Staff Member with side flyout) */}
             <div className="col-6 col-md-2 position-relative" ref={ownerDropdownRef}>
-              <div className="input-group">
-                <input
-                  role="combobox"
-                  aria-expanded={isOwnerDropdownOpen}
-                  aria-autocomplete="list"
-                  aria-label="Owner"
-                  type="text"
-                  className="form-control bg-white"
-                  placeholder="All Owners"
-                  value={ownerSearch}
-                  onChange={(e) => handleOwnerChange(e.target.value)}
-                  onFocus={() => setIsOwnerDropdownOpen(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleOwnerInputSubmit(ownerSearch);
-                    } else if (e.key === 'Escape') {
-                      setIsOwnerDropdownOpen(false);
-                    }
-                  }}
-                  style={{ borderColor: '#CED4DA' }}
-                />
-                <button
-                  className="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
-                  type="button"
-                  tabIndex={-1}
-                  aria-label="Toggle Owner Dropdown"
-                  onClick={() => setIsOwnerDropdownOpen((prev) => !prev)}
-                  style={{ borderColor: '#CED4DA', backgroundColor: '#fff', color: '#64748B' }}
-                >
-                  <span className="visually-hidden">Toggle Dropdown</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                role="combobox"
+                aria-label="Owner"
+                aria-expanded={isOwnerDropdownOpen}
+                aria-haspopup="listbox"
+                className="form-select text-start d-flex justify-content-between align-items-center bg-white"
+                onClick={() => {
+                  setIsOwnerDropdownOpen((prev) => !prev);
+                  if (isOwnerDropdownOpen) setIsStaffSubmenuOpen(false);
+                }}
+                style={{ borderColor: '#CED4DA', cursor: 'pointer', height: '38px' }}
+              >
+                <span className="text-truncate">{getOwnerButtonLabel()}</span>
+              </button>
 
               {isOwnerDropdownOpen && (
                 <ul
-                  className="dropdown-menu show w-100 shadow-sm"
+                  className="dropdown-menu show shadow-sm"
                   style={{
-                    maxHeight: '220px',
-                    overflowY: 'auto',
+                    minWidth: '200px',
                     zIndex: 1050,
                     position: 'absolute',
                     top: '100%',
                     left: 0,
                   }}
                 >
-                  {showAllOption && (
-                    <li>
-                      <button
-                        type="button"
-                        className={`dropdown-item ${selectedOwner === '' ? 'active' : ''}`}
-                        style={selectedOwner === '' ? { backgroundColor: '#0B7A46' } : {}}
-                        onClick={() => {
-                          setSelectedOwner('');
-                          setOwnerSearch('');
-                          setIsOwnerDropdownOpen(false);
-                          setPage(1);
+                  <li>
+                    <button
+                      type="button"
+                      className={`dropdown-item ${!selectedOwner ? 'active' : ''}`}
+                      style={!selectedOwner ? { backgroundColor: '#0B7A46' } : {}}
+                      onClick={() => {
+                        setSelectedOwner('');
+                        setIsOwnerDropdownOpen(false);
+                        setIsStaffSubmenuOpen(false);
+                        setPage(1);
+                      }}
+                    >
+                      All Owners
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      className={`dropdown-item ${selectedOwner === 'assigned' ? 'active' : ''}`}
+                      style={selectedOwner === 'assigned' ? { backgroundColor: '#0B7A46' } : {}}
+                      onClick={() => {
+                        setSelectedOwner('assigned');
+                        setIsOwnerDropdownOpen(false);
+                        setIsStaffSubmenuOpen(false);
+                        setPage(1);
+                      }}
+                    >
+                      Assigned
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      className={`dropdown-item ${selectedOwner === 'unassigned' ? 'active' : ''}`}
+                      style={selectedOwner === 'unassigned' ? { backgroundColor: '#0B7A46' } : {}}
+                      onClick={() => {
+                        setSelectedOwner('unassigned');
+                        setIsOwnerDropdownOpen(false);
+                        setIsStaffSubmenuOpen(false);
+                        setPage(1);
+                      }}
+                    >
+                      Unassigned
+                    </button>
+                  </li>
+
+                  <li><hr className="dropdown-divider my-1" /></li>
+
+                  {/* 4. Block for filter by staff name with side flyout */}
+                  <li
+                    className="position-relative"
+                    onMouseEnter={() => setIsStaffSubmenuOpen(true)}
+                  >
+                    <button
+                      type="button"
+                      className={`dropdown-item d-flex justify-content-between align-items-center ${
+                        selectedOwner && selectedOwner !== 'assigned' && selectedOwner !== 'unassigned'
+                          ? 'active'
+                          : ''
+                      }`}
+                      style={
+                        selectedOwner && selectedOwner !== 'assigned' && selectedOwner !== 'unassigned'
+                          ? { backgroundColor: '#0B7A46' }
+                          : {}
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsStaffSubmenuOpen((prev) => !prev);
+                      }}
+                    >
+                      <span>By Staff Member</span>
+                      <i className="bi bi-chevron-right ms-2 small"></i>
+                    </button>
+
+                    {/* Side Flyout Submenu (Like Image 2) */}
+                    {isStaffSubmenuOpen && (
+                      <div
+                        className="dropdown-menu show shadow-sm"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: '100%',
+                          minWidth: '220px',
+                          zIndex: 1060,
                         }}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        All Owners
-                      </button>
-                    </li>
-                  )}
-                  {showUnassignedOption && (
-                    <li>
-                      <button
-                        type="button"
-                        className={`dropdown-item ${selectedOwner === 'unassigned' ? 'active' : ''}`}
-                        style={selectedOwner === 'unassigned' ? { backgroundColor: '#0B7A46' } : {}}
-                        onClick={() => {
-                          setSelectedOwner('unassigned');
-                          setOwnerSearch('Unassigned');
-                          setIsOwnerDropdownOpen(false);
-                          setPage(1);
-                        }}
-                      >
-                        Unassigned
-                      </button>
-                    </li>
-                  )}
-                  {(showAllOption || showUnassignedOption) && filteredStaff.length > 0 && (
-                    <li><hr className="dropdown-divider my-1" /></li>
-                  )}
-                  {filteredStaff.map((u) => (
-                    <li key={u.id}>
-                      <button
-                        type="button"
-                        className={`dropdown-item ${selectedOwner === u.id.toString() ? 'active' : ''}`}
-                        style={selectedOwner === u.id.toString() ? { backgroundColor: '#0B7A46' } : {}}
-                        onClick={() => {
-                          setSelectedOwner(u.id.toString());
-                          setOwnerSearch(u.name);
-                          setIsOwnerDropdownOpen(false);
-                          setPage(1);
-                        }}
-                      >
-                        <i className="bi bi-person me-2 text-muted"></i>
-                        {u.name}
-                      </button>
-                    </li>
-                  ))}
-                  {!showAllOption && !showUnassignedOption && filteredStaff.length === 0 && (
-                    <li className="px-3 py-2 text-muted small">No owners found</li>
-                  )}
+                        <div className="p-2 border-bottom bg-light">
+                          <div className="input-group input-group-sm">
+                            <span className="input-group-text bg-white border-end-0">
+                              <i className="bi bi-search text-muted"></i>
+                            </span>
+                            <input
+                              type="text"
+                              className="form-control border-start-0 ps-0"
+                              placeholder="Search staff name..."
+                              value={staffSearch}
+                              onChange={(e) => setStaffSearch(e.target.value)}
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                          {filteredStaff.length > 0 ? (
+                            filteredStaff.map((u) => (
+                              <button
+                                key={u.id}
+                                type="button"
+                                className={`dropdown-item d-flex align-items-center py-2 ${
+                                  selectedOwner === u.id.toString() ? 'active' : ''
+                                }`}
+                                style={selectedOwner === u.id.toString() ? { backgroundColor: '#0B7A46' } : {}}
+                                onClick={() => {
+                                  setSelectedOwner(u.id.toString());
+                                  setIsOwnerDropdownOpen(false);
+                                  setIsStaffSubmenuOpen(false);
+                                  setPage(1);
+                                }}
+                              >
+                                <i className="bi bi-person me-2 text-muted"></i>
+                                <span className="text-truncate">{u.name}</span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-muted small">No staff found</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </li>
                 </ul>
               )}
             </div>

@@ -246,7 +246,7 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
     });
   });
 
-  it('UI-21: Supports typing in Owner combobox to search and filter owners', async () => {
+  it('UI-21: Supports fixed 4 options and searching staff in side flyout', async () => {
     const fetchSpy = vi.spyOn(api, 'fetchStaffQueue').mockResolvedValue({
       items: mockTickets,
       pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 },
@@ -254,13 +254,30 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
 
     renderQueue();
 
-    const ownerInput = await screen.findByRole('combobox', { name: /^owner$/i });
-    expect(ownerInput).toBeInTheDocument();
+    const ownerButton = await screen.findByRole('combobox', { name: /^owner$/i });
+    expect(ownerButton).toBeInTheDocument();
 
-    // Type "Bob" in owner input
-    fireEvent.change(ownerInput, { target: { value: 'Bob' } });
+    // Click owner dropdown button
+    fireEvent.click(ownerButton);
 
-    // Filtered option "Bob Staff" appears in dropdown
+    // Verify the fixed options are displayed
+    expect(screen.getByRole('button', { name: /^all owners$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^assigned$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^unassigned$/i })).toBeInTheDocument();
+    const byStaffBtn = screen.getByRole('button', { name: /by staff member/i });
+    expect(byStaffBtn).toBeInTheDocument();
+
+    // Click "By Staff Member" to open the side flyout
+    fireEvent.click(byStaffBtn);
+
+    // Search input appears in side flyout
+    const searchInput = await screen.findByPlaceholderText('Search staff name...');
+    expect(searchInput).toBeInTheDocument();
+
+    // Type "Bob"
+    fireEvent.change(searchInput, { target: { value: 'Bob' } });
+
+    // Filtered option "Bob Staff" appears
     const bobOption = await screen.findByRole('button', { name: /Bob Staff/i });
     expect(bobOption).toBeInTheDocument();
 
