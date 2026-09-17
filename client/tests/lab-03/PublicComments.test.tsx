@@ -11,7 +11,7 @@ const mockUser = {
   id: 1,
   name: 'Jennifer Anderson',
   email: 'requester1@toktickit.com',
-  role: 'REQUESTER',
+  role: 'REQUESTER' as const,
   mustChangePassword: false,
 };
 
