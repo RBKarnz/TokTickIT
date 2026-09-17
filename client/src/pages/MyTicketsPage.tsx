@@ -32,6 +32,7 @@ export default function MyTicketsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   // Debounce search
@@ -54,7 +55,8 @@ export default function MyTicketsPage() {
         sort: sort,
         startDate: startDate,
         endDate: endDate,
-        page: page
+        page: page,
+        limit: pageSize,
       });
       setTickets(data?.data || []);
       setTotalPages(data?.pagination?.totalPages || 1);
@@ -63,7 +65,7 @@ export default function MyTicketsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, debouncedSearch, selectedCategory, selectedStatus, sort, startDate, endDate, page]);
+  }, [user, debouncedSearch, selectedCategory, selectedStatus, sort, startDate, endDate, page, pageSize]);
 
   useEffect(() => {
     loadTickets();
@@ -217,39 +219,70 @@ export default function MyTicketsPage() {
             ))}
           </div>
 
-          {/* Pagination */}
+          {/* Pagination (with per-page selector on left and page navigation on right) */}
           {totalPages > 1 && (
-            <div className="d-flex justify-content-center mt-4">
-              <nav>
-                <ul className="pagination">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 gap-3">
+              <div className="d-flex align-items-center gap-2">
+                <label htmlFor="requester-page-size" className="text-muted small mb-0">Per page:</label>
+                <select
+                  id="requester-page-size"
+                  aria-label="Per page:"
+                  className="form-select form-select-sm"
+                  style={{ width: 'auto' }}
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(parseInt(e.target.value, 10));
+                    setPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
+              <nav aria-label="Ticket pagination">
+                <ul className="pagination mb-0">
                   <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</button>
+                    <button className="page-link" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                      Previous
+                    </button>
                   </li>
-                  
+
                   {(() => {
                     const items: (number | string)[] = [];
-                    if (totalPages <= 10) {
+                    if (totalPages <= 6) {
                       for (let i = 1; i <= totalPages; i++) items.push(i);
                     } else if (page <= 4) {
-                      items.push(1, 2, 3, 4, 5, 6, '...right', totalPages - 1, totalPages);
+                      const end = Math.min(6, totalPages - 2);
+                      for (let i = 1; i <= end; i++) items.push(i);
+                      items.push('...right');
+                      items.push(totalPages - 1, totalPages);
                     } else if (page >= totalPages - 3) {
-                      items.push(1, 2, '...left', totalPages - 5, totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                      items.push(1, 2);
+                      items.push('...left');
+                      const start = Math.max(3, totalPages - 5);
+                      for (let i = start; i <= totalPages; i++) items.push(i);
                     } else {
-                      items.push(1, 2, '...left', page - 1, page, page + 1, '...right', totalPages - 1, totalPages);
+                      items.push(1, 2);
+                      items.push('...left');
+                      items.push(page - 1, page, page + 1);
+                      items.push('...right');
+                      items.push(totalPages - 1, totalPages);
                     }
 
                     return items.map((item, index) => {
                       if (typeof item === 'string') {
                         return (
                           <li key={`ellipsis-${index}`} className="page-item">
-                            <input 
-                              type="text" 
-                              className="page-link text-center px-1" 
+                            <input
+                              type="text"
+                              className="page-link text-center px-1"
                               style={{ width: '50px', height: '100%', color: '#6c757d', outline: 'none', boxShadow: 'none' }}
                               placeholder="..."
-                              onKeyDown={e => {
+                              onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                  const val = parseInt((e.target as HTMLInputElement).value);
+                                  const val = parseInt((e.target as HTMLInputElement).value, 10);
                                   if (!isNaN(val) && val >= 1 && val <= totalPages) {
                                     setPage(val);
                                   }
@@ -261,13 +294,13 @@ export default function MyTicketsPage() {
                           </li>
                         );
                       }
-                      
+
                       return (
                         <li key={item} className={`page-item ${page === item ? 'active' : ''}`}>
-                          <button 
-                            className="page-link" 
-                            onClick={() => setPage(item)} 
-                            style={page === item ? { backgroundColor: '#0B7A46', borderColor: '#0B7A46' } : {}}
+                          <button
+                            className="page-link"
+                            onClick={() => setPage(item as number)}
+                            style={page === item ? { backgroundColor: '#0B7A46', borderColor: '#0B7A46', color: '#fff' } : {}}
                           >
                             {item}
                           </button>
@@ -277,7 +310,9 @@ export default function MyTicketsPage() {
                   })()}
 
                   <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
+                    <button className="page-link" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                      Next
+                    </button>
                   </li>
                 </ul>
               </nav>

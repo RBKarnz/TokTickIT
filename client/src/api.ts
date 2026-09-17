@@ -92,6 +92,8 @@ export async function fetchMyTickets(paramsOrId?: any, maybeParams?: any) {
   if (params.startDate) query.append('startDate', params.startDate);
   if (params.endDate) query.append('endDate', params.endDate);
   if (params.page) query.append('page', params.page.toString());
+  if (params.limit) query.append('limit', params.limit.toString());
+  if (params.pageSize) query.append('limit', params.pageSize.toString());
   
   const res = await fetch(`${API_URL}/api/tickets?${query.toString()}`, {
     credentials: 'include',
