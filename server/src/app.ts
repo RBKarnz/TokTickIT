@@ -408,10 +408,12 @@ app.get('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req,
   }
 });
 
-app.get('/api/tickets/:id', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
-  const requesterId = req.sessionUser!.id;
-  const ticketId = parseInt(req.params.id);
+app.get('/api/tickets/:id', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role === 'ADMINISTRATOR') {
+    return res.status(403).json({ error: { code: "FORBIDDEN", message: "Administrators cannot view tickets." } });
+  }
 
+  const ticketId = parseInt(req.params.id);
   if (isNaN(ticketId)) {
     return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Invalid ticket ID" } });
   }
@@ -424,13 +426,18 @@ app.get('/api/tickets/:id', requireNormalAuth, requireRole('REQUESTER'), async (
         category: true,
         relatedSystem: true,
         requester: true,
+        owner: true,
         attachments: {
           orderBy: { uploadedAt: 'desc' }
         }
       }
     });
 
-    if (!ticket || ticket.requesterId !== requesterId) {
+    if (!ticket) {
+      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
+    }
+
+    if (req.sessionUser!.role === 'REQUESTER' && ticket.requesterId !== req.sessionUser!.id) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
     }
 
@@ -521,16 +528,28 @@ app.get('/api/attachments/:id', requireNormalAuth, requireRole('REQUESTER'), asy
   }
 });
 
-app.get('/api/attachments/:id/download', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
+app.get('/api/attachments/:id/download', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role === 'ADMINISTRATOR') {
+    return res.status(403).json({ error: { code: "FORBIDDEN", message: "Forbidden" } });
+  }
   try {
-    const result = await getOwnedAttachment(parseInt(req.params.id), req.sessionUser!.id);
-    if (result.error) return res.status(result.error.status).json({ error: { code: result.error.code, message: result.error.message } });
+    const attachmentId = parseInt(req.params.id);
+    const attachment = await getPrisma().attachment.findUnique({
+      where: { id: attachmentId },
+      include: { ticket: true },
+    });
+    if (!attachment || attachment.isRemoved) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Attachment not found' } });
+    }
+    if (req.sessionUser!.role === 'REQUESTER' && attachment.ticket.requesterId !== req.sessionUser!.id) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Attachment not found' } });
+    }
 
-    const filePath = path.join(process.cwd(), 'uploads', result.attachment.storedFilename);
+    const filePath = path.join(process.cwd(), 'uploads', attachment.storedFilename);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "File missing on disk" } });
     }
-    res.download(filePath, result.attachment.originalFilename);
+    res.download(filePath, attachment.originalFilename);
   } catch {
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to download attachment" } });
   }
@@ -779,6 +798,290 @@ app.post('/api/tickets/:id/problem-appears-resolved', requireNormalAuth, async (
   } catch (error) {
     console.error('Error marking problem as resolved:', error);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to mark problem as resolved' } });
+  }
+});
+
+// Status display mappings per Lab 3 specification
+export const STATUS_TO_LABEL: Record<string, string> = {
+  NEW: 'New',
+  OPEN: 'Open',
+  IN_PROGRESS: 'In Progress',
+  WAITING_FOR_REQUESTER: 'Waiting for Requester',
+  RESOLVED: 'Resolved',
+  CLOSED: 'Closed',
+  REOPENED: 'Reopened',
+  CANCELLED: 'Cancelled',
+};
+
+export const LABEL_TO_STATUS: Record<string, string> = Object.entries(STATUS_TO_LABEL).reduce(
+  (acc, [k, v]) => ({ ...acc, [v.toLowerCase()]: k, [k.toLowerCase()]: k }),
+  {} as Record<string, string>
+);
+
+// GET /api/staff/users - Active IT Staff users for dropdowns
+app.get('/api/staff/users', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role !== 'IT_STAFF' && req.sessionUser!.role !== 'ADMINISTRATOR') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Forbidden' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const users = await prisma.user.findMany({
+      where: { role: 'IT_STAFF', isActive: true },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
+    });
+    res.json({ users });
+  } catch (error) {
+    console.error('Error fetching staff users:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch staff users' } });
+  }
+});
+
+// GET /api/staff/tickets - IT Staff Ticket Queue with search, filters, sorting & pagination
+app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role !== 'IT_STAFF') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can access the ticket queue.' } });
+  }
+
+  try {
+    let page = 1;
+    let pageSize = 20;
+    let sortBy = 'updatedAt';
+    let sortOrder: 'asc' | 'desc' = 'desc';
+
+    // Type-guards & Query Parameter Validations (API-26)
+    if (req.query.search !== undefined) {
+      if (typeof req.query.search !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid search parameter.' } });
+      }
+    }
+
+    if (req.query.page !== undefined) {
+      if (typeof req.query.page !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid page parameter.' } });
+      }
+      const parsedPage = parseInt(req.query.page, 10);
+      if (isNaN(parsedPage) || parsedPage < 1 || String(parsedPage) !== req.query.page.trim()) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid page parameter.' } });
+      }
+      page = parsedPage;
+    }
+
+    if (req.query.pageSize !== undefined) {
+      if (typeof req.query.pageSize !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid pageSize parameter.' } });
+      }
+      const parsedPageSize = parseInt(req.query.pageSize, 10);
+      if (![10, 20, 50].includes(parsedPageSize) || String(parsedPageSize) !== req.query.pageSize.trim()) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'pageSize must be 10, 20, or 50.' } });
+      }
+      pageSize = parsedPageSize;
+    }
+
+    let mappedStatus: string | undefined;
+    if (req.query.status !== undefined) {
+      if (typeof req.query.status !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid status parameter.' } });
+      }
+      mappedStatus = LABEL_TO_STATUS[req.query.status.trim().toLowerCase()];
+      if (!mappedStatus) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid status parameter.' } });
+      }
+    }
+
+    let requestedPriority: string | undefined;
+    if (req.query.requestedPriority !== undefined) {
+      if (typeof req.query.requestedPriority !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid requestedPriority parameter.' } });
+      }
+      const normalizedPriority = req.query.requestedPriority.trim().toUpperCase();
+      if (!['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(normalizedPriority)) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid requestedPriority parameter.' } });
+      }
+      requestedPriority = normalizedPriority;
+    }
+
+    let itPriority: string | undefined;
+    if (req.query.itPriority !== undefined) {
+      if (typeof req.query.itPriority !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid itPriority parameter.' } });
+      }
+      const normalizedItPriority = req.query.itPriority.trim().toUpperCase();
+      if (!['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'UNASSIGNED'].includes(normalizedItPriority)) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid itPriority parameter.' } });
+      }
+      itPriority = normalizedItPriority;
+    }
+
+    let ownership: string | undefined;
+    if (req.query.ownership !== undefined) {
+      if (typeof req.query.ownership !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ownership parameter.' } });
+      }
+      const normalizedOwnership = req.query.ownership.trim().toLowerCase();
+      if (!['assigned', 'unassigned'].includes(normalizedOwnership)) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'ownership must be assigned or unassigned.' } });
+      }
+      ownership = normalizedOwnership;
+    }
+
+    let parsedOwnerId: number | undefined;
+    if (req.query.ownerId !== undefined) {
+      if (typeof req.query.ownerId !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ownerId parameter.' } });
+      }
+      parsedOwnerId = parseInt(req.query.ownerId, 10);
+      if (isNaN(parsedOwnerId) || parsedOwnerId < 1 || String(parsedOwnerId) !== req.query.ownerId.trim()) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ownerId parameter.' } });
+      }
+    }
+
+    if (req.query.sort !== undefined && typeof req.query.sort === 'string') {
+      const s = req.query.sort.trim();
+      if (s === 'updated_desc') { sortBy = 'updatedAt'; sortOrder = 'desc'; }
+      else if (s === 'newest') { sortBy = 'createdAt'; sortOrder = 'desc'; }
+      else if (s === 'oldest') { sortBy = 'createdAt'; sortOrder = 'asc'; }
+      else if (s === 'priority') { sortBy = 'itPriority'; sortOrder = 'desc'; }
+      else if (s === 'priority_asc') { sortBy = 'itPriority'; sortOrder = 'asc'; }
+    }
+
+    if (req.query.sortBy !== undefined) {
+      if (typeof req.query.sortBy !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid sortBy parameter.' } });
+      }
+      const allowedSort = ['createdAt', 'updatedAt', 'requestedPriority', 'itPriority', 'status', 'ticketNumber', 'category', 'owner'];
+      if (!allowedSort.includes(req.query.sortBy.trim())) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid sortBy parameter.' } });
+      }
+      sortBy = req.query.sortBy.trim();
+    }
+
+    if (req.query.sortOrder !== undefined) {
+      if (typeof req.query.sortOrder !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid sortOrder parameter.' } });
+      }
+      const normalizedOrder = req.query.sortOrder.trim().toLowerCase();
+      if (!['asc', 'desc'].includes(normalizedOrder)) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'sortOrder must be asc or desc.' } });
+      }
+      sortOrder = normalizedOrder as 'asc' | 'desc';
+    }
+
+    // Build Where Clause
+    const where: any = {};
+
+    if (typeof req.query.search === 'string' && req.query.search.trim()) {
+      const searchTerm = req.query.search.trim();
+      where.OR = [
+        { ticketNumber: { contains: searchTerm, mode: 'insensitive' } },
+        { summary: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
+
+    if (req.query.categoryId !== undefined) {
+      if (typeof req.query.categoryId !== 'string') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid categoryId parameter.' } });
+      }
+      const parsedCatId = parseInt(req.query.categoryId, 10);
+      if (!isNaN(parsedCatId)) {
+        where.categoryId = parsedCatId;
+      }
+    }
+
+    if (req.query.startDate || req.query.endDate) {
+      where.updatedAt = {};
+      if (req.query.startDate && typeof req.query.startDate === 'string') {
+        where.updatedAt.gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate && typeof req.query.endDate === 'string') {
+        const end = new Date(req.query.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.updatedAt.lte = end;
+      }
+    }
+
+    if (mappedStatus) {
+      where.currentStatus = mappedStatus;
+    }
+
+    if (requestedPriority) {
+      where.requestedPriority = requestedPriority;
+    }
+
+    if (itPriority) {
+      where.itPriority = itPriority;
+    }
+
+    if (ownership === 'assigned') {
+      where.ownerId = { not: null };
+    } else if (ownership === 'unassigned') {
+      where.ownerId = null;
+    }
+
+    if (parsedOwnerId !== undefined) {
+      where.ownerId = parsedOwnerId;
+    }
+
+    // Deterministic Sorting with Secondary Tie-Breaker
+    let primaryOrder: any;
+    if (sortBy === 'status') {
+      primaryOrder = { currentStatus: sortOrder };
+    } else if (sortBy === 'category') {
+      primaryOrder = { category: { name: sortOrder } };
+    } else if (sortBy === 'owner') {
+      primaryOrder = { owner: { name: sortOrder } };
+    } else {
+      primaryOrder = { [sortBy]: sortOrder };
+    }
+
+    const orderBy: any[] = [primaryOrder];
+    if (sortBy !== 'ticketNumber') {
+      orderBy.push({ ticketNumber: 'desc' });
+    }
+
+    const prisma = getPrisma();
+    const [totalItems, tickets] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          category: { select: { name: true } },
+          owner: { select: { id: true, name: true } },
+        },
+      }),
+    ]);
+
+    const totalPages = totalItems === 0 ? 0 : Math.ceil(totalItems / pageSize);
+
+    const items = tickets.map((t) => ({
+      id: t.id,
+      ticketNumber: t.ticketNumber,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+      summary: t.summary,
+      category: t.category?.name || 'Uncategorized',
+      requestedPriority: t.requestedPriority,
+      itPriority: t.itPriority,
+      status: STATUS_TO_LABEL[t.currentStatus] || t.currentStatus,
+      owner: t.owner ? { id: t.owner.id, name: t.owner.name } : null,
+    }));
+
+    res.status(200).json({
+      items,
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching staff tickets:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch staff tickets' } });
   }
 });
 

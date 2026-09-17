@@ -160,7 +160,16 @@ export default function TicketDetailPage() {
 
   if (error) {
     const isNotFound = error.toLowerCase().includes('not found');
-    
+    const isAccessDenied = !isNotFound && (error.toLowerCase().includes('access denied') || error.toLowerCase().includes('forbidden') || error.toLowerCase().includes('permission'));
+    const isStaff = user?.role === 'IT_STAFF';
+
+    let errorDetail = error;
+    if (isNotFound) {
+      errorDetail = 'The requested ticket could not be found or may have been deleted.';
+    } else if (isAccessDenied) {
+      errorDetail = 'You do not have permission to view or manage this ticket.';
+    }
+
     return (
       <div className="container py-5 d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
         <div className="card shadow border-danger" style={{ maxWidth: '600px', width: '100%' }}>
@@ -169,9 +178,12 @@ export default function TicketDetailPage() {
             <h2 className="mt-3 text-danger fw-bold">
               {isNotFound ? 'Ticket Not Found' : 'Access Denied'}
             </h2>
-            <p className="lead text-muted mt-3 mb-4">{error}</p>
-            <Link to="/" className="btn btn-outline-danger px-4 py-2 fw-bold">
-              <i className="bi bi-arrow-left me-2"></i> Return to My Tickets
+            <p className="lead text-muted mt-3 mb-4">{errorDetail}</p>
+            <Link
+              to={isStaff ? '/staff/queue' : '/'}
+              className="btn btn-outline-danger px-4 py-2 fw-bold"
+            >
+              <i className="bi bi-arrow-left me-2"></i> {isStaff ? 'Return to Ticket Queue' : 'Return to My Tickets'}
             </Link>
           </div>
         </div>
@@ -199,14 +211,24 @@ export default function TicketDetailPage() {
           <nav aria-label="breadcrumb">
             <ol className="breadcrumb mb-0">
               <li className="breadcrumb-item">
-                <Link to="/" className="text-decoration-none" style={{ color: '#0B7A46' }}>My Tickets</Link>
+                <Link
+                  to={user?.role === 'IT_STAFF' ? '/staff/queue' : '/'}
+                  className="text-decoration-none"
+                  style={{ color: '#0B7A46' }}
+                >
+                  {user?.role === 'IT_STAFF' ? 'Ticket Queue' : 'My Tickets'}
+                </Link>
               </li>
               <li className="breadcrumb-item active" aria-current="page" style={{ color: '#1E293B' }}>
                 {ticket.ticketNumber}
               </li>
             </ol>
           </nav>
-          <Link to="/" className="btn btn-sm btn-outline-secondary d-flex align-items-center" style={{ borderColor: '#006B3C', color: '#006B3C' }}>
+          <Link
+            to={user?.role === 'IT_STAFF' ? '/staff/queue' : '/'}
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center"
+            style={{ borderColor: '#006B3C', color: '#006B3C' }}
+          >
             <i className="bi bi-arrow-left me-2"></i> Back
           </Link>
         </div>
