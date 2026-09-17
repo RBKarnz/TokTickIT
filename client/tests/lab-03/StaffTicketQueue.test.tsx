@@ -245,4 +245,51 @@ describe('StaffTicketQueue UI Component (Lab 3)', () => {
       expect(fetchSpy).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
     });
   });
+
+  it('UI-21: Supports typing in Owner combobox to search and filter owners', async () => {
+    const fetchSpy = vi.spyOn(api, 'fetchStaffQueue').mockResolvedValue({
+      items: mockTickets,
+      pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 },
+    });
+
+    renderQueue();
+
+    const ownerInput = await screen.findByRole('combobox', { name: /^owner$/i });
+    expect(ownerInput).toBeInTheDocument();
+
+    // Type "Bob" in owner input
+    fireEvent.change(ownerInput, { target: { value: 'Bob' } });
+
+    // Filtered option "Bob Staff" appears in dropdown
+    const bobOption = await screen.findByRole('button', { name: /Bob Staff/i });
+    expect(bobOption).toBeInTheDocument();
+
+    // Click Bob Staff to select
+    fireEvent.click(bobOption);
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(expect.objectContaining({ ownerId: 6 }));
+    });
+  });
+
+  it('UI-22: Renders ellipsis jump input when totalPages > 6 and jumps to entered page', async () => {
+    const fetchSpy = vi.spyOn(api, 'fetchStaffQueue').mockResolvedValue({
+      items: mockTickets,
+      pagination: { page: 1, pageSize: 20, totalItems: 180, totalPages: 9 },
+    });
+
+    renderQueue();
+
+    // Find the ellipsis jump input
+    const ellipsisInput = await screen.findByPlaceholderText('...');
+    expect(ellipsisInput).toBeInTheDocument();
+
+    // Type page 7 and press Enter
+    fireEvent.change(ellipsisInput, { target: { value: '7' } });
+    fireEvent.keyDown(ellipsisInput, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(expect.objectContaining({ page: 7 }));
+    });
+  });
 });

@@ -25,10 +25,26 @@ export default function StaffTicketQueuePage() {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [sort, setSort] = useState('updated_desc');
   const [selectedOwner, setSelectedOwner] = useState(''); // "" = all, "unassigned", or user id
+  const [ownerSearch, setOwnerSearch] = useState('');
+  const [isOwnerDropdownOpen, setIsOwnerDropdownOpen] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
+
+  const ownerDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close owner dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ownerDropdownRef.current && !ownerDropdownRef.current.contains(event.target as Node)) {
+        setIsOwnerDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Data state
   const [tickets, setTickets] = useState<StaffQueueTicket[]>([]);
@@ -70,6 +86,7 @@ export default function StaffTicketQueuePage() {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         page,
+        pageSize,
       });
 
       setTickets(data?.items || []);
@@ -79,7 +96,7 @@ export default function StaffTicketQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedCategory, selectedStatus, sort, selectedOwner, startDate, endDate, page]);
+  }, [debouncedSearch, selectedCategory, selectedStatus, sort, selectedOwner, startDate, endDate, page, pageSize]);
 
   useEffect(() => {
     loadQueue();
@@ -93,13 +110,78 @@ export default function StaffTicketQueuePage() {
     setSelectedStatus('');
     setSort('updated_desc');
     setSelectedOwner('');
+    setOwnerSearch('');
+    setIsOwnerDropdownOpen(false);
     setStartDate('');
     setEndDate('');
     setPage(1);
   };
 
+  const handleOwnerChange = (val: string) => {
+    setOwnerSearch(val);
+    setIsOwnerDropdownOpen(true);
+    const trimmed = val.trim().toLowerCase();
+    if (!trimmed || trimmed === 'all' || trimmed === 'all owners') {
+      setSelectedOwner('');
+      setPage(1);
+      return;
+    }
+    if (trimmed === 'unassigned') {
+      setSelectedOwner('unassigned');
+      setPage(1);
+      return;
+    }
+    const byId = staffUsers.find((u) => u.id.toString() === val.trim());
+    if (byId) {
+      setSelectedOwner(byId.id.toString());
+      setOwnerSearch(byId.name);
+      setPage(1);
+      return;
+    }
+    const byName = staffUsers.find((u) => u.name.toLowerCase() === trimmed);
+    if (byName) {
+      setSelectedOwner(byName.id.toString());
+      setPage(1);
+      return;
+    }
+  };
+
+  const handleOwnerInputSubmit = (value: string) => {
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed || trimmed === 'all' || trimmed === 'all owners') {
+      setSelectedOwner('');
+      setOwnerSearch('');
+      setIsOwnerDropdownOpen(false);
+      setPage(1);
+    } else if (trimmed === 'unassigned') {
+      setSelectedOwner('unassigned');
+      setOwnerSearch('Unassigned');
+      setIsOwnerDropdownOpen(false);
+      setPage(1);
+    } else {
+      const match = staffUsers.find(
+        (u) => u.name.toLowerCase() === trimmed || u.name.toLowerCase().includes(trimmed)
+      );
+      if (match) {
+        setSelectedOwner(match.id.toString());
+        setOwnerSearch(match.name);
+        setIsOwnerDropdownOpen(false);
+        setPage(1);
+      }
+    }
+  };
+
+  const filteredStaff = staffUsers.filter(
+    (u) =>
+      u.name.toLowerCase().includes(ownerSearch.toLowerCase()) ||
+      u.email.toLowerCase().includes(ownerSearch.toLowerCase())
+  );
+
+  const showAllOption = !ownerSearch || 'all owners'.includes(ownerSearch.toLowerCase());
+  const showUnassignedOption = !ownerSearch || 'unassigned'.includes(ownerSearch.toLowerCase());
+
   const hasActiveFilters = Boolean(
-    debouncedSearch || selectedCategory || selectedStatus || selectedOwner || startDate || endDate || sort !== 'updated_desc'
+    debouncedSearch || selectedCategory || selectedStatus || selectedOwner || ownerSearch || startDate || endDate || sort !== 'updated_desc'
   );
 
   // Normalize status string for getStatusBadge
@@ -170,20 +252,114 @@ export default function StaffTicketQueuePage() {
               </select>
             </div>
 
-            {/* Owner Filter (Merged All Owners + Unassigned) */}
-            <div className="col-6 col-md-2">
-              <select
-                aria-label="Owner"
-                className="form-select"
-                value={selectedOwner}
-                onChange={(e) => { setSelectedOwner(e.target.value); setPage(1); }}
-              >
-                <option value="">All Owners</option>
-                <option value="unassigned">Unassigned</option>
-                {staffUsers.map((u) => (
-                  <option key={u.id} value={u.id.toString()}>{u.name}</option>
-                ))}
-              </select>
+            {/* Owner Filter (Searchable Combobox) */}
+            <div className="col-6 col-md-2 position-relative" ref={ownerDropdownRef}>
+              <div className="input-group">
+                <input
+                  role="combobox"
+                  aria-expanded={isOwnerDropdownOpen}
+                  aria-autocomplete="list"
+                  aria-label="Owner"
+                  type="text"
+                  className="form-control bg-white"
+                  placeholder="All Owners"
+                  value={ownerSearch}
+                  onChange={(e) => handleOwnerChange(e.target.value)}
+                  onFocus={() => setIsOwnerDropdownOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleOwnerInputSubmit(ownerSearch);
+                    } else if (e.key === 'Escape') {
+                      setIsOwnerDropdownOpen(false);
+                    }
+                  }}
+                  style={{ borderColor: '#CED4DA' }}
+                />
+                <button
+                  className="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                  type="button"
+                  tabIndex={-1}
+                  aria-label="Toggle Owner Dropdown"
+                  onClick={() => setIsOwnerDropdownOpen((prev) => !prev)}
+                  style={{ borderColor: '#CED4DA', backgroundColor: '#fff', color: '#64748B' }}
+                >
+                  <span className="visually-hidden">Toggle Dropdown</span>
+                </button>
+              </div>
+
+              {isOwnerDropdownOpen && (
+                <ul
+                  className="dropdown-menu show w-100 shadow-sm"
+                  style={{
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    zIndex: 1050,
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                  }}
+                >
+                  {showAllOption && (
+                    <li>
+                      <button
+                        type="button"
+                        className={`dropdown-item ${selectedOwner === '' ? 'active' : ''}`}
+                        style={selectedOwner === '' ? { backgroundColor: '#0B7A46' } : {}}
+                        onClick={() => {
+                          setSelectedOwner('');
+                          setOwnerSearch('');
+                          setIsOwnerDropdownOpen(false);
+                          setPage(1);
+                        }}
+                      >
+                        All Owners
+                      </button>
+                    </li>
+                  )}
+                  {showUnassignedOption && (
+                    <li>
+                      <button
+                        type="button"
+                        className={`dropdown-item ${selectedOwner === 'unassigned' ? 'active' : ''}`}
+                        style={selectedOwner === 'unassigned' ? { backgroundColor: '#0B7A46' } : {}}
+                        onClick={() => {
+                          setSelectedOwner('unassigned');
+                          setOwnerSearch('Unassigned');
+                          setIsOwnerDropdownOpen(false);
+                          setPage(1);
+                        }}
+                      >
+                        Unassigned
+                      </button>
+                    </li>
+                  )}
+                  {(showAllOption || showUnassignedOption) && filteredStaff.length > 0 && (
+                    <li><hr className="dropdown-divider my-1" /></li>
+                  )}
+                  {filteredStaff.map((u) => (
+                    <li key={u.id}>
+                      <button
+                        type="button"
+                        className={`dropdown-item ${selectedOwner === u.id.toString() ? 'active' : ''}`}
+                        style={selectedOwner === u.id.toString() ? { backgroundColor: '#0B7A46' } : {}}
+                        onClick={() => {
+                          setSelectedOwner(u.id.toString());
+                          setOwnerSearch(u.name);
+                          setIsOwnerDropdownOpen(false);
+                          setPage(1);
+                        }}
+                      >
+                        <i className="bi bi-person me-2 text-muted"></i>
+                        {u.name}
+                      </button>
+                    </li>
+                  ))}
+                  {!showAllOption && !showUnassignedOption && filteredStaff.length === 0 && (
+                    <li className="px-3 py-2 text-muted small">No owners found</li>
+                  )}
+                </ul>
+              )}
             </div>
 
             {/* Sort Dropdown (identical to Photo 3) */}
@@ -369,10 +545,30 @@ export default function StaffTicketQueuePage() {
           </div>
 
           {/* Pagination (Exact Zen Green numbered pagination from MyTicketsPage) */}
+          {/* Pagination (Exact Zen Green numbered pagination with jump input and per-page selector) */}
           {totalPages > 1 && (
-            <div className="d-flex justify-content-center mt-4">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 gap-3">
+              <div className="d-flex align-items-center gap-2">
+                <label htmlFor="staff-page-size" className="text-muted small mb-0">Per page:</label>
+                <select
+                  id="staff-page-size"
+                  aria-label="Per page:"
+                  className="form-select form-select-sm"
+                  style={{ width: 'auto' }}
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(parseInt(e.target.value, 10));
+                    setPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
               <nav aria-label="Ticket queue navigation">
-                <ul className="pagination">
+                <ul className="pagination mb-0">
                   <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
                     <button
                       className="page-link"
@@ -385,14 +581,24 @@ export default function StaffTicketQueuePage() {
 
                   {(() => {
                     const items: (number | string)[] = [];
-                    if (totalPages <= 10) {
+                    if (totalPages <= 6) {
                       for (let i = 1; i <= totalPages; i++) items.push(i);
                     } else if (page <= 4) {
-                      items.push(1, 2, 3, 4, 5, 6, '...right', totalPages - 1, totalPages);
+                      const end = Math.min(6, totalPages - 2);
+                      for (let i = 1; i <= end; i++) items.push(i);
+                      items.push('...right');
+                      items.push(totalPages - 1, totalPages);
                     } else if (page >= totalPages - 3) {
-                      items.push(1, 2, '...left', totalPages - 5, totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                      items.push(1, 2);
+                      items.push('...left');
+                      const start = Math.max(3, totalPages - 5);
+                      for (let i = start; i <= totalPages; i++) items.push(i);
                     } else {
-                      items.push(1, 2, '...left', page - 1, page, page + 1, '...right', totalPages - 1, totalPages);
+                      items.push(1, 2);
+                      items.push('...left');
+                      items.push(page - 1, page, page + 1);
+                      items.push('...right');
+                      items.push(totalPages - 1, totalPages);
                     }
 
                     return items.map((item, index) => {
@@ -424,7 +630,7 @@ export default function StaffTicketQueuePage() {
                           <button
                             className="page-link"
                             onClick={() => setPage(item as number)}
-                            style={page === item ? { backgroundColor: '#0B7A46', borderColor: '#0B7A46' } : {}}
+                            style={page === item ? { backgroundColor: '#0B7A46', borderColor: '#0B7A46', color: '#fff' } : {}}
                           >
                             {item}
                           </button>
