@@ -580,6 +580,10 @@ app.post('/api/tickets/:id/public-comments', requireNormalAuth, async (req, res)
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content cannot exceed 4000 characters.' } });
   }
 
+  if (req.sessionUser!.role === 'ADMINISTRATOR') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Administrators are not permitted to post public comments.' } });
+  }
+
   try {
     const prisma = getPrisma();
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -646,8 +650,12 @@ app.get('/api/tickets/:id/public-comments', requireNormalAuth, async (req, res) 
   }
 });
 
-// POST /api/tickets/:id/internal-notes
-app.post('/api/tickets/:id/internal-notes', requireNormalAuth, async (req, res) => {
+// ---------------------------------------------------------------------------
+// Internal Notes (Mounted under /api/staff/tickets/:id/internal-notes per spec,
+// with /api/tickets/:id/internal-notes alias for compatibility)
+// ---------------------------------------------------------------------------
+
+const handleCreateInternalNote = async (req: express.Request, res: express.Response) => {
   if (req.sessionUser!.role === 'REQUESTER') {
     return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Requesters are not permitted to access internal notes.' } });
   }
@@ -694,10 +702,12 @@ app.post('/api/tickets/:id/internal-notes', requireNormalAuth, async (req, res) 
     console.error('Error creating internal note:', error);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create internal note' } });
   }
-});
+};
 
-// GET /api/tickets/:id/internal-notes
-app.get('/api/tickets/:id/internal-notes', requireNormalAuth, async (req, res) => {
+app.post('/api/staff/tickets/:id/internal-notes', requireNormalAuth, handleCreateInternalNote);
+app.post('/api/tickets/:id/internal-notes', requireNormalAuth, handleCreateInternalNote);
+
+const handleGetInternalNotes = async (req: express.Request, res: express.Response) => {
   if (req.sessionUser!.role === 'REQUESTER') {
     return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Requesters are not permitted to access internal notes.' } });
   }
@@ -729,7 +739,10 @@ app.get('/api/tickets/:id/internal-notes', requireNormalAuth, async (req, res) =
     console.error('Error fetching internal notes:', error);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch internal notes' } });
   }
-});
+};
+
+app.get('/api/staff/tickets/:id/internal-notes', requireNormalAuth, handleGetInternalNotes);
+app.get('/api/tickets/:id/internal-notes', requireNormalAuth, handleGetInternalNotes);
 
 // POST /api/tickets/:id/problem-appears-resolved
 app.post('/api/tickets/:id/problem-appears-resolved', requireNormalAuth, async (req, res) => {

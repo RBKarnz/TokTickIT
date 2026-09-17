@@ -211,38 +211,68 @@ describe('Comments & Notes API (Lab 3)', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 
+  it('Role Check: Administrator is rejected from creating public comments with 403 Forbidden', async () => {
+    const res = await request(app)
+      .post(`/api/tickets/${testTicket.id}/public-comments`)
+      .set('Cookie', adminCookie)
+      .send({ content: 'Administrator attempting to post public comment.' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.message).toBe('Administrators are not permitted to post public comments.');
+  });
+
   // -------------------------------------------------------------------------
   // Internal Notes & Authorization Boundaries
   // -------------------------------------------------------------------------
 
   // API-08 & API-44
   it('API-08 & API-44: Requester retrieves Internal Notes -> 403 Forbidden with zero note data', async () => {
-    const res = await request(app)
-      .get(`/api/tickets/${testTicket.id}/internal-notes`)
-      .set('Cookie', req1Cookie);
+    const [staffPathRes, aliasPathRes] = await Promise.all([
+      request(app)
+        .get(`/api/staff/tickets/${testTicket.id}/internal-notes`)
+        .set('Cookie', req1Cookie),
+      request(app)
+        .get(`/api/tickets/${testTicket.id}/internal-notes`)
+        .set('Cookie', req1Cookie),
+    ]);
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
-    expect(res.body.notes).toBeUndefined();
+    expect(staffPathRes.status).toBe(403);
+    expect(staffPathRes.body.error.code).toBe('FORBIDDEN');
+    expect(staffPathRes.body.notes).toBeUndefined();
+
+    expect(aliasPathRes.status).toBe(403);
+    expect(aliasPathRes.body.error.code).toBe('FORBIDDEN');
+    expect(aliasPathRes.body.notes).toBeUndefined();
   });
 
   // API-16
   it('API-16: Requester attempts to create Internal Note -> 403 Forbidden', async () => {
-    const res = await request(app)
-      .post(`/api/tickets/${testTicket.id}/internal-notes`)
-      .set('Cookie', req1Cookie)
-      .send({ content: 'Requester trying to write internal note' });
+    const [staffPathRes, aliasPathRes] = await Promise.all([
+      request(app)
+        .post(`/api/staff/tickets/${testTicket.id}/internal-notes`)
+        .set('Cookie', req1Cookie)
+        .send({ content: 'Requester trying to write internal note' }),
+      request(app)
+        .post(`/api/tickets/${testTicket.id}/internal-notes`)
+        .set('Cookie', req1Cookie)
+        .send({ content: 'Requester trying to write internal note' }),
+    ]);
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
-    expect(res.body.note).toBeUndefined();
+    expect(staffPathRes.status).toBe(403);
+    expect(staffPathRes.body.error.code).toBe('FORBIDDEN');
+    expect(staffPathRes.body.note).toBeUndefined();
+
+    expect(aliasPathRes.status).toBe(403);
+    expect(aliasPathRes.body.error.code).toBe('FORBIDDEN');
+    expect(aliasPathRes.body.note).toBeUndefined();
   });
 
   // API-42
-  it('API-42: Internal Note create persists for IT Staff', async () => {
+  it('API-42: Internal Note create persists for IT Staff (spec path /api/staff/tickets/:id/internal-notes)', async () => {
     const noteContent = 'Internal IT investigation note.';
     const res = await request(app)
-      .post(`/api/tickets/${testTicket.id}/internal-notes`)
+      .post(`/api/staff/tickets/${testTicket.id}/internal-notes`)
       .set('Cookie', staffCookie)
       .send({ content: noteContent });
 
@@ -257,7 +287,7 @@ describe('Comments & Notes API (Lab 3)', () => {
   // API-43
   it('API-43: Internal Note rejects empty or whitespace-only content', async () => {
     const res = await request(app)
-      .post(`/api/tickets/${testTicket.id}/internal-notes`)
+      .post(`/api/staff/tickets/${testTicket.id}/internal-notes`)
       .set('Cookie', staffCookie)
       .send({ content: '   ' });
 
@@ -267,13 +297,16 @@ describe('Comments & Notes API (Lab 3)', () => {
 
   // API-45
   it('API-45: Internal Notes retrieval for Staff and Admin -> only visible to authorized staff/admin', async () => {
-    const [staffRes, adminRes] = await Promise.all([
+    const [staffRes, adminRes, aliasRes] = await Promise.all([
+      request(app)
+        .get(`/api/staff/tickets/${testTicket.id}/internal-notes`)
+        .set('Cookie', staffCookie),
+      request(app)
+        .get(`/api/staff/tickets/${testTicket.id}/internal-notes`)
+        .set('Cookie', adminCookie),
       request(app)
         .get(`/api/tickets/${testTicket.id}/internal-notes`)
         .set('Cookie', staffCookie),
-      request(app)
-        .get(`/api/tickets/${testTicket.id}/internal-notes`)
-        .set('Cookie', adminCookie),
     ]);
 
     expect(staffRes.status).toBe(200);
@@ -283,15 +316,19 @@ describe('Comments & Notes API (Lab 3)', () => {
     expect(adminRes.status).toBe(200);
     expect(Array.isArray(adminRes.body.notes)).toBe(true);
     expect(adminRes.body.notes.length).toBeGreaterThanOrEqual(1);
+
+    expect(aliasRes.status).toBe(200);
+    expect(Array.isArray(aliasRes.body.notes)).toBe(true);
+    expect(aliasRes.body.notes.length).toBeGreaterThanOrEqual(1);
   });
 
   it('Existence check: IT Staff accessing internal notes on non-existent ticket returns 404', async () => {
     const [getRes, postRes] = await Promise.all([
       request(app)
-        .get('/api/tickets/999999/internal-notes')
+        .get('/api/staff/tickets/999999/internal-notes')
         .set('Cookie', staffCookie),
       request(app)
-        .post('/api/tickets/999999/internal-notes')
+        .post('/api/staff/tickets/999999/internal-notes')
         .set('Cookie', staffCookie)
         .send({ content: 'Note on ghost ticket' }),
     ]);
