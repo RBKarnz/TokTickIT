@@ -404,6 +404,7 @@ export default function StaffTicketQueuePage() {
               </label>
               <input
                 type="date"
+                aria-label="Start date"
                 className="form-control form-control-sm"
                 style={{ width: 'auto' }}
                 value={startDate}
@@ -412,6 +413,7 @@ export default function StaffTicketQueuePage() {
               <span className="text-muted small">to</span>
               <input
                 type="date"
+                aria-label="End date"
                 className="form-control form-control-sm"
                 style={{ width: 'auto' }}
                 value={endDate}
@@ -525,7 +527,7 @@ export default function StaffTicketQueuePage() {
                           {ticket.owner.name}
                         </span>
                       ) : (
-                        <span className="badge" style={{ backgroundColor: '#F1F5F9', color: '#64748B', border: '1px solid #CBD5E1' }}>
+                        <span className="badge" style={{ backgroundColor: '#F1F5F9', color: '#334155', border: '1px solid #CBD5E1' }}>
                           Unassigned
                         </span>
                       )}
