@@ -11,6 +11,7 @@ import {
   requireRole,
   createSession,
   revokeSession,
+  revokeAllUserSessions,
   hashToken,
   hashPassword,
   verifyPassword,
@@ -1329,4 +1330,334 @@ app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Issue Lab 3 — Administrator User Management
+// ---------------------------------------------------------------------------
+
+const ADMIN_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ADMIN_VALID_ROLES = ['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR'];
+
+// GET /api/admin/users
+app.get('/api/admin/users', requireNormalAuth, requireRole('ADMINISTRATOR'), async (req, res) => {
+  try {
+    const prisma = getPrisma();
+
+    // Query validation
+    if (req.query.role !== undefined) {
+      if (typeof req.query.role !== 'string' || !ADMIN_VALID_ROLES.includes(req.query.role.trim())) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid role query parameter.' } });
+      }
+    }
+
+    const where: any = {};
+
+    if (typeof req.query.search === 'string' && req.query.search.trim().length > 0) {
+      const q = req.query.search.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    if (typeof req.query.role === 'string' && req.query.role.trim().length > 0) {
+      where.role = req.query.role.trim();
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        id: 'asc',
+      },
+    });
+
+    res.status(200).json({ items: users });
+  } catch (error) {
+    console.error('Error fetching admin users:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch users.' } });
+  }
+});
+
+// POST /api/admin/users
+app.post('/api/admin/users', requireNormalAuth, requireRole('ADMINISTRATOR'), async (req, res) => {
+  try {
+    const { name, email, role, isActive, initialPassword, confirmInitialPassword } = req.body;
+
+    // Type-guards & required fields
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Name is required.' } });
+    }
+    if (typeof email !== 'string' || email.trim().length === 0) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Email is required.' } });
+    }
+    if (typeof role !== 'string' || role.trim().length === 0) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Role is required.' } });
+    }
+    if (typeof initialPassword !== 'string' || initialPassword.length === 0) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Initial password is required.' } });
+    }
+    if (typeof confirmInitialPassword !== 'string' || confirmInitialPassword.length === 0) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Confirm initial password is required.' } });
+    }
+
+    // isActive validation (if provided, must be boolean; no silent coercion)
+    if (isActive !== undefined && typeof isActive !== 'boolean') {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'isActive must be a boolean.' } });
+    }
+
+    // Role enum check (returns 422 per api-spec.md Section 9 line 596)
+    const trimmedRole = role.trim();
+    if (!ADMIN_VALID_ROLES.includes(trimmedRole)) {
+      return res.status(422).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid role specified.' } });
+    }
+
+    // Email format validation
+    const canonicalEmail = email.trim().toLowerCase();
+    if (!ADMIN_EMAIL_REGEX.test(canonicalEmail)) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid email format.' } });
+    }
+
+    // Passwords match check
+    if (initialPassword !== confirmInitialPassword) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Passwords do not match.' } });
+    }
+
+    // Password policy check
+    const policyError = validatePasswordPolicy(initialPassword);
+    if (policyError) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: policyError } });
+    }
+
+    const prisma = getPrisma();
+
+    // Duplicate email check (global across active and inactive accounts)
+    const existing = await prisma.user.findUnique({ where: { email: canonicalEmail } });
+    if (existing) {
+      return res.status(409).json({ error: { code: 'CONFLICT', message: 'Email is already registered.' } });
+    }
+
+    const passwordHash = await hashPassword(initialPassword);
+
+    const newUser = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: canonicalEmail,
+        role: trimmedRole as any,
+        isActive: isActive !== undefined ? isActive : true,
+        passwordHash,
+        mustChangePassword: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.status(201).json({ user: newUser });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create user.' } });
+  }
+});
+
+// PATCH /api/admin/users/:userId
+app.patch('/api/admin/users/:userId', requireNormalAuth, requireRole('ADMINISTRATOR'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid user ID.' } });
+    }
+
+    const { name, email, role, isActive } = req.body;
+
+    // Check that at least one field is provided
+    if (name === undefined && email === undefined && role === undefined && isActive === undefined) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'At least one field must be provided for update.' } });
+    }
+
+    const prisma = getPrisma();
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found.' } });
+    }
+
+    const updateData: any = {};
+
+    // Validate name
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Name cannot be empty.' } });
+      }
+      updateData.name = name.trim();
+    }
+
+    // Validate email
+    if (email !== undefined) {
+      if (typeof email !== 'string') {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Email must be a string.' } });
+      }
+      const canonicalEmail = email.trim().toLowerCase();
+      if (!ADMIN_EMAIL_REGEX.test(canonicalEmail)) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid email format.' } });
+      }
+      const existing = await prisma.user.findUnique({ where: { email: canonicalEmail } });
+      if (existing && existing.id !== userId) {
+        return res.status(409).json({ error: { code: 'CONFLICT', message: 'Email is already in use.' } });
+      }
+      updateData.email = canonicalEmail;
+    }
+
+    // Validate role
+    if (role !== undefined) {
+      if (typeof role !== 'string') {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Role must be a string.' } });
+      }
+      const trimmedRole = role.trim();
+      if (!ADMIN_VALID_ROLES.includes(trimmedRole)) {
+        return res.status(422).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid role specified.' } });
+      }
+      updateData.role = trimmedRole;
+    }
+
+    // Validate isActive
+    if (isActive !== undefined) {
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'isActive must be a boolean.' } });
+      }
+      updateData.isActive = isActive;
+    }
+
+    // AC-18: Self-deactivation restriction
+    if (isActive === false && req.sessionUser!.id === targetUser.id) {
+      return res.status(409).json({ error: { code: 'CONFLICT', message: 'Administrators cannot deactivate their own account.' } });
+    }
+
+    // AC-18: Last active Administrator protection (both deactivation and role demotion)
+    if (targetUser.role === 'ADMINISTRATOR' && targetUser.isActive === true) {
+      const willBeInactive = isActive === false;
+      const willChangeRoleAway = role !== undefined && role.trim() !== 'ADMINISTRATOR';
+
+      if (willBeInactive || willChangeRoleAway) {
+        const activeAdminCount = await prisma.user.count({
+          where: { role: 'ADMINISTRATOR', isActive: true },
+        });
+        if (activeAdminCount <= 1) {
+          return res.status(409).json({
+            error: {
+              code: 'CONFLICT',
+              message: 'Cannot deactivate or change the role of the last active Administrator in the system.',
+            },
+          });
+        }
+      }
+    }
+
+    // Session revocation when deactivating user (SEC-12)
+    if (isActive === false) {
+      await revokeAllUserSessions(targetUser.id);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.status(200).json({ user: updatedUser });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update user.' } });
+  }
+});
+
+// POST /api/admin/users/:userId/set-initial-password
+app.post('/api/admin/users/:userId/set-initial-password', requireNormalAuth, requireRole('ADMINISTRATOR'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid user ID.' } });
+    }
+
+    const { initialPassword, confirmInitialPassword } = req.body;
+
+    if (typeof initialPassword !== 'string' || initialPassword.length === 0) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Initial password is required.' } });
+    }
+    if (typeof confirmInitialPassword !== 'string' || confirmInitialPassword.length === 0) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Confirm initial password is required.' } });
+    }
+
+    if (initialPassword !== confirmInitialPassword) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Passwords do not match.' } });
+    }
+
+    const policyError = validatePasswordPolicy(initialPassword);
+    if (policyError) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: policyError } });
+    }
+
+    const prisma = getPrisma();
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found.' } });
+    }
+
+    const passwordHash = await hashPassword(initialPassword);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        mustChangePassword: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // Revoke all existing sessions for target user (SEC-12)
+    await revokeAllUserSessions(targetUser.id);
+
+    res.status(200).json({
+      message: 'Initial password set successfully. User will be required to change password on next login.',
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error('Error setting initial password:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to set initial password.' } });
+  }
+});
+
 export default app;
+

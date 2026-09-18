@@ -7,6 +7,7 @@ import MyTicketsPage from './pages/MyTicketsPage.js';
 import CreateTicketPage from './pages/CreateTicketPage.js';
 import TicketDetailPage from './pages/TicketDetailPage.js';
 import StaffTicketQueuePage from './pages/StaffTicketQueuePage.js';
+import UserManagementPage from './pages/UserManagementPage.js';
 import { logout, checkSystem, Category } from './api.js';
 
 // Home Component restoring Lab 1 functionality
@@ -162,27 +163,13 @@ function StaffQueueLanding() {
   );
 }
 
-function AdminUsersLanding() {
-  const { user } = useAuth();
-  return (
-    <div className="container py-5" style={{ maxWidth: '900px' }}>
-      <div className="card shadow-sm border-0">
-        <div className="card-body p-5">
-          <div className="d-flex align-items-center mb-3">
-            <i className="bi bi-people-fill fs-2 me-3" style={{ color: '#006B3C' }}></i>
-            <div>
-              <h2 className="h4 mb-0" style={{ color: '#1E293B' }}>Administrator User Management</h2>
-              <p className="text-muted small mb-0">Manage accounts, roles, and credentials</p>
-            </div>
-          </div>
-          <div className="alert p-4 mb-0" style={{ backgroundColor: '#EAF6EF', color: '#0B7A46', borderColor: '#A7F3D0' }}>
-            <i className="bi bi-info-circle me-2"></i>
-            Logged in as <strong>{user?.name}</strong> (Administrator). User management features are scheduled for implementation in Issue #38.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+function RequireAdmin() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
+  if (user.role !== 'ADMINISTRATOR') return <Navigate to="/" replace />;
+  return <UserManagementPage />;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +205,11 @@ function AppShell() {
             {user?.role === 'IT_STAFF' && (
               <Link className="text-white text-decoration-none fw-semibold me-2" to="/staff/queue">
                 <i className="bi bi-inbox me-1"></i>Ticket Queue
+              </Link>
+            )}
+            {user?.role === 'ADMINISTRATOR' && (
+              <Link className="text-white text-decoration-none fw-semibold me-2" to="/admin/users">
+                <i className="bi bi-people me-1"></i>User Management
               </Link>
             )}
             <span className="badge bg-light text-dark">{roleBadge}</span>
@@ -262,7 +254,7 @@ export default function App() {
               <Route path="/tickets" element={<RoleLandingRoute />} />
               <Route path="/ticket" element={<Navigate to="/tickets" replace />} />
               <Route path="/staff/queue" element={<RequireStaffQueue />} />
-              <Route path="/admin/users" element={<AdminUsersLanding />} />
+              <Route path="/admin/users" element={<RequireAdmin />} />
               <Route path="/tickets/create" element={<CreateTicketPage />} />
               <Route path="/tickets/:id" element={<TicketDetailPage />} />
             </Route>
