@@ -28,9 +28,10 @@ export const getStatusBadge = (status: string) => {
     case 'CLOSED': 
       return <span className="badge" style={{ backgroundColor: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1' }}>CLOSED</span>;
     case 'WAITING_FOR_REQUESTER': 
+    case 'WAITING_ON_REQUESTER': 
       return <span className="badge" style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }}>WAITING</span>;
     case 'REOPENED': 
-      return <span className="badge" style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', border: '1px solid #BFDBFE' }}>REOPENED</span>;
+      return <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i className="bi bi-arrow-clockwise me-1"></i>REOPENED</span>;
     case 'CANCELLED': 
       return <span className="badge" style={{ backgroundColor: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA' }}>CANCELLED</span>;
     default: 

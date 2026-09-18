@@ -11,7 +11,7 @@ describe('POST /api/tickets', () => {
   let systemId: number;
 
   beforeAll(async () => {
-    const requester = await prisma.user.findFirst({ where: { isActive: true, role: 'REQUESTER' } });
+    const requester = await prisma.user.findFirst({ where: { isActive: true, role: 'REQUESTER', mustChangePassword: false } });
     const category = await prisma.category.findFirst({ where: { isActive: true } });
     const system = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
     categoryId = category?.id || 1;
