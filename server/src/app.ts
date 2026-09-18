@@ -409,10 +409,6 @@ app.get('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req,
 });
 
 app.get('/api/tickets/:id', requireNormalAuth, async (req, res) => {
-  if (req.sessionUser!.role === 'ADMINISTRATOR') {
-    return res.status(403).json({ error: { code: "FORBIDDEN", message: "Administrators cannot view tickets." } });
-  }
-
   const ticketId = parseInt(req.params.id);
   if (isNaN(ticketId)) {
     return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Invalid ticket ID" } });
@@ -425,8 +421,8 @@ app.get('/api/tickets/:id', requireNormalAuth, async (req, res) => {
       include: {
         category: true,
         relatedSystem: true,
-        requester: true,
-        owner: true,
+        requester: { select: { id: true, name: true, email: true } },
+        owner: { select: { id: true, name: true, email: true } },
         attachments: {
           orderBy: { uploadedAt: 'desc' }
         }
@@ -437,6 +433,7 @@ app.get('/api/tickets/:id', requireNormalAuth, async (req, res) => {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
     }
 
+    // Requester can only access own ticket; return 404 for uniform non-enumeration
     if (req.sessionUser!.role === 'REQUESTER' && ticket.requesterId !== req.sessionUser!.id) {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
     }
@@ -813,10 +810,257 @@ export const STATUS_TO_LABEL: Record<string, string> = {
   CANCELLED: 'Cancelled',
 };
 
-export const LABEL_TO_STATUS: Record<string, string> = Object.entries(STATUS_TO_LABEL).reduce(
-  (acc, [k, v]) => ({ ...acc, [v.toLowerCase()]: k, [k.toLowerCase()]: k }),
-  {} as Record<string, string>
-);
+export const LABEL_TO_STATUS: Record<string, string> = {
+  ...Object.entries(STATUS_TO_LABEL).reduce(
+    (acc, [k, v]) => ({ ...acc, [v.toLowerCase()]: k, [k.toLowerCase()]: k }),
+    {} as Record<string, string>
+  ),
+  waiting_on_requester: 'WAITING_FOR_REQUESTER',
+  'waiting on requester': 'WAITING_FOR_REQUESTER',
+};
+
+export const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
+  NEW: ['OPEN', 'CANCELLED'],
+  OPEN: ['IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'CANCELLED'],
+  IN_PROGRESS: ['WAITING_FOR_REQUESTER', 'RESOLVED', 'CANCELLED'],
+  WAITING_FOR_REQUESTER: ['IN_PROGRESS', 'RESOLVED', 'CANCELLED'],
+  RESOLVED: ['CLOSED', 'REOPENED'],
+  CLOSED: ['REOPENED'],
+  REOPENED: ['IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CANCELLED'],
+  CANCELLED: [],
+};
+
+// GET /api/staff/tickets/:id - Detailed ticket view for IT Staff and Administrator
+app.get('/api/staff/tickets/:id', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role === 'REQUESTER') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Requesters cannot access staff ticket operations.' } });
+  }
+
+  const ticketId = parseInt(req.params.id, 10);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        category: true,
+        relatedSystem: true,
+        requester: { select: { id: true, name: true, email: true } },
+        owner: { select: { id: true, name: true, email: true } },
+        attachments: { orderBy: { uploadedAt: 'desc' } },
+        publicComments: {
+          include: { author: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+        internalNotes: {
+          include: { author: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    res.json(ticket);
+  } catch (error) {
+    console.error('Error fetching staff ticket detail:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch ticket detail' } });
+  }
+});
+
+// POST /api/staff/tickets/:id/claim - Claim unassigned ticket (AC-09)
+app.post('/api/staff/tickets/:id/claim', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role !== 'IT_STAFF') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can claim tickets.' } });
+  }
+
+  const ticketId = parseInt(req.params.id, 10);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    if (ticket.ownerId !== null) {
+      return res.status(409).json({ error: { code: 'CONFLICT', message: 'Ticket is already claimed.' } });
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { ownerId: req.sessionUser!.id },
+      include: { owner: { select: { id: true, name: true } } },
+    });
+
+    res.status(200).json({ owner: updated.owner });
+  } catch (error) {
+    console.error('Error claiming ticket:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to claim ticket' } });
+  }
+});
+
+// PUT /api/staff/tickets/:id/owner - Assign/reassign ticket to active IT Staff (AC-09)
+app.put('/api/staff/tickets/:id/owner', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role !== 'IT_STAFF') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can assign tickets.' } });
+  }
+
+  const ticketId = parseInt(req.params.id, 10);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  const ownerId = typeof req.body.ownerId === 'string' ? parseInt(req.body.ownerId, 10) : req.body.ownerId;
+  if (typeof ownerId !== 'number' || isNaN(ownerId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Valid ownerId is required.' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { id: ownerId } });
+    if (!targetUser || !targetUser.isActive || targetUser.role !== 'IT_STAFF') {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Target owner must be an active IT Staff member.' } });
+    }
+
+    if (ticket.ownerId === targetUser.id) {
+      return res.status(200).json({ owner: { id: targetUser.id, name: targetUser.name } });
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { ownerId: targetUser.id },
+      include: { owner: { select: { id: true, name: true } } },
+    });
+
+    res.status(200).json({ owner: updated.owner });
+  } catch (error) {
+    console.error('Error assigning ticket owner:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to assign ticket owner' } });
+  }
+});
+
+// PATCH /api/staff/tickets/:id/it-priority - Update IT Priority independently (AC-10)
+app.patch('/api/staff/tickets/:id/it-priority', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role !== 'IT_STAFF') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can update IT priority.' } });
+  }
+
+  const ticketId = parseInt(req.params.id, 10);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  const priorityStr = typeof req.body.itPriority === 'string' ? req.body.itPriority.trim().toUpperCase() : '';
+  const allowedPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+  if (!allowedPriorities.includes(priorityStr)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'itPriority must be LOW, MEDIUM, HIGH, or CRITICAL.' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { itPriority: priorityStr as any },
+      select: { id: true, itPriority: true, requestedPriority: true },
+    });
+
+    res.status(200).json({ ticketId: updated.id, itPriority: updated.itPriority, requestedPriority: updated.requestedPriority });
+  } catch (error) {
+    console.error('Error updating IT priority:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update IT priority' } });
+  }
+});
+
+// POST /api/staff/tickets/:id/status - Execute status transitions enforcing matrix (AC-11)
+app.post('/api/staff/tickets/:id/status', requireNormalAuth, async (req, res) => {
+  if (req.sessionUser!.role !== 'IT_STAFF') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can change ticket status.' } });
+  }
+
+  const ticketId = parseInt(req.params.id, 10);
+  if (isNaN(ticketId)) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
+  }
+
+  if (!req.body.status || typeof req.body.status !== 'string') {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Status is required.' } });
+  }
+
+  const normalizedTarget = LABEL_TO_STATUS[req.body.status.trim().toLowerCase()];
+  if (!normalizedTarget) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid status value.' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+    }
+
+    // Self-transition check
+    if (normalizedTarget === ticket.currentStatus) {
+      return res.status(409).json({ error: { code: 'CONFLICT', message: 'Ticket is already in the requested status.' } });
+    }
+
+    // Allowed transition matrix check
+    const allowedNext = ALLOWED_STATUS_TRANSITIONS[ticket.currentStatus] || [];
+    if (!allowedNext.includes(normalizedTarget)) {
+      return res.status(409).json({
+        error: {
+          code: 'CONFLICT',
+          message: `Invalid status transition from ${ticket.currentStatus} to ${normalizedTarget}.`,
+        },
+      });
+    }
+
+    // Resolution summary requirement when transitioning to RESOLVED
+    if (normalizedTarget === 'RESOLVED') {
+      if (!req.body.resolutionSummary || typeof req.body.resolutionSummary !== 'string' || !req.body.resolutionSummary.trim()) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Resolution summary is required when resolving a ticket.' } });
+      }
+    }
+
+    const dataToUpdate: any = { currentStatus: normalizedTarget };
+    if (req.body.resolutionSummary && typeof req.body.resolutionSummary === 'string') {
+      dataToUpdate.resolutionSummary = req.body.resolutionSummary.trim();
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: dataToUpdate,
+      select: { id: true, currentStatus: true, resolutionSummary: true },
+    });
+
+    res.status(200).json({
+      ticketId: updated.id,
+      currentStatus: updated.currentStatus,
+      resolutionSummary: updated.resolutionSummary,
+    });
+  } catch (error) {
+    console.error('Error changing ticket status:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to change ticket status' } });
+  }
+});
 
 // GET /api/staff/users - Active IT Staff users for dropdowns
 app.get('/api/staff/users', requireNormalAuth, async (req, res) => {

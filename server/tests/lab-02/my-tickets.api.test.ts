@@ -9,7 +9,7 @@ describe('GET /api/tickets', () => {
   let cookie: string;
 
   beforeAll(async () => {
-    const requester = await prisma.user.findFirst({ where: { isActive: true, role: 'REQUESTER' } });
+    const requester = await prisma.user.findFirst({ where: { isActive: true, role: 'REQUESTER', mustChangePassword: false } });
     const loginRes = await request(app)
       .post('/api/auth/login')
       .send({ email: requester?.email || 'requester1@toktickit.com', password: 'Password123!' });

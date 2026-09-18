@@ -505,7 +505,18 @@ export default function StaffTicketQueuePage() {
                       {ticket.summary.length > 40 ? ticket.summary.substring(0, 40) + '...' : ticket.summary}
                     </td>
                     <td className="text-muted small">{ticket.category}</td>
-                    <td>{getPriorityBadge(ticket.itPriority || ticket.requestedPriority)}</td>
+                    <td>
+                      <div className="d-flex flex-column gap-1">
+                        <div className="d-flex align-items-center gap-1">
+                          <span className="text-muted" style={{ fontSize: '0.75rem', width: '28px' }}>IT:</span>
+                          {getPriorityBadge((ticket.itPriority && ticket.itPriority !== 'UNASSIGNED') ? ticket.itPriority : ticket.requestedPriority)}
+                        </div>
+                        <div className="d-flex align-items-center gap-1">
+                          <span className="text-muted" style={{ fontSize: '0.75rem', width: '28px' }}>Req:</span>
+                          {getPriorityBadge(ticket.requestedPriority)}
+                        </div>
+                      </div>
+                    </td>
                     <td>{getStatusBadge(normalizeStatus(ticket.status))}</td>
                     <td className="text-muted small">
                       {ticket.owner ? (
@@ -547,8 +558,11 @@ export default function StaffTicketQueuePage() {
                   <p className="card-text mb-2 text-dark">{ticket.summary}</p>
                   <div className="d-flex flex-wrap gap-2 mb-2">
                     <span className="badge bg-light text-dark border">{ticket.category}</span>
-                    <span className="small text-muted d-flex align-items-center">
-                      Priority: {getPriorityBadge(ticket.itPriority || ticket.requestedPriority)}
+                    <span className="small text-muted d-flex align-items-center gap-1">
+                      IT: {getPriorityBadge((ticket.itPriority && ticket.itPriority !== 'UNASSIGNED') ? ticket.itPriority : ticket.requestedPriority)}
+                    </span>
+                    <span className="small text-muted d-flex align-items-center gap-1">
+                      Req: {getPriorityBadge(ticket.requestedPriority)}
                     </span>
                   </div>
                   <div className="d-flex justify-content-between text-muted small mt-3 pt-3 border-top">
