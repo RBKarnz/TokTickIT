@@ -1,9 +1,14 @@
 {
-    "private": true,
-    "devDependencies": {
-        "@axe-core/playwright": "^4.13.0",
-        "@playwright/test": "^1.42.0"
-    },
-    "name": "toktickit-root",
-    "version": "1.0.0"
+  "name": "toktickit-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:chrome": "playwright test --project=\"Desktop Chrome\"",
+    "capture:screenshots": "playwright test e2e/lab-03/visual-screenshots.spec.ts --project=\"Desktop Chrome\""
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.42.0"
+  }
 }

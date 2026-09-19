@@ -211,6 +211,7 @@ async function main() {
       update: {
         ...(ownerId ? { ownerId } : {}),
         itPriority: prio, // Ensure itPriority is populated from requestedPriority (BR-29)
+        ...(status === "RESOLVED" ? { resolutionSummary: "Issue investigated and resolved by IT support team. Verified operational stability." } : {}),
       },
       create: {
         ticketNumber,
@@ -221,6 +222,7 @@ async function main() {
         requestedPriority: prio,
         itPriority: prio, // Initialize itPriority from requestedPriority (BR-29)
         currentStatus: status,
+        resolutionSummary: status === "RESOLVED" ? "Issue investigated and resolved by IT support team. Verified operational stability." : null,
         summary: `System Issue Report #${i + 1}`,
         description: `Automatically generated seed ticket for load testing.`,
         createdAt,
@@ -250,6 +252,7 @@ async function main() {
       update: {
         ...(ownerId ? { ownerId } : {}),
         itPriority: prio, // Ensure itPriority is populated from requestedPriority (BR-29)
+        ...(status === "RESOLVED" ? { resolutionSummary: "Resolved by IT staff following standard operating procedure." } : {}),
       },
       create: {
         ticketNumber,
@@ -260,6 +263,7 @@ async function main() {
         requestedPriority: prio,
         itPriority: prio,
         currentStatus: status,
+        resolutionSummary: status === "RESOLVED" ? "Resolved by IT staff following standard operating procedure." : null,
         summary: `Support Request #${i + 1}`,
         description: `Automatically generated seed ticket for pagination testing.`,
         createdAt,
@@ -300,6 +304,7 @@ async function main() {
       update: {
         ...(t.ownerId ? { ownerId: t.ownerId } : {}),
         itPriority: t.priority, // Ensure itPriority is populated from requestedPriority (BR-29)
+        ...(t.status === "RESOLVED" ? { resolutionSummary: "Diagnosed and resolved hardware issue. Replaced memory module and verified stability across 2 stress-test passes." } : {}),
       },
       create: {
         ticketNumber: t.ticketNumber,
@@ -310,6 +315,7 @@ async function main() {
         requestedPriority: t.priority,
         itPriority: t.priority,
         currentStatus: t.status,
+        resolutionSummary: t.status === "RESOLVED" ? "Diagnosed and resolved hardware issue. Replaced memory module and verified stability across 2 stress-test passes." : null,
         summary: t.summary,
         description: `This is a test ticket for ${t.summary}`,
         createdAt,
