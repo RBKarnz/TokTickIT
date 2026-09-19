@@ -104,6 +104,7 @@ export default function MyTicketsPage() {
                 <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
                 <input 
                   type="text" 
+                  aria-label="Search tickets"
                   className="form-control border-start-0 ps-0" 
                   placeholder="Search summary or ticket no..." 
                   value={searchTerm}
@@ -112,13 +113,13 @@ export default function MyTicketsPage() {
               </div>
             </div>
             <div className="col-6 col-md-3">
-              <select className="form-select" value={selectedCategory} onChange={e => { setSelectedCategory(e.target.value); setPage(1); }}>
+              <select className="form-select" aria-label="Filter by category" value={selectedCategory} onChange={e => { setSelectedCategory(e.target.value); setPage(1); }}>
                 <option value="">All Categories</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="col-6 col-md-2">
-              <select className="form-select" value={selectedStatus} onChange={e => { setSelectedStatus(e.target.value); setPage(1); }}>
+              <select className="form-select" aria-label="Filter by status" value={selectedStatus} onChange={e => { setSelectedStatus(e.target.value); setPage(1); }}>
                 <option value="">All Statuses</option>
                 <option value="NEW">New</option>
                 <option value="OPEN">Open</option>
@@ -131,7 +132,7 @@ export default function MyTicketsPage() {
               </select>
             </div>
             <div className="col-12 col-md-3">
-              <select className="form-select" value={sort} onChange={e => { setSort(e.target.value); setPage(1); }}>
+              <select className="form-select" aria-label="Sort tickets by" value={sort} onChange={e => { setSort(e.target.value); setPage(1); }}>
                 <option value="updated_desc">Recently Updated</option>
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -142,9 +143,9 @@ export default function MyTicketsPage() {
             {/* Date Range Filter */}
             <div className="col-12 d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top">
               <label className="text-muted small mb-0 text-nowrap"><i className="bi bi-calendar-event me-1"></i> Updated Between:</label>
-              <input type="date" className="form-control form-control-sm" style={{ width: 'auto' }} value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }} />
+              <input type="date" aria-label="Start date" className="form-control form-control-sm" style={{ width: 'auto' }} value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }} />
               <span className="text-muted small">to</span>
-              <input type="date" className="form-control form-control-sm" style={{ width: 'auto' }} value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }} />
+              <input type="date" aria-label="End date" className="form-control form-control-sm" style={{ width: 'auto' }} value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }} />
               {(startDate || endDate) && (
                 <button className="btn btn-sm btn-link text-decoration-none ms-2" onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }}>
                   Clear Dates

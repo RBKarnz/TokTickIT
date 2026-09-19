@@ -141,9 +141,9 @@ export default function ChangePasswordPage() {
           <span className="navbar-brand text-white fw-bold d-flex align-items-center mb-0">
             <i className="bi bi-clock-history me-2"></i>TokTickIT
           </span>
-          <div className="d-flex align-items-center gap-3">
-            <span className="badge bg-warning text-dark">Password Change Required</span>
-            <span className="text-white small text-truncate" style={{ maxWidth: '180px' }}>
+          <div className="d-flex align-items-center gap-2">
+            <span className="badge bg-warning text-dark d-none d-sm-inline">Password Change Required</span>
+            <span className="text-white small text-truncate d-none d-md-inline" style={{ maxWidth: '180px' }}>
               <i className="bi bi-person me-1"></i>{user?.name || user?.email}
             </span>
             <button

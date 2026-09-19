@@ -201,19 +201,19 @@ function AppShell() {
           <Link className="navbar-brand text-white fw-bold d-flex align-items-center" to={landingUrl}>
             <i className="bi bi-clock-history me-2"></i>TokTickIT
           </Link>
-          <div className="d-flex align-items-center gap-3">
+          <div className="d-flex align-items-center gap-2">
             {user?.role === 'IT_STAFF' && (
-              <Link className="text-white text-decoration-none fw-semibold me-2" to="/staff/queue">
+              <Link className="text-white text-decoration-none fw-semibold me-1 d-none d-sm-inline" to="/staff/queue">
                 <i className="bi bi-inbox me-1"></i>Ticket Queue
               </Link>
             )}
             {user?.role === 'ADMINISTRATOR' && (
-              <Link className="text-white text-decoration-none fw-semibold me-2" to="/admin/users">
+              <Link className="text-white text-decoration-none fw-semibold me-1 d-none d-sm-inline" to="/admin/users">
                 <i className="bi bi-people me-1"></i>User Management
               </Link>
             )}
-            <span className="badge bg-light text-dark">{roleBadge}</span>
-            <span className="text-white small text-truncate" style={{ maxWidth: '150px' }}>
+            <span className="badge bg-light text-dark d-none d-sm-inline">{roleBadge}</span>
+            <span className="text-white small text-truncate d-none d-md-inline" style={{ maxWidth: '150px' }}>
               <i className="bi bi-person me-1"></i>{user?.name}
             </span>
             <button
