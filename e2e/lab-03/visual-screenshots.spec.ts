@@ -87,8 +87,8 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
   // =========================================================================
   test.describe('1. Authentication & Password Change (Part 5)', () => {
     test('01-login-initial: Initial empty login form', async ({ page }) => {
-      await page.goto('/login');
-      await expect(page.locator('h1')).toContainText(/TokTickIT/i);
+      await page.goto('/login', { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('h1')).toContainText(/TokTickIT/i, { timeout: 15000 });
       await expect(page.locator('#email')).toBeVisible();
       await expect(page.locator('#password')).toBeVisible();
       await expect(page.locator('button[type="submit"]')).toContainText('Sign In');
@@ -124,17 +124,13 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     });
 
     test('04-login-submitting-busy: Button in disabled/busy state with spinner', async ({ page }) => {
-      await page.goto('/login');
+      await page.goto('/login', { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('#email')).toBeVisible({ timeout: 10000 });
       await page.locator('#email').fill('staff1@toktickit.com');
       await page.locator('#password').fill('Password123!');
 
-      let unblock: () => void;
-      const gate = new Promise<void>((resolve) => {
-        unblock = resolve;
-      });
-
       await page.route('**/api/auth/login', async (route) => {
-        await gate;
+        await new Promise((res) => setTimeout(res, 1500));
         await route.continue();
       });
 
@@ -145,8 +141,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
         fullPage: true,
       });
 
-      unblock!();
-      await page.waitForURL(/\/staff\/queue/);
+      await page.waitForURL(/\/staff\/queue/, { timeout: 15000 });
       await page.unroute('**/api/auth/login');
     });
 
@@ -542,16 +537,26 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await notesTab.click();
       await page.waitForTimeout(300);
 
-      const addNoteBtn = page.locator('button:has-text("Add Note"), button:has-text("Post Note")').first();
-      if (await addNoteBtn.isVisible()) {
-        await addNoteBtn.click();
-        await page.waitForTimeout(300);
-      }
+      // Mock server failure to demonstrate graceful error handling on POST /api/tickets/:id/internal-notes
+      await page.route('**/api/tickets/*/internal-notes', (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { message: 'Database connection failed. Unable to record internal note.' } }),
+        })
+      );
+
+      const noteInput = page.locator('#newNoteContent');
+      await noteInput.fill('Urgent internal diagnostic finding: Motherboard power rail short circuit.');
+      const addNoteBtn = page.locator('button:has-text("Post Internal Note")').first();
+      await addNoteBtn.click();
+      await expect(page.locator('.alert-danger')).toBeVisible({ timeout: 5000 });
 
       await page.screenshot({
         path: path.join(screenshotsBase, 'staff-ticket-detail', '11-safe-failure-validation.png'),
         fullPage: true,
       });
+      await page.unroute('**/api/tickets/*/internal-notes');
     });
   });
 
