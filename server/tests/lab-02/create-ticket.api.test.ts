@@ -6,17 +6,21 @@ import { getPrisma } from '../../src/prisma.js';
 const prisma = getPrisma();
 
 describe('POST /api/tickets', () => {
-  let requesterId: number;
+  let cookie: string;
   let categoryId: number;
   let systemId: number;
 
   beforeAll(async () => {
-    const requester = await prisma.requesterUser.findFirst({ where: { isActive: true } });
+    const requester = await prisma.user.findFirst({ where: { isActive: true, role: 'REQUESTER', mustChangePassword: false } });
     const category = await prisma.category.findFirst({ where: { isActive: true } });
     const system = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
-    requesterId = requester?.id || 1;
     categoryId = category?.id || 1;
     systemId = system?.id || 1;
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: requester?.email || 'requester1@toktickit.com', password: 'Password123!' });
+    cookie = loginRes.headers['set-cookie']?.[0] || '';
   });
 
   it('should create a valid ticket and return 201 with ticket number', async () => {
@@ -29,7 +33,7 @@ describe('POST /api/tickets', () => {
     };
     const res = await request(app)
       .post('/api/tickets')
-      .set('X-Requester-Id', requesterId.toString())
+      .set('Cookie', cookie)
       .send(payload);
     expect(res.status).toBe(201);
     expect(res.body.ticketNumber).toMatch(/^TKT-\d{4}-\d{6}$/);

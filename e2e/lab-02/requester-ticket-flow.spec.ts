@@ -2,17 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Requester Ticket Flow (E2E-01)', () => {
   test.beforeEach(async ({ page }) => {
-    // Authenticate
-    await page.goto('http://localhost:5173/');
-    await page.evaluate(() => {
-      localStorage.setItem('activeRequester', JSON.stringify({
-        id: 1,
-        name: 'Jennifer Anderson',
-        email: 'jennifer.anderson@kmutt.ac.th',
-        isActive: true
-      }));
-    });
-    await page.goto('http://localhost:5173/');
+    // Authenticate via Lab 3 session
+    await page.goto('http://localhost:5173/login');
+    await page.locator('input[type="email"]').fill('requester1@toktickit.com');
+    await page.locator('input[type="password"]').fill('Password123!');
+    await page.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(/\/tickets|\/$/);
   });
 
   test('Creates a ticket successfully and views it', async ({ page }) => {

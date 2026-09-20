@@ -10,29 +10,23 @@ export interface SystemStatus {
   categories?: Category[];
 }
 
-// Issue 2 + Issue 4 — call the backend.
-// Steps: fetch `${API_URL}/api/health`; if not ok, throw.
-//        then fetch `${API_URL}/api/categories`; if not ok, throw.
-//        return { online: true, categories }.
-// Throwing on failure lets the UI show a single Offline/error state.
+export * from './authApi.js';
+
+// ---------------------------------------------------------------------------
+// Issue 2 + Issue 4: Health and Categories
+// ---------------------------------------------------------------------------
 
 export async function checkSystem(): Promise<SystemStatus> {
-  // TODO(Issue 2 & 4): implement the two fetch calls described above.
-
-  // สั่ง API ไปเช็คสถานะหลังบ้าน (Issue 2)
   const healthRes = await fetch(`${API_URL}/api/health`);
-  // ถ้าหลังบ้านปิดอยู่หรือส่ง Status อื่นที่ไม่ใช่ 200(ok) ให้ดักจับและแจ้ง Error
-    if (!healthRes.ok) {
-      throw new Error("Backend is unavailable (health check failed)");
-    }
+  if (!healthRes.ok) {
+    throw new Error("Backend is unavailable (health check failed)");
+  }
   
-  // ดึงข้อมูล Category จาก API ใหม่ (Issue 4)
   const catRes = await fetch(`${API_URL}/api/categories`);
   if (!catRes.ok) {
     throw new Error("Failed to fetch categories.");
   }
 
-  // แปลงข้อมูลและส่งกลับไปให้ App.tsx
   const categories = await catRes.json();
   return { online: true, categories: categories };
 }
@@ -64,15 +58,19 @@ export async function fetchSystems() {
   return await res.json();
 }
 
-// Lab 2: Create ticket
-export async function createTicket(ticketData: any, requesterId: number) {
+// ---------------------------------------------------------------------------
+// Lab 2 & 3: Ticket Endpoints (Using Session Auth)
+// ---------------------------------------------------------------------------
+
+// Create ticket
+export async function createTicket(ticketData: any, _requesterId?: number) {
   const res = await fetch(`${API_URL}/api/tickets`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Requester-Id': requesterId.toString()
     },
-    body: JSON.stringify(ticketData)
+    credentials: 'include',
+    body: JSON.stringify(ticketData),
   });
   
   if (!res.ok) {
@@ -83,8 +81,9 @@ export async function createTicket(ticketData: any, requesterId: number) {
   return await res.json();
 }
 
-// Lab 2: Fetch my tickets with pagination and filters
-export async function fetchMyTickets(requesterId: number, params: any = {}) {
+// Fetch my tickets with pagination and filters
+export async function fetchMyTickets(paramsOrId?: any, maybeParams?: any) {
+  const params = typeof paramsOrId === 'object' && paramsOrId !== null ? paramsOrId : (maybeParams || {});
   const query = new URLSearchParams();
   if (params.search) query.append('search', params.search);
   if (params.categoryId) query.append('categoryId', params.categoryId);
@@ -93,11 +92,11 @@ export async function fetchMyTickets(requesterId: number, params: any = {}) {
   if (params.startDate) query.append('startDate', params.startDate);
   if (params.endDate) query.append('endDate', params.endDate);
   if (params.page) query.append('page', params.page.toString());
+  if (params.limit) query.append('limit', params.limit.toString());
+  if (params.pageSize) query.append('limit', params.pageSize.toString());
   
   const res = await fetch(`${API_URL}/api/tickets?${query.toString()}`, {
-    headers: {
-      'X-Requester-Id': requesterId.toString()
-    }
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -107,12 +106,10 @@ export async function fetchMyTickets(requesterId: number, params: any = {}) {
   return await res.json();
 }
 
-// Lab 2: Fetch specific ticket detail
-export async function fetchTicketDetail(ticketId: number, requesterId: number) {
+// Fetch specific ticket detail
+export async function fetchTicketDetail(ticketId: number, _requesterId?: number) {
   const res = await fetch(`${API_URL}/api/tickets/${ticketId}`, {
-    headers: {
-      'X-Requester-Id': requesterId.toString()
-    }
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -123,13 +120,13 @@ export async function fetchTicketDetail(ticketId: number, requesterId: number) {
   return await res.json();
 }
 
-export async function uploadAttachment(ticketId: number, file: File, requesterId: number) {
+export async function uploadAttachment(ticketId: number, file: File, _requesterId?: number) {
   const formData = new FormData();
   formData.append('file', file);
   const res = await fetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
     method: 'POST',
-    headers: { 'X-Requester-Id': requesterId.toString() },
-    body: formData
+    credentials: 'include',
+    body: formData,
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
@@ -138,9 +135,9 @@ export async function uploadAttachment(ticketId: number, file: File, requesterId
   return await res.json();
 }
 
-export async function downloadAttachment(attachmentId: number, originalFilename: string, requesterId: number) {
+export async function downloadAttachment(attachmentId: number, originalFilename: string, _requesterId?: number) {
   const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
-    headers: { 'X-Requester-Id': requesterId.toString() }
+    credentials: 'include',
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
@@ -157,14 +154,14 @@ export async function downloadAttachment(attachmentId: number, originalFilename:
   window.URL.revokeObjectURL(url);
 }
 
-export async function removeAttachment(attachmentId: number, reason: string, requesterId: number) {
+export async function removeAttachment(attachmentId: number, reason: string, _requesterId?: number) {
   const res = await fetch(`${API_URL}/api/attachments/${attachmentId}`, {
     method: 'DELETE',
     headers: { 
       'Content-Type': 'application/json',
-      'X-Requester-Id': requesterId.toString() 
     },
-    body: JSON.stringify({ reason })
+    credentials: 'include',
+    body: JSON.stringify({ reason }),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
@@ -172,3 +169,339 @@ export async function removeAttachment(attachmentId: number, reason: string, req
   }
   return await res.json();
 }
+
+export interface PublicComment {
+  id: number;
+  ticketId: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    name: string;
+    role: string;
+  };
+}
+
+export async function fetchPublicComments(ticketId: number): Promise<PublicComment[]> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to fetch comments');
+  }
+  const data = await res.json();
+  return data.comments || [];
+}
+
+export async function postPublicComment(ticketId: number, content: string): Promise<PublicComment> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to post comment');
+  }
+  const data = await res.json();
+  return data.comment;
+}
+
+export async function markProblemResolved(ticketId: number): Promise<{ ticketId: number; requesterResolvedAt: string }> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/problem-appears-resolved`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to mark problem as resolved');
+  }
+  return await res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3: IT Staff Queue Endpoints
+// ---------------------------------------------------------------------------
+
+export interface StaffQueueTicket {
+  id: number;
+  ticketNumber: string;
+  createdAt: string;
+  updatedAt: string;
+  summary: string;
+  category: string;
+  requestedPriority: string;
+  itPriority: string;
+  status: string;
+  owner: { id: number; name: string } | null;
+}
+
+export interface QueueQueryParams {
+  search?: string;
+  categoryId?: number | string;
+  status?: string;
+  requestedPriority?: string;
+  itPriority?: string;
+  ownership?: 'assigned' | 'unassigned' | '';
+  ownerId?: number | '';
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  sort?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface StaffQueueResponse {
+  items: StaffQueueTicket[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+export async function fetchStaffQueue(params: QueueQueryParams = {}): Promise<StaffQueueResponse> {
+  const query = new URLSearchParams();
+  if (params.search && params.search.trim()) query.set('search', params.search.trim());
+  if (params.categoryId) query.set('categoryId', String(params.categoryId));
+  if (params.status) query.set('status', params.status);
+  if (params.requestedPriority) query.set('requestedPriority', params.requestedPriority);
+  if (params.itPriority) query.set('itPriority', params.itPriority);
+  if (params.ownership) query.set('ownership', params.ownership);
+  if (params.ownerId !== undefined && params.ownerId !== '') query.set('ownerId', String(params.ownerId));
+  if (params.sortBy) query.set('sortBy', params.sortBy);
+  if (params.sortOrder) query.set('sortOrder', params.sortOrder);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.startDate) query.set('startDate', params.startDate);
+  if (params.endDate) query.set('endDate', params.endDate);
+  if (params.page) query.set('page', String(params.page));
+  if (params.pageSize) query.set('pageSize', String(params.pageSize));
+
+  const res = await fetch(`${API_URL}/api/staff/tickets?${query.toString()}`, { credentials: 'include' });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || `Failed to fetch ticket queue (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchStaffUsers(): Promise<{ users: { id: number; name: string; email: string }[] }> {
+  const res = await fetch(`${API_URL}/api/staff/users`, { credentials: 'include' });
+  if (!res.ok) return { users: [] };
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3: IT Staff Ticket Detail & Operations Endpoints
+// ---------------------------------------------------------------------------
+
+export async function fetchStaffTicketDetail(ticketId: number) {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || `Failed to fetch ticket detail (HTTP ${res.status})`);
+  }
+  return await res.json();
+}
+
+export async function claimTicket(ticketId: number) {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/claim`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to claim ticket');
+  }
+  return await res.json();
+}
+
+export async function assignTicketOwner(ticketId: number, ownerId: number) {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/owner`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ ownerId }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to assign owner');
+  }
+  return await res.json();
+}
+
+export async function updateTicketItPriority(ticketId: number, itPriority: string) {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/it-priority`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ itPriority }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to update IT Priority');
+  }
+  return await res.json();
+}
+
+export async function updateTicketStatus(ticketId: number, status: string, resolutionSummary?: string) {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/status`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ status, resolutionSummary }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to update ticket status');
+  }
+  return await res.json();
+}
+
+export interface InternalNote {
+  id: number;
+  ticketId: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    name: string;
+    role: string;
+  };
+}
+
+export async function fetchInternalNotes(ticketId: number): Promise<InternalNote[]> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/internal-notes`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to fetch internal notes');
+  }
+  const data = await res.json();
+  return data.notes || [];
+}
+
+export async function postInternalNote(ticketId: number, content: string): Promise<InternalNote> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/internal-notes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to post internal note');
+  }
+  const data = await res.json();
+  return data.note;
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3: Administrator User Management API
+// ---------------------------------------------------------------------------
+
+export interface AdminUserItem {
+  id: number;
+  name: string;
+  email: string;
+  role: 'REQUESTER' | 'IT_STAFF' | 'ADMINISTRATOR';
+  isActive: boolean;
+  mustChangePassword?: boolean;
+}
+
+export async function fetchAdminUsers(params?: { search?: string; role?: string }): Promise<{ items: AdminUserItem[] }> {
+  const query = new URLSearchParams();
+  if (params?.search) query.append('search', params.search);
+  if (params?.role) query.append('role', params.role);
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const res = await fetch(`${API_URL}/api/admin/users${qs}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to fetch users');
+  }
+  return await res.json();
+}
+
+export async function createAdminUser(data: {
+  name: string;
+  email: string;
+  role: string;
+  isActive?: boolean;
+  initialPassword: string;
+  confirmInitialPassword: string;
+}): Promise<{ user: AdminUserItem }> {
+  const res = await fetch(`${API_URL}/api/admin/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to create user');
+  }
+  return await res.json();
+}
+
+export async function updateAdminUser(userId: number, data: {
+  name?: string;
+  email?: string;
+  role?: string;
+  isActive?: boolean;
+}): Promise<{ user: AdminUserItem }> {
+  const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to update user');
+  }
+  return await res.json();
+}
+
+export async function setUserInitialPassword(userId: number, data: {
+  initialPassword: string;
+  confirmInitialPassword: string;
+}): Promise<{ message: string; user: AdminUserItem }> {
+  const res = await fetch(`${API_URL}/api/admin/users/${userId}/set-initial-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.error?.message || 'Failed to set initial password');
+  }
+  return await res.json();
+}
+

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRequester } from '../RequesterContext.js';
+import { useAuth } from '../AuthContext.js';
 import { fetchMyTickets, fetchCategories, Category } from '../api.js';
 import { getPriorityBadge, getStatusBadge } from '../utils.js';
 
@@ -16,7 +16,7 @@ interface Ticket {
 }
 
 export default function MyTicketsPage() {
-  const { activeRequester } = useRequester();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -32,6 +32,7 @@ export default function MyTicketsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   // Debounce search
@@ -44,26 +45,27 @@ export default function MyTicketsPage() {
   }, [searchTerm]);
 
   const loadTickets = useCallback(async () => {
-    if (!activeRequester) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const data = await fetchMyTickets(activeRequester.id, {
+      const data = await fetchMyTickets({
         search: debouncedSearch,
         categoryId: selectedCategory,
         status: selectedStatus,
         sort: sort,
         startDate: startDate,
         endDate: endDate,
-        page: page
+        page: page,
+        limit: pageSize,
       });
-      setTickets(data.data);
-      setTotalPages(data.pagination.totalPages || 1);
+      setTickets(data?.data || []);
+      setTotalPages(data?.pagination?.totalPages || 1);
     } catch (err: any) {
       setError(err.message || 'Failed to load tickets');
     } finally {
       setLoading(false);
     }
-  }, [activeRequester, debouncedSearch, selectedCategory, selectedStatus, sort, startDate, endDate, page]);
+  }, [user, debouncedSearch, selectedCategory, selectedStatus, sort, startDate, endDate, page, pageSize]);
 
   useEffect(() => {
     loadTickets();
@@ -102,6 +104,7 @@ export default function MyTicketsPage() {
                 <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
                 <input 
                   type="text" 
+                  aria-label="Search tickets"
                   className="form-control border-start-0 ps-0" 
                   placeholder="Search summary or ticket no..." 
                   value={searchTerm}
@@ -110,21 +113,26 @@ export default function MyTicketsPage() {
               </div>
             </div>
             <div className="col-6 col-md-3">
-              <select className="form-select" value={selectedCategory} onChange={e => { setSelectedCategory(e.target.value); setPage(1); }}>
+              <select className="form-select" aria-label="Filter by category" value={selectedCategory} onChange={e => { setSelectedCategory(e.target.value); setPage(1); }}>
                 <option value="">All Categories</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="col-6 col-md-2">
-              <select className="form-select" value={selectedStatus} onChange={e => { setSelectedStatus(e.target.value); setPage(1); }}>
+              <select className="form-select" aria-label="Filter by status" value={selectedStatus} onChange={e => { setSelectedStatus(e.target.value); setPage(1); }}>
                 <option value="">All Statuses</option>
                 <option value="NEW">New</option>
+                <option value="OPEN">Open</option>
                 <option value="IN_PROGRESS">In Progress</option>
+                <option value="WAITING_FOR_REQUESTER">Waiting for Requester</option>
                 <option value="RESOLVED">Resolved</option>
+                <option value="CLOSED">Closed</option>
+                <option value="REOPENED">Reopened</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
             </div>
             <div className="col-12 col-md-3">
-              <select className="form-select" value={sort} onChange={e => { setSort(e.target.value); setPage(1); }}>
+              <select className="form-select" aria-label="Sort tickets by" value={sort} onChange={e => { setSort(e.target.value); setPage(1); }}>
                 <option value="updated_desc">Recently Updated</option>
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -135,9 +143,9 @@ export default function MyTicketsPage() {
             {/* Date Range Filter */}
             <div className="col-12 d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top">
               <label className="text-muted small mb-0 text-nowrap"><i className="bi bi-calendar-event me-1"></i> Updated Between:</label>
-              <input type="date" className="form-control form-control-sm" style={{ width: 'auto' }} value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }} />
+              <input type="date" aria-label="Start date" className="form-control form-control-sm" style={{ width: 'auto' }} value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }} />
               <span className="text-muted small">to</span>
-              <input type="date" className="form-control form-control-sm" style={{ width: 'auto' }} value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }} />
+              <input type="date" aria-label="End date" className="form-control form-control-sm" style={{ width: 'auto' }} value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }} />
               {(startDate || endDate) && (
                 <button className="btn btn-sm btn-link text-decoration-none ms-2" onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }}>
                   Clear Dates
@@ -212,39 +220,70 @@ export default function MyTicketsPage() {
             ))}
           </div>
 
-          {/* Pagination */}
+          {/* Pagination (with per-page selector on left and page navigation on right) */}
           {totalPages > 1 && (
-            <div className="d-flex justify-content-center mt-4">
-              <nav>
-                <ul className="pagination">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 gap-3">
+              <div className="d-flex align-items-center gap-2">
+                <label htmlFor="requester-page-size" className="text-muted small mb-0">Per page:</label>
+                <select
+                  id="requester-page-size"
+                  aria-label="Per page:"
+                  className="form-select form-select-sm"
+                  style={{ width: 'auto' }}
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(parseInt(e.target.value, 10));
+                    setPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
+              <nav aria-label="Ticket pagination">
+                <ul className="pagination mb-0">
                   <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</button>
+                    <button className="page-link" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                      Previous
+                    </button>
                   </li>
-                  
+
                   {(() => {
                     const items: (number | string)[] = [];
-                    if (totalPages <= 10) {
+                    if (totalPages <= 6) {
                       for (let i = 1; i <= totalPages; i++) items.push(i);
                     } else if (page <= 4) {
-                      items.push(1, 2, 3, 4, 5, 6, '...right', totalPages - 1, totalPages);
+                      const end = Math.min(6, totalPages - 2);
+                      for (let i = 1; i <= end; i++) items.push(i);
+                      items.push('...right');
+                      items.push(totalPages - 1, totalPages);
                     } else if (page >= totalPages - 3) {
-                      items.push(1, 2, '...left', totalPages - 5, totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                      items.push(1, 2);
+                      items.push('...left');
+                      const start = Math.max(3, totalPages - 5);
+                      for (let i = start; i <= totalPages; i++) items.push(i);
                     } else {
-                      items.push(1, 2, '...left', page - 1, page, page + 1, '...right', totalPages - 1, totalPages);
+                      items.push(1, 2);
+                      items.push('...left');
+                      items.push(page - 1, page, page + 1);
+                      items.push('...right');
+                      items.push(totalPages - 1, totalPages);
                     }
 
                     return items.map((item, index) => {
                       if (typeof item === 'string') {
                         return (
                           <li key={`ellipsis-${index}`} className="page-item">
-                            <input 
-                              type="text" 
-                              className="page-link text-center px-1" 
+                            <input
+                              type="text"
+                              className="page-link text-center px-1"
                               style={{ width: '50px', height: '100%', color: '#6c757d', outline: 'none', boxShadow: 'none' }}
                               placeholder="..."
-                              onKeyDown={e => {
+                              onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                  const val = parseInt((e.target as HTMLInputElement).value);
+                                  const val = parseInt((e.target as HTMLInputElement).value, 10);
                                   if (!isNaN(val) && val >= 1 && val <= totalPages) {
                                     setPage(val);
                                   }
@@ -256,13 +295,13 @@ export default function MyTicketsPage() {
                           </li>
                         );
                       }
-                      
+
                       return (
                         <li key={item} className={`page-item ${page === item ? 'active' : ''}`}>
-                          <button 
-                            className="page-link" 
-                            onClick={() => setPage(item)} 
-                            style={page === item ? { backgroundColor: '#0B7A46', borderColor: '#0B7A46' } : {}}
+                          <button
+                            className="page-link"
+                            onClick={() => setPage(item as number)}
+                            style={page === item ? { backgroundColor: '#0B7A46', borderColor: '#0B7A46', color: '#fff' } : {}}
                           >
                             {item}
                           </button>
@@ -272,7 +311,9 @@ export default function MyTicketsPage() {
                   })()}
 
                   <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
+                    <button className="page-link" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                      Next
+                    </button>
                   </li>
                 </ul>
               </nav>
