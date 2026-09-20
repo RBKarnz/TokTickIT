@@ -577,11 +577,11 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       // Attempt direct access to requester1's ticket (/tickets/1)
       await page.goto('/tickets/1');
       await page.locator('.spinner-border').waitFor({ state: 'detached' });
-      await expect(page.locator('h2:has-text("Access Denied")')).toBeVisible();
-      await expect(page.locator('.bi-shield-x')).toBeVisible();
+      await expect(page.locator('h2:has-text("Ticket Not Found")')).toBeVisible();
+      await expect(page.locator('.bi-search')).toBeVisible();
 
-      // Find the 403 response
-      const forbidden = apiResponses.find((r) => r.status === 403);
+      // Find the 404 safe non-enumeration response (or 403 fallback)
+      const securityResponse = apiResponses.find((r) => r.status === 404 || r.status === 403);
 
       // Overlay the API evidence on the page
       await page.evaluate((evidence) => {
@@ -595,13 +595,13 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
         `;
         overlay.innerHTML = `
           <div style="color:#F87171;font-weight:bold;font-size:14px;margin-bottom:8px;">
-            🔒 API Response Evidence — HTTP ${evidence.status} Forbidden
+            🔒 Safe Non-Enumeration Evidence — HTTP ${evidence.status} ${evidence.status === 404 ? 'Not Found (Anti-Enumeration)' : 'Forbidden'}
           </div>
           <div style="color:#94A3B8;margin-bottom:4px;">
             <strong style="color:#CBD5E1;">URL:</strong> ${evidence.url}
           </div>
           <div style="color:#94A3B8;margin-bottom:4px;">
-            <strong style="color:#CBD5E1;">Status:</strong> <span style="color:#F87171;font-weight:bold;">${evidence.status} Forbidden</span>
+            <strong style="color:#CBD5E1;">Status:</strong> <span style="color:#F87171;font-weight:bold;">${evidence.status} ${evidence.status === 404 ? 'Not Found (BR-20)' : 'Forbidden'}</span>
           </div>
           <div style="color:#94A3B8;">
             <strong style="color:#CBD5E1;">Response Body:</strong>
@@ -609,7 +609,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
           </div>
         `;
         document.body.appendChild(overlay);
-      }, forbidden || { url: 'N/A', status: 403, body: '{"error":"Forbidden"}' });
+      }, securityResponse || { url: '/api/tickets/1', status: 404, body: '{"error":{"code":"NOT_FOUND","message":"Ticket not found"}}' });
 
       await page.waitForTimeout(300);
 
