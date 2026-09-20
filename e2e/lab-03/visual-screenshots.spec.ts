@@ -217,6 +217,8 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await page.goto('/staff/queue');
       await page.waitForURL(/\/login/);
       await expect(page.locator('h1')).toContainText(/TokTickIT/i);
+      // Verify unauthorized notification is displayed
+      await expect(page.locator('.alert-warning')).toContainText('You must sign in to access that page');
 
       await page.screenshot({
         path: path.join(screenshotsBase, 'authentication', '09-blocked-access-after-logout.png'),
@@ -462,9 +464,41 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     });
 
     test('07-attachment-continuity: Display of attachments originally uploaded during ticket creation', async ({ page }) => {
+      // Step 1: Log in as requester and upload an attachment to one of their tickets
+      await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
+      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await page.locator('table tbody tr').first().click();
+      await page.waitForURL(/\/tickets\/\d+/);
+      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
+
+      // Get ticket ID from URL
+      const ticketUrl = page.url();
+      const ticketIdMatch = ticketUrl.match(/\/tickets\/(\d+)/);
+      const ticketId = ticketIdMatch ? ticketIdMatch[1] : '';
+
+      // Click Attachments tab and upload a file
       const attachmentsTab = page.locator('button:has-text("Attachments")').first();
       await attachmentsTab.click();
       await page.waitForTimeout(300);
+
+      const existingFile = page.locator('.list-group-item:has-text("sample-doc.pdf")').first();
+      if (!(await existingFile.isVisible())) {
+        const fileInput = page.locator('#detailUpload');
+        await fileInput.setInputFiles(path.resolve(process.cwd(), 'e2e/fixtures/sample-doc.pdf'));
+        await expect(page.locator('.list-group-item:has-text("sample-doc.pdf")').first()).toBeVisible({ timeout: 15000 });
+      }
+
+      // Step 2: Log in as staff and view the same ticket's attachments
+      await loginAs(page, 'staff1@toktickit.com', 'Password123!', /\/staff\/queue/);
+      await page.goto(`/tickets/${ticketId}`);
+      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
+
+      const staffAttachmentsTab = page.locator('button:has-text("Attachments")').first();
+      await staffAttachmentsTab.click();
+      await expect(page.locator('.list-group-item').first()).toBeVisible({ timeout: 10000 });
 
       await page.screenshot({
         path: path.join(screenshotsBase, 'staff-ticket-detail', '07-attachment-continuity.png'),
@@ -520,11 +554,56 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       // Log in as Michael (requester2) who does NOT own ticket #1 (owned by requester1)
       await loginAs(page, 'requester2@toktickit.com', 'Password123!', /\/tickets|\/$/);
 
+      // Capture the API response when navigating to an unauthorized ticket
+      const apiResponses: { url: string; status: number; body: string }[] = [];
+      page.on('response', async (response) => {
+        const url = response.url();
+        if (url.includes('/api/tickets/') && !url.includes('/attachments')) {
+          try {
+            const body = await response.text();
+            apiResponses.push({ url, status: response.status(), body });
+          } catch { /* ignore */ }
+        }
+      });
+
       // Attempt direct access to requester1's ticket (/tickets/1)
       await page.goto('/tickets/1');
       await page.locator('.spinner-border').waitFor({ state: 'detached' });
       await expect(page.locator('h2:has-text("Access Denied")')).toBeVisible();
       await expect(page.locator('.bi-shield-x')).toBeVisible();
+
+      // Find the 403 response
+      const forbidden = apiResponses.find((r) => r.status === 403);
+
+      // Overlay the API evidence on the page
+      await page.evaluate((evidence) => {
+        const overlay = document.createElement('div');
+        overlay.id = 'api-evidence-overlay';
+        overlay.style.cssText = `
+          position: fixed; bottom: 0; left: 0; right: 0; z-index: 99999;
+          background: #1E293B; color: #E2E8F0; font-family: 'Courier New', monospace;
+          font-size: 13px; padding: 16px 24px; border-top: 3px solid #DC2626;
+          max-height: 200px; overflow-y: auto;
+        `;
+        overlay.innerHTML = `
+          <div style="color:#F87171;font-weight:bold;font-size:14px;margin-bottom:8px;">
+            🔒 API Response Evidence — HTTP ${evidence.status} Forbidden
+          </div>
+          <div style="color:#94A3B8;margin-bottom:4px;">
+            <strong style="color:#CBD5E1;">URL:</strong> ${evidence.url}
+          </div>
+          <div style="color:#94A3B8;margin-bottom:4px;">
+            <strong style="color:#CBD5E1;">Status:</strong> <span style="color:#F87171;font-weight:bold;">${evidence.status} Forbidden</span>
+          </div>
+          <div style="color:#94A3B8;">
+            <strong style="color:#CBD5E1;">Response Body:</strong>
+            <pre style="margin:4px 0 0;color:#FCD34D;white-space:pre-wrap;">${evidence.body}</pre>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      }, forbidden || { url: 'N/A', status: 403, body: '{"error":"Forbidden"}' });
+
+      await page.waitForTimeout(300);
 
       await page.screenshot({
         path: path.join(screenshotsBase, 'staff-ticket-detail', '10-direct-api-401-403-evidence.png'),

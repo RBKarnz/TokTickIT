@@ -34,6 +34,7 @@ export default function StaffTicketQueuePage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalTickets, setTotalTickets] = useState(0);
 
   const ownerDropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -102,6 +103,7 @@ export default function StaffTicketQueuePage() {
 
       setTickets(data?.items || []);
       setTotalPages(data?.pagination?.totalPages || 1);
+      setTotalTickets(data?.pagination?.totalItems ?? (data?.pagination as any)?.total ?? 0);
     } catch (err: any) {
       if (err?.message?.includes('Only IT Staff can access the ticket queue')) {
         navigate('/tickets', { replace: true });
@@ -601,6 +603,10 @@ export default function StaffTicketQueuePage() {
                   <option value={50}>50</option>
                 </select>
               </div>
+
+              <span className="text-muted small">
+                Showing {Math.min((page - 1) * pageSize + 1, totalTickets)} to {Math.min(page * pageSize, totalTickets)} of {totalTickets} tickets
+              </span>
 
               <nav aria-label="Ticket queue navigation">
                 <ul className="pagination mb-0">

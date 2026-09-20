@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext.js';
 import { login } from '../authApi.js';
 
 export default function LoginPage() {
   const { setUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectedUnauthorized = (location.state as any)?.unauthorized === true;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -58,6 +60,12 @@ export default function LoginPage() {
             <h1 className="h4 mt-2 mb-1" style={{ color: '#1E293B' }}>TokTickIT</h1>
             <p className="text-muted small">IT Service Desk Portal</p>
           </div>
+
+          {redirectedUnauthorized && !error && (
+            <div className="alert alert-warning py-2 small" role="alert">
+              <i className="bi bi-shield-lock-fill me-2"></i>You must sign in to access that page.
+            </div>
+          )}
 
           {error && (
             <div className="alert alert-danger py-2 small" role="alert">
