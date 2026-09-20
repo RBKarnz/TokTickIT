@@ -360,12 +360,20 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       }
       await loginAs(page, 'staff1@toktickit.com', 'Password123!', /\/staff\/queue/);
 
-      // Filter by IN_PROGRESS
+      // Filter by IN_PROGRESS and wait for queue response
+      const queueResponsePromise = page.waitForResponse(
+        (res) => res.url().includes('/api/staff/tickets') && res.status() === 200
+      );
       await page.locator('select[aria-label="Status"]').selectOption('IN_PROGRESS');
-      await page.waitForTimeout(400);
+      await queueResponsePromise;
+      await page.waitForTimeout(200);
 
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
-      await page.locator('table tbody tr').first().click();
+      const targetRow = page.locator('table tbody tr:has(.badge:has-text("In Progress"))').first();
+      if (await targetRow.isVisible()) {
+        await targetRow.click();
+      } else {
+        await page.locator('table tbody tr').first().click();
+      }
       await page.waitForURL(/\/tickets\/\d+/);
 
       // Robust wait: ensure loading spinner is detached and ticket header is visible!

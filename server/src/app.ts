@@ -434,9 +434,9 @@ app.get('/api/tickets/:id', requireNormalAuth, async (req, res) => {
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
     }
 
-    // Requester can only access own ticket; return 404 Not Found to prevent ticket enumeration
+    // Requester can only access own ticket; return 403 Forbidden for unauthorized access
     if (req.sessionUser!.role === 'REQUESTER' && ticket.requesterId !== req.sessionUser!.id) {
-      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Ticket not found" } });
+      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Access denied. You do not have permission to view this ticket." } });
     }
 
     res.json(ticket);

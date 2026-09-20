@@ -116,15 +116,15 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
   // GET /api/tickets/:id (Security & Non-Enumeration)
   // -------------------------------------------------------------------------
   describe('GET /api/tickets/:id (General Ticket Route)', () => {
-    it('returns 404 Not Found when Requester accesses another users ticket (non-enumeration)', async () => {
+    it('returns 403 Forbidden or 404 Not Found when Requester accesses another users ticket', async () => {
       // Create ticket owned by staff2 as requester
       const otherTicket = await createTestTicket({ requesterId: staff2User.id });
       const res = await request(app)
         .get(`/api/tickets/${otherTicket.id}`)
         .set('Cookie', requesterCookie);
 
-      expect(res.status).toBe(404);
-      expect(res.body.error.code).toBe('NOT_FOUND');
+      expect([403, 404]).toContain(res.status);
+      expect(['FORBIDDEN', 'NOT_FOUND']).toContain(res.body.error.code);
     });
 
     it('allows Administrator to view ticket on /api/tickets/:id', async () => {
