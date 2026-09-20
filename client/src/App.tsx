@@ -101,7 +101,7 @@ const Spinner = () => (
 export function RequireAuth() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
   if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
   return <Outlet />;
 }
@@ -110,7 +110,7 @@ export function RequireAuth() {
 function RequirePasswordChange() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
   if (!user.mustChangePassword) {
     const landing = user.role === 'IT_STAFF' ? '/staff/queue'
                   : user.role === 'ADMINISTRATOR' ? '/admin/users'
@@ -134,7 +134,7 @@ function RoleLandingRoute() {
 function RequireStaffQueue() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
   if (user.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
   if (user.role !== 'IT_STAFF') return <Navigate to="/" replace />;
   return <StaffTicketQueuePage />;
@@ -166,7 +166,7 @@ function StaffQueueLanding() {
 function RequireAdmin() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
   if (user.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
   if (user.role !== 'ADMINISTRATOR') return <Navigate to="/" replace />;
   return <UserManagementPage />;
