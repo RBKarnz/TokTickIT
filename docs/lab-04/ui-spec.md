@@ -2,7 +2,7 @@
 
 ## 1. UI Principles (carried from Lab 2–3)
 
-- **Zen Green Aesthetic:** Natural muted green palette (`#2E7D32` primary, `#E8F5E9` subtle background, `#1B5E20` hover/focus), crisp neutral slate typography, and consistent spacing.
+- **Zen Green Aesthetic:** The Zen Green tokens already used in the application since Lab 2: `#006B3C` primary (header, primary buttons, links), `#0B7A46` secondary and focus ring, `#EAF6EF` pale green (success and subtle highlights), `#F5F7F6` page background, `#F4F9F5` card background, and `#FFFBEB` amber background for private Internal Notes. No new colour system is introduced; typography and spacing stay as in Lab 3.
 - **Predictable Affordances:** Primary operational actions use solid green buttons; destructive or terminal actions use crimson outlines/accents; secondary controls use neutral borders.
 - **Non-Color Status Cues:** Every status and priority indicator pairs distinct color coding with textual badges, iconography, or explicit position.
 - **State Preservation:** Form errors or optimistic concurrency conflicts never wipe uncommitted user input; entered text remains in the inputs alongside clear error callouts.
@@ -190,7 +190,7 @@ When navigating to `/tickets` or `/staff/queue` via dashboard metric cards:
 
 ## 10. Accessibility and Responsive Checklist
 
-- **Keyboard Navigation:** All interactive elements (cards, drill-down links, buttons, tab headers, modal dialogs) are focusable via `Tab` with a visible 2px green focus ring (`outline: 2px solid #2E7D32; outline-offset: 2px`).
+- **Keyboard Navigation:** All interactive elements (cards, drill-down links, buttons, tab headers, modal dialogs) are focusable via `Tab` with a visible green focus ring in `#0B7A46` (the existing Bootstrap focus style of the application).
 - **Screen Reader Support:** Metric values include explicit `aria-label` descriptors (e.g., `aria-label="14 unassigned tickets, click to view"`).
 - **Responsive Layout:**
   - **Desktop (>= 1024px):** 4 metric cards per row; two-column dashboard body; full data tables.
@@ -209,7 +209,7 @@ The following screenshot artifacts are captured across three standard viewports 
 
 | Inspection Item | Desktop (1280px) | Tablet (768px) | Mobile (375px) | Notes |
 |---|---|---|---|---|
-| Zen Green Consistency | [ ] Pass | [ ] Pass | [ ] Pass | Strict adherence to palette tokens |
+| Zen Green Consistency | [ ] Pass | [ ] Pass | [ ] Pass | `#006B3C` primary, `#0B7A46` secondary/focus, `#F5F7F6` page background; same card and button styles as Lab 3 |
 | Role Navigation & Active Page | [ ] Pass | [ ] Pass | [ ] Pass | Active underline and `aria-current` verified |
 | Dashboard Cards & Drill-down | [ ] Pass | [ ] Pass | [ ] Pass | Counts clear, cards link to filtered views |
 | Status / Priority / Action Badges | [ ] Pass | [ ] Pass | [ ] Pass | Textual cues and high-contrast color badges |
