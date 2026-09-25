@@ -199,9 +199,9 @@ All automated test suites from Labs 1 through 3 are preserved in the repository 
 - `e2e/lab-02/*`
 - `e2e/lab-03/*`
 
-### Expected Test Adjustments for BR-14 (Issue #6)
+### Expected Test Adjustments for BR-14 (Ticket Workflow & Resolution Gate Issue)
 
-In Lab 3, tests asserted that Administrators could not perform IT Staff ticket operations (`BR-23` and `BR-41`). Per Lab 4 handout Section 4.3, Administrators are granted full operational IT Staff permissions. The following Lab 3 test assertions will be updated in Issue #6 to expect `200/201` instead of `403`:
+In Lab 3, tests asserted that Administrators could not perform IT Staff ticket operations (`BR-23` and `BR-41`). Per Lab 4 handout Section 4.3, Administrators are granted full operational IT Staff permissions. The following Lab 3 test assertions will be updated in the Ticket Workflow & Resolution Gate Issue to expect `200/201` instead of `403`:
 1. `server/tests/lab-03/authorization.api.test.ts`: Admin claiming ticket -> now allowed (`200`).
 2. `server/tests/lab-03/authorization.api.test.ts`: Admin updating IT Priority -> now allowed (`200`).
 3. `server/tests/lab-03/authorization.api.test.ts`: Admin updating ticket status -> now allowed (`200`).

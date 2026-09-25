@@ -434,13 +434,13 @@ Every AC maps to at least one test in `tests.md`.
 
 ### Issue Map
 
-| Issue | Title | Scope Summary |
+| Order | Issue Title | Scope Summary |
 |---|---|---|
-| #1 | Sprint 4 Engineering Contract | `specification.md`, `api-spec.md`, `ui-spec.md`, `tests.md` |
-| #2 | Lab 3 Technical Debt | CSRF protection, atomic operations, disposable migration tests, mobile E2E selectors, STYLE suite |
-| #3 | Data Foundation | Prisma schema migrations, backfill, repeat-safe seed, rollback/recovery tests |
-| #4 | Actions Taken API & Authorization | CRUD endpoints, action status matrix, assignment validation, idempotency, role guards |
-| #5 | Actions Taken UI | Ticket Detail Actions tab, list/create/edit modes, responsive card layout, input preservation |
-| #6 | Ticket Workflow & Resolution Gate | Resolution gate validation, status matrix enforcement, status history timeline, summary refresh |
-| #7 | Role Dashboards (API + UI) | Requester, Staff, and Admin dashboard endpoints, metric cards, drill-down filters, dashboard views |
-| #8 | Final Hardening & Release | Leftover UI cleanup, double-submit protection, accessibility audits, regression verification, docs |
+| 1 | Sprint 4 Engineering Contract | `specification.md`, `api-spec.md`, `ui-spec.md`, `tests.md` |
+| 2 | Lab 3 Technical Debt | CSRF protection, atomic operations, disposable migration tests, mobile E2E selectors, STYLE suite |
+| 3 | Data Foundation | Prisma schema migrations, backfill, repeat-safe seed, rollback/recovery tests |
+| 4 | Actions Taken API & Authorization | CRUD endpoints, action status matrix, assignment validation, idempotency, role guards |
+| 5 | Actions Taken UI | Ticket Detail Actions tab, list/create/edit modes, responsive card layout, input preservation |
+| 6 | Ticket Workflow & Resolution Gate | Resolution gate validation, status matrix enforcement, status history timeline, summary refresh |
+| 7 | Role Dashboards (API + UI) | Requester, Staff, and Admin dashboard endpoints, metric cards, drill-down filters, dashboard views |
+| 8 | Final Hardening & Release | Leftover UI cleanup, double-submit protection, accessibility audits, regression verification, docs |
