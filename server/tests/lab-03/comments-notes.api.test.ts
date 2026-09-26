@@ -345,7 +345,7 @@ describe('Comments & Notes API (Lab 3)', () => {
   // -------------------------------------------------------------------------
 
   // API-37
-  it('API-37: Problem Appears Resolved stores timestamp without changing formal status', async () => {
+  it('API-37 / UNIT-13: Problem Appears Resolved stores timestamp without changing formal status', async () => {
     const beforeTicket = await prisma.ticket.findUnique({ where: { id: testTicket.id } });
     expect(beforeTicket!.requesterResolvedAt).toBeNull();
     const originalStatus = beforeTicket!.currentStatus;

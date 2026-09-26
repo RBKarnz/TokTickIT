@@ -170,7 +170,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
       expect(res.status).toBe(403);
     });
 
-    it('API-16 / SEC-06: Requester calling GET /api/staff/tickets/:id/internal-notes -> 403', async () => {
+    it('API-16 / SEC-06 / UNIT-08: Requester calling GET /api/staff/tickets/:id/internal-notes -> 403', async () => {
       const res = await request(app)
         .get(`/api/staff/tickets/${requester1Ticket.id}/internal-notes`)
         .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
@@ -214,7 +214,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
   });
 
   describe('3. Status 404 Not Found (Resource Isolation & Non-Enumeration)', () => {
-    it('API-14 / SEC-08: Requester 1 reading Requester 2 Ticket -> 404 without leaking existence', async () => {
+    it('API-14 / SEC-08 / UNIT-07: Requester 1 reading Requester 2 Ticket -> 404 without leaking existence', async () => {
       const res = await request(app)
         .get(`/api/tickets/${requester2Ticket.id}`)
         .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));

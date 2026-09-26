@@ -323,7 +323,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
   // POST /api/staff/tickets/:id/status (AC-11)
   // -------------------------------------------------------------------------
   describe('POST /api/staff/tickets/:id/status', () => {
-    it('API-34: transitions through allowed matrix states successfully', async () => {
+    it('API-34 / UNIT-11: transitions through allowed matrix states successfully', async () => {
       const ticket = await createTestTicket({ currentStatus: 'NEW' });
 
       // 1. NEW -> OPEN
