@@ -19,6 +19,8 @@ import {
   validatePasswordPolicy,
   COOKIE_NAME,
   getCookieOptions,
+  csrfProtection,
+  csrfTokenFor,
 } from './auth.js';
 
 // The Express app is exported separately from app.listen() (see index.ts) so
@@ -31,6 +33,7 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
+app.use(csrfProtection);
 
 // Setup multer storage
 const storage = multer.diskStorage({
@@ -167,6 +170,7 @@ app.post('/api/auth/login', async (req, res) => {
         mustChangePassword: user.mustChangePassword,
       },
       mustChangePassword: user.mustChangePassword,
+      csrfToken: csrfTokenFor(token),
     });
   } catch (err) {
     console.error('Login error (no credentials logged)');
@@ -191,7 +195,8 @@ app.post('/api/auth/logout', async (req, res) => {
 app.get('/api/auth/me', requireAuth, (req, res) => {
   const u = req.sessionUser!;
   return res.status(200).json({
-    user: { id: u.id, name: u.name, email: u.email, role: u.role, mustChangePassword: u.mustChangePassword }
+    user: { id: u.id, name: u.name, email: u.email, role: u.role, mustChangePassword: u.mustChangePassword },
+    csrfToken: csrfTokenFor(req.cookies[COOKIE_NAME]),
   });
 });
 
@@ -256,7 +261,7 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
     const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie(COOKIE_NAME, newToken, getCookieOptions(isSecure));
 
-    return res.status(200).json({ message: 'Password changed successfully.' });
+    return res.status(200).json({ message: 'Password changed successfully.', csrfToken: csrfTokenFor(newToken) });
   } catch (err) {
     console.error('Change-password error (no credentials logged)');
     return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An error occurred.' } });

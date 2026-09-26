@@ -1,3 +1,4 @@
+import { csrfFetch, setCsrfToken } from './csrf';
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 export interface AuthUser {
@@ -19,7 +20,7 @@ export interface ChangePasswordError {
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
-  const res = await fetch(`${API_URL}/api/auth/login`, {
+  const res = await csrfFetch(`${API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -32,22 +33,26 @@ export async function login(email: string, password: string): Promise<LoginRespo
       : (err?.error?.message || 'Login failed.');
     throw new Error(msg);
   }
-  return res.json();
+  const data = await res.json();
+  setCsrfToken(data.csrfToken);
+  return data;
 }
 
 export async function logout(): Promise<void> {
-  await fetch(`${API_URL}/api/auth/logout`, {
+  await csrfFetch(`${API_URL}/api/auth/logout`, {
     method: 'POST',
     credentials: 'include',
   }).catch(() => {});
+  setCsrfToken(null);
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
-  const res = await fetch(`${API_URL}/api/auth/me`, {
+  const res = await csrfFetch(`${API_URL}/api/auth/me`, {
     credentials: 'include',
   });
   if (!res.ok) return null;
   const data = await res.json();
+  setCsrfToken(data.csrfToken);
   return data.user as AuthUser;
 }
 
@@ -56,7 +61,7 @@ export async function changePassword(
   newPassword: string,
   confirmPassword: string,
 ): Promise<void> {
-  const res = await fetch(`${API_URL}/api/auth/change-password`, {
+  const res = await csrfFetch(`${API_URL}/api/auth/change-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -70,4 +75,6 @@ export async function changePassword(
     };
     throw e;
   }
+  const data = await res.json().catch(() => null);
+  setCsrfToken(data?.csrfToken);
 }
