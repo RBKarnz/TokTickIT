@@ -431,6 +431,7 @@ Every AC maps to at least one test in `tests.md`.
 12. **D12 (Documentation Naming):** The Lab 4 AI record file is standardized as `docs/lab-04/ai-use.md` with a hyphen.
 13. **Action Date Tolerance:** Action timestamps allow a maximum future tolerance of 5 minutes to accommodate minor client-server clock drift.
 14. **Performance Budget:** Dashboard summary API endpoints must respond with a p95 latency under 500 ms on seeded datasets in local testing.
+15. **Requester Dashboard Card 2 (wireframe vs. handout):** The Requester wireframe in lab sheet Section 8.2 labels its second card "In Progress", while Section 4.6 lists "Tickets waiting for the Requester" and the Part 8 rubric asks for "attention-required Tickets". Card 2 is therefore `waitingForMe` ("Waiting for Me", status `WAITING_FOR_REQUESTER`), because these are the Tickets that need the Requester's action. In-progress work stays visible through the "My Open Tickets" card (Open group) and the Recently Updated list, so no information from the wireframe is lost.
 
 ### Issue Map
 

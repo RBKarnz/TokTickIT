@@ -334,6 +334,9 @@ To fulfill dashboard card drill-downs without loading unneeded records, the exis
 
 - `statusGroup`:
   - `open`: Matches `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `REOPENED`.
+- `ownership` (existing Lab 3 filter, used by the Unassigned card drill-down):
+  - `assigned`: Tickets with a Ticket Owner (`ownerId IS NOT NULL`).
+  - `unassigned`: Tickets without a Ticket Owner (`ownerId IS NULL`).
 - `ownerId`:
   - `me`: Resolves to `req.sessionUser.id`.
   - Integer string: Matches specific owner ID.

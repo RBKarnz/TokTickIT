@@ -71,7 +71,9 @@ The top header provides immediate brand recognition, contextual navigation links
   - **Recently Updated:** 5 most recently active tickets across the entire service desk.
 - **Quick Actions:**
   - `Open Ticket Queue` -> navigates to `/staff/queue`
+  - `Search Tickets` -> navigates to `/staff/queue?focus=search` and moves keyboard focus to the queue search field (`focus` is a UI-only route parameter; it is not sent to the API)
   - `My Tickets Queue` -> navigates to `/staff/queue?ownerId=me&statusGroup=open`
+- `+ Create Ticket` from the wireframe is intentionally not shown for IT Staff (Decision D9).
 
 ## 5. Screen: Administrator Dashboard
 
