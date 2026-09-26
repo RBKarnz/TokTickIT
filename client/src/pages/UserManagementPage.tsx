@@ -500,7 +500,7 @@ export default function UserManagementPage() {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id}>
+                  <tr key={u.id} data-testid="list-item">
                     <td className="ps-4 fw-semibold text-dark">{u.name}</td>
                     <td className="text-muted">{u.email}</td>
                     <td>{renderRoleBadge(u.role)}</td>
@@ -525,7 +525,7 @@ export default function UserManagementPage() {
             <div className="row g-3">
               {users.map((u) => (
                 <div className="col-12" key={u.id}>
-                  <div className="card border p-3">
+                  <div data-testid="list-item" className="card border p-3">
                     <div className="d-flex justify-content-between align-items-start mb-2">
                       <div>
                         <h6 className="fw-bold mb-1">{u.name}</h6>

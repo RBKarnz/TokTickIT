@@ -152,6 +152,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       expect(res.status).toBe(200);
       expect(res.body.owner.id).toBe(staff1User.id);
       expect(res.body.owner.name).toBe(staff1User.name);
+      expect(res.body.owner.email).toBe(staff1User.email); // owner chip renders "Name (email)"
 
       const dbTicket = await prisma.ticket.findUnique({ where: { id: ticket.id } });
       expect(dbTicket?.ownerId).toBe(staff1User.id);
@@ -203,6 +204,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.owner.id).toBe(staff2User.id);
+      expect(res.body.owner.email).toBe(staff2User.email);
 
       const dbTicket = await prisma.ticket.findUnique({ where: { id: ticket.id } });
       expect(dbTicket?.ownerId).toBe(staff2User.id);

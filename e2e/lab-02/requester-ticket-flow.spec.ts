@@ -32,7 +32,7 @@ test.describe('Requester Ticket Flow (E2E-01)', () => {
     await page.goto('http://localhost:5173/');
     
     // 6. View details
-    const firstTicket = page.locator('table tbody tr').first();
+    const firstTicket = page.locator('[data-testid="list-item"]:visible').first();
     await firstTicket.click();
     await expect(page.locator('text=Ticket Details')).toBeVisible();
   });

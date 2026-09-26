@@ -139,7 +139,7 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('button[type="submit"]').click();
 
     await page.goto('/tickets');
-    const firstTicket = page.locator('table tbody tr').first();
+    const firstTicket = page.locator('[data-testid="list-item"]:visible').first();
     if (await firstTicket.isVisible()) {
       await firstTicket.click();
       await expect(page.locator('body')).not.toContainText('Internal Notes');

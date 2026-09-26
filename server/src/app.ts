@@ -905,7 +905,7 @@ app.post('/api/staff/tickets/:id/claim', requireNormalAuth, async (req, res) => 
     const updated = await prisma.ticket.update({
       where: { id: ticketId },
       data: { ownerId: req.sessionUser!.id },
-      include: { owner: { select: { id: true, name: true } } },
+      include: { owner: { select: { id: true, name: true, email: true } } },
     });
 
     res.status(200).json({ owner: updated.owner });
@@ -950,7 +950,7 @@ app.put('/api/staff/tickets/:id/owner', requireNormalAuth, async (req, res) => {
     const updated = await prisma.ticket.update({
       where: { id: ticketId },
       data: { ownerId: targetUser.id },
-      include: { owner: { select: { id: true, name: true } } },
+      include: { owner: { select: { id: true, name: true, email: true } } },
     });
 
     res.status(200).json({ owner: updated.owner });

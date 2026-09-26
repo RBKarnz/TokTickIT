@@ -18,24 +18,27 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
 
     // Verify header and table elements
     await expect(page.locator('h1')).toContainText(/User Management/i);
-    await expect(page.locator('table')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
 
     // Verify table headers
-    await expect(page.locator('th:has-text("Name")')).toBeVisible();
-    await expect(page.locator('th:has-text("Email")')).toBeVisible();
-    await expect(page.locator('th:has-text("Role")')).toBeVisible();
-    await expect(page.locator('th:has-text("Status")')).toBeVisible();
-    await expect(page.locator('th:has-text("Actions")')).toBeVisible();
+    // Column headers exist only in the desktop/tablet table; mobile uses stacked cards.
+    if ((page.viewportSize()?.width ?? 1280) >= 768) {
+      await expect(page.locator('th:has-text("Name")')).toBeVisible();
+      await expect(page.locator('th:has-text("Email")')).toBeVisible();
+      await expect(page.locator('th:has-text("Role")')).toBeVisible();
+      await expect(page.locator('th:has-text("Status")')).toBeVisible();
+      await expect(page.locator('th:has-text("Actions")')).toBeVisible();
+    }
 
     // Verify key seed accounts are listed
-    await expect(page.locator('td:has-text("Admin User")')).toBeVisible();
-    await expect(page.locator('td:has-text("admin@toktickit.com")')).toBeVisible();
-    await expect(page.locator('td:has-text("Jennifer Anderson")')).toBeVisible();
-    await expect(page.locator('td:has-text("Alice Tech")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Admin User")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("admin@toktickit.com")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Jennifer Anderson")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Alice Tech")')).toBeVisible();
 
     // Verify role badges and edit buttons
-    await expect(page.locator('.badge:has-text("Administrator")').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Edit")').first()).toBeVisible();
+    await expect(page.locator('.badge:has-text("Administrator"):visible').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Edit"):visible').first()).toBeVisible();
   });
 
   test('E2E-23: Search by Name and Email substring', async ({ page }) => {
@@ -46,20 +49,20 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     // 1. Search by Name
     await searchInput.fill('Jennifer');
     await page.waitForTimeout(300);
-    await expect(page.locator('td:has-text("Jennifer Anderson")')).toBeVisible();
-    await expect(page.locator('td:has-text("Alice Tech")')).not.toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Jennifer Anderson")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Alice Tech")')).not.toBeVisible();
 
     // 2. Search by Email
     await searchInput.fill('staff1@toktickit.com');
     await page.waitForTimeout(300);
-    await expect(page.locator('td:has-text("staff1@toktickit.com")')).toBeVisible();
-    await expect(page.locator('td:has-text("Jennifer Anderson")')).not.toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("staff1@toktickit.com")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Jennifer Anderson")')).not.toBeVisible();
 
     // 3. Clear search returns all
     await searchInput.fill('');
     await page.waitForTimeout(300);
-    await expect(page.locator('td:has-text("Jennifer Anderson")')).toBeVisible();
-    await expect(page.locator('td:has-text("Alice Tech")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Jennifer Anderson")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Alice Tech")')).toBeVisible();
   });
 
   test('E2E-24: Role filter dropdown', async ({ page }) => {
@@ -70,20 +73,20 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     // Filter by IT_STAFF
     await roleSelect.selectOption('IT_STAFF');
     await page.waitForTimeout(300);
-    await expect(page.locator('td:has-text("Alice Tech")')).toBeVisible();
-    await expect(page.locator('td:has-text("admin@toktickit.com")')).not.toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Alice Tech")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("admin@toktickit.com")')).not.toBeVisible();
 
     // Filter by ADMINISTRATOR
     await roleSelect.selectOption('ADMINISTRATOR');
     await page.waitForTimeout(300);
-    await expect(page.locator('td:has-text("admin@toktickit.com")')).toBeVisible();
-    await expect(page.locator('td:has-text("Alice Tech")')).not.toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("admin@toktickit.com")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Alice Tech")')).not.toBeVisible();
 
     // Reset to All Roles
     await roleSelect.selectOption('');
     await page.waitForTimeout(300);
-    await expect(page.locator('td:has-text("Alice Tech")')).toBeVisible();
-    await expect(page.locator('td:has-text("admin@toktickit.com")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("Alice Tech")')).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible:has-text("admin@toktickit.com")')).toBeVisible();
   });
 
   test('E2E-25: Create User form validation & password policy boundary feedback', async ({ page }) => {
@@ -131,7 +134,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     // Expect success alert and user listed
     await expect(page.locator('.alert-success')).toContainText('created successfully');
     await page.locator('input[placeholder*="Search"]').fill(newUserEmail);
-    await expect(page.locator(`td:has-text("${newUserEmail}")`)).toBeVisible();
+    await expect(page.locator(`[data-testid="list-item"]:visible:has-text("${newUserEmail}")`)).toBeVisible();
 
     // 2. Newly created user logs in using a clean browser context
     const userContext = await browser.newContext();
@@ -182,7 +185,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     // Search and edit requester4
     await page.locator('input[placeholder*="Search"]').fill('requester4@toktickit.com');
     await page.waitForTimeout(300);
-    const editBtn = page.locator('table tbody tr').filter({ hasText: 'requester4@toktickit.com' }).locator('button:has-text("Edit")');
+    const editBtn = page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'requester4@toktickit.com' }).locator('button:has-text("Edit")');
     await editBtn.click();
 
     // 1. Edit Name
@@ -190,10 +193,10 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     await page.locator('input#edit-name').fill(updatedName);
     await page.locator('button:has-text("Save Changes")').click();
     await expect(page.locator('.alert-success')).toContainText('updated successfully');
-    await expect(page.locator(`td:has-text("${updatedName}")`)).toBeVisible();
+    await expect(page.locator(`[data-testid="list-item"]:visible:has-text("${updatedName}")`)).toBeVisible();
 
     // 2. Duplicate email check in edit mode
-    await page.locator('table tbody tr').filter({ hasText: updatedName }).locator('button:has-text("Edit")').click();
+    await page.locator('[data-testid="list-item"]:visible').filter({ hasText: updatedName }).locator('button:has-text("Edit")').click();
     await page.locator('input#edit-email').fill('admin@toktickit.com');
     await page.locator('button:has-text("Save Changes")').click();
     await expect(page.locator('.invalid-feedback:has-text("already in use")')).toBeVisible();
@@ -219,7 +222,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     await adminLogin(page);
     await page.locator('input[placeholder*="Search"]').fill('requester3@toktickit.com');
     await page.waitForTimeout(300);
-    await page.locator('table tbody tr').filter({ hasText: 'requester3@toktickit.com' }).locator('button:has-text("Edit")').click();
+    await page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'requester3@toktickit.com' }).locator('button:has-text("Edit")').click();
 
     // Expand password section
     await page.locator('span:has-text("Set New Initial Password")').click();
@@ -255,7 +258,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     // Filter or search for admin
     await page.locator('input[placeholder*="Search"]').fill('admin@toktickit.com');
     await page.waitForTimeout(300);
-    await page.locator('table tbody tr').filter({ hasText: 'admin@toktickit.com' }).locator('button:has-text("Edit")').click();
+    await page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'admin@toktickit.com' }).locator('button:has-text("Edit")').click();
 
     // Active toggle must be disabled
     const activeCheckbox = page.locator('input#edit-active');
@@ -272,7 +275,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
 
     await page.locator('input[placeholder*="Search"]').fill('admin@toktickit.com');
     await page.waitForTimeout(300);
-    await page.locator('table tbody tr').filter({ hasText: 'admin@toktickit.com' }).locator('button:has-text("Edit")').click();
+    await page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'admin@toktickit.com' }).locator('button:has-text("Edit")').click();
 
     // Try to demote role away from ADMINISTRATOR
     await page.locator('select#edit-role').selectOption('IT_STAFF');
