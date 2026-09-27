@@ -82,7 +82,9 @@ describe('Migration / Regression Tests (Lab 3 API-61..64)', () => {
     attachmentsBefore = await db.$queryRawUnsafe<AttachmentRow[]>(`SELECT "id","ticketId","storedFilename" FROM "Attachment" ORDER BY "id"`);
     requestersBefore = await db.$queryRawUnsafe(`SELECT LOWER(TRIM("email")) AS "email", "isActive" FROM "RequesterUser" ORDER BY "id"`);
 
-    copyMigration(LAB3_MIGRATION);
+    // The copied schema.prisma is the current one, so the Lab 3 migration and every later
+    // (additive) migration are applied together; the seed in API-64 needs the current tables.
+    fs.readdirSync(MIGRATIONS_DIR).filter((name) => /^\d{14}_/.test(name) && name >= LAB3_MIGRATION).forEach(copyMigration);
     deploy();
   }, 180_000);
 
