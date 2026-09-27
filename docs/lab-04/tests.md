@@ -110,11 +110,11 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| MIG-01 | Migration | AC-21 | Deploy Lab 4 migration on existing Lab 3 database | All users, tickets, comments, notes, attachments intact | `server/tests/lab-04/migration.api.test.ts` | Planned |
-| MIG-02 | Migration | AC-21 | Backfill verification for legacy tickets | Each legacy ticket receives exactly 1 history row | `server/tests/lab-04/migration.api.test.ts` | Planned |
-| MIG-03 | Migration | AC-21 | Legacy ticket action count post-migration | Legacy tickets have count = 0 actions taken | `server/tests/lab-04/migration.api.test.ts` | Planned |
-| MIG-04 | Migration | AC-22 | Idempotent seed execution (run seed twice) | Zero duplicate key errors; entity counts unchanged on replay | `server/tests/lab-04/migration.api.test.ts` | Planned |
-| MIG-05 | Migration | AC-21 | Rollback procedure on disposable database | Down migration drops tables cleanly; data returns to Lab 3 state | `server/tests/lab-04/migration.api.test.ts` | Planned |
+| MIG-01 | Migration | AC-21 | Deploy Lab 4 migration on existing Lab 3 database | All users, tickets, comments, notes, attachments intact | `server/tests/lab-04/migration.api.test.ts` | Pass |
+| MIG-02 | Migration | AC-21 | Backfill verification for legacy tickets | Each legacy ticket receives exactly 1 history row | `server/tests/lab-04/migration.api.test.ts` | Pass |
+| MIG-03 | Migration | AC-21 | Legacy ticket action count post-migration | Legacy tickets have count = 0 actions taken | `server/tests/lab-04/migration.api.test.ts` | Pass |
+| MIG-04 | Migration | AC-22 | Idempotent seed execution (run seed twice) | Zero duplicate key errors; entity counts unchanged on replay | `server/tests/lab-04/migration.api.test.ts` | Pass |
+| MIG-05 | Migration | AC-21 | Rollback procedure on disposable database | Down migration drops tables cleanly; data returns to Lab 3 state | `server/tests/lab-04/migration.api.test.ts` | Pass |
 
 ## 7. Performance-Smoke Tests
 
@@ -215,17 +215,23 @@ All other Lab 1–3 assertions remain strictly unchanged.
 
 | Role | Email | Status | Initial Password State |
 |---|---|---|---|
-| `REQUESTER` | `requester1@toktick.it` | Active | Changed (Normal session) |
-| `REQUESTER` | `requester2@toktick.it` | Active | Changed (Normal session) |
-| `REQUESTER` | `firstlogin.requester@toktick.it` | Active | Must change password |
-| `IT_STAFF` | `staff1@toktick.it` | Active | Changed (Normal session) |
-| `IT_STAFF` | `staff2@toktick.it` | Active | Changed (Normal session) |
-| `IT_STAFF` | `inactive.staff@toktick.it` | Inactive | Rejection test fixture |
-| `ADMINISTRATOR` | `admin1@toktick.it` | Active | Changed (Normal session) |
+| `REQUESTER` | `requester1@toktickit.com` | Active | Changed (Normal session) |
+| `REQUESTER` | `requester2@toktickit.com` | Active | Changed (Normal session) |
+| `REQUESTER` | `requester3@toktickit.com` | Active | Changed (Normal session); requester of the Lab 4 fixture Tickets |
+| `REQUESTER` | `requester4@toktickit.com` | Active | Changed (Normal session); no Tickets (zero Requester metrics) |
+| `REQUESTER` | `requester.inactive@toktickit.com` | Inactive | Rejection test fixture |
+| `REQUESTER` | `firstlogin@toktickit.com` | Active | Must change password |
+| `IT_STAFF` | `staff1@toktickit.com` | Active | Changed (Normal session) |
+| `IT_STAFF` | `staff2@toktickit.com` | Active | Changed (Normal session) |
+| `IT_STAFF` | `staff3@toktickit.com` | Active | Changed (Normal session); no owned Tickets or assigned Actions (zero IT Staff metrics) |
+| `IT_STAFF` | `staff.inactive@toktickit.com` | Inactive | Rejection test fixture |
+| `ADMINISTRATOR` | `admin@toktickit.com` | Active | Changed (Normal session) |
 
-*All account passwords derive deterministically from environment variable `SEED_DEFAULT_PASSWORD`.*
+*All account passwords come from the environment variable `SEED_DEFAULT_PASSWORD` (default `Password123!` for local development).*
 
 ### Lab 4 Test Fixtures
+
+Seeded by `server/prisma/seed.ts` for `requester3@toktickit.com` with fixed numbers `TKT-2026-L4-001` to `TKT-2026-L4-008` (001 zero actions, 002 one planned action, 003 three actions by different staff in three statuses, 004 ready for resolution, 005 completed action plus pending follow-up, 006 waiting for requester, 007 resolved, 008 closed). Legacy Tickets keep zero actions.
 
 - Tickets with 0 actions (legacy regression tickets).
 - Tickets with 1 planned action and 1 in-progress action.
