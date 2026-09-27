@@ -51,7 +51,7 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
 
     await page.locator('input[placeholder*="Search"]').fill('firstlogin@toktickit.com');
     await page.waitForTimeout(300);
-    await page.locator('table tbody tr').filter({ hasText: 'firstlogin@toktickit.com' }).locator('button:has-text("Edit")').click();
+    await page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'firstlogin@toktickit.com' }).locator('button:has-text("Edit")').click();
     await page.locator('span:has-text("Set New Initial Password")').click();
     await page.locator('input#reset-password').fill('Password123!');
     await page.locator('input#reset-confirm-password').fill('Password123!');

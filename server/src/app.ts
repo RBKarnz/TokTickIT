@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
 import {
   requireAuth,
@@ -19,6 +20,8 @@ import {
   validatePasswordPolicy,
   COOKIE_NAME,
   getCookieOptions,
+  csrfProtection,
+  csrfTokenFor,
 } from './auth.js';
 
 // The Express app is exported separately from app.listen() (see index.ts) so
@@ -31,6 +34,7 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
+app.use(csrfProtection);
 
 // Setup multer storage
 const storage = multer.diskStorage({
@@ -167,6 +171,7 @@ app.post('/api/auth/login', async (req, res) => {
         mustChangePassword: user.mustChangePassword,
       },
       mustChangePassword: user.mustChangePassword,
+      csrfToken: csrfTokenFor(token),
     });
   } catch (err) {
     console.error('Login error (no credentials logged)');
@@ -191,7 +196,8 @@ app.post('/api/auth/logout', async (req, res) => {
 app.get('/api/auth/me', requireAuth, (req, res) => {
   const u = req.sessionUser!;
   return res.status(200).json({
-    user: { id: u.id, name: u.name, email: u.email, role: u.role, mustChangePassword: u.mustChangePassword }
+    user: { id: u.id, name: u.name, email: u.email, role: u.role, mustChangePassword: u.mustChangePassword },
+    csrfToken: csrfTokenFor(req.cookies[COOKIE_NAME]),
   });
 });
 
@@ -256,7 +262,7 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
     const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie(COOKIE_NAME, newToken, getCookieOptions(isSecure));
 
-    return res.status(200).json({ message: 'Password changed successfully.' });
+    return res.status(200).json({ message: 'Password changed successfully.', csrfToken: csrfTokenFor(newToken) });
   } catch (err) {
     console.error('Change-password error (no credentials logged)');
     return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An error occurred.' } });
@@ -899,7 +905,7 @@ app.post('/api/staff/tickets/:id/claim', requireNormalAuth, async (req, res) => 
     const updated = await prisma.ticket.update({
       where: { id: ticketId },
       data: { ownerId: req.sessionUser!.id },
-      include: { owner: { select: { id: true, name: true } } },
+      include: { owner: { select: { id: true, name: true, email: true } } },
     });
 
     res.status(200).json({ owner: updated.owner });
@@ -944,7 +950,7 @@ app.put('/api/staff/tickets/:id/owner', requireNormalAuth, async (req, res) => {
     const updated = await prisma.ticket.update({
       where: { id: ticketId },
       data: { ownerId: targetUser.id },
-      include: { owner: { select: { id: true, name: true } } },
+      include: { owner: { select: { id: true, name: true, email: true } } },
     });
 
     res.status(200).json({ owner: updated.owner });
@@ -1046,9 +1052,19 @@ app.post('/api/staff/tickets/:id/status', requireNormalAuth, async (req, res) =>
       dataToUpdate.resolutionSummary = req.body.resolutionSummary.trim();
     }
 
-    const updated = await prisma.ticket.update({
-      where: { id: ticketId },
+    // Conditional write (API-65): only succeeds if the status is still the one we validated,
+    // so a concurrent transition cannot be silently overwritten.
+    const { count } = await prisma.ticket.updateMany({
+      where: { id: ticketId, currentStatus: ticket.currentStatus },
       data: dataToUpdate,
+    });
+    if (count === 0) {
+      return res.status(409).json({
+        error: { code: 'CONFLICT', message: 'Ticket status was changed by another request. Reload and try again.' },
+      });
+    }
+    const updated = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
       select: { id: true, currentStatus: true, resolutionSummary: true },
     });
 
@@ -1336,6 +1352,7 @@ app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
 
 const ADMIN_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ADMIN_VALID_ROLES = ['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR'];
+class LastAdminError extends Error {}
 
 // GET /api/admin/users
 app.get('/api/admin/users', requireNormalAuth, requireRole('ADMINISTRATOR'), async (req, res) => {
@@ -1547,45 +1564,54 @@ app.patch('/api/admin/users/:userId', requireNormalAuth, requireRole('ADMINISTRA
       return res.status(409).json({ error: { code: 'CONFLICT', message: 'Administrators cannot deactivate their own account.' } });
     }
 
-    // AC-18: Last active Administrator protection (both deactivation and role demotion)
-    if (targetUser.role === 'ADMINISTRATOR' && targetUser.isActive === true) {
-      const willBeInactive = isActive === false;
-      const willChangeRoleAway = role !== undefined && role.trim() !== 'ADMINISTRATOR';
-
-      if (willBeInactive || willChangeRoleAway) {
-        const activeAdminCount = await prisma.user.count({
-          where: { role: 'ADMINISTRATOR', isActive: true },
-        });
-        if (activeAdminCount <= 1) {
-          return res.status(409).json({
-            error: {
-              code: 'CONFLICT',
-              message: 'Cannot deactivate or change the role of the last active Administrator in the system.',
-            },
-          });
-        }
-      }
-    }
-
-    // Session revocation when deactivating user (SEC-12)
-    if (isActive === false) {
-      await revokeAllUserSessions(targetUser.id);
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        isActive: true,
-        mustChangePassword: true,
-        createdAt: true,
-        updatedAt: true,
+    const LAST_ADMIN_CONFLICT = {
+      error: {
+        code: 'CONFLICT',
+        message: 'Cannot deactivate or change the role of the last active Administrator in the system.',
       },
-    });
+    };
+
+    // AC-18 / API-66 / SEC-11: the last-active-Administrator check and the write run in one
+    // Serializable transaction, so two concurrent demotions cannot leave zero active Admins.
+    let updatedUser;
+    try {
+      updatedUser = await prisma.$transaction(async (tx) => {
+        const current = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+        const removesAdmin = current.role === 'ADMINISTRATOR' && current.isActive &&
+          (isActive === false || (role !== undefined && role.trim() !== 'ADMINISTRATOR'));
+        if (removesAdmin) {
+          const activeAdminCount = await tx.user.count({ where: { role: 'ADMINISTRATOR', isActive: true } });
+          if (activeAdminCount <= 1) throw new LastAdminError();
+        }
+
+        // Session revocation when deactivating user (SEC-12)
+        if (isActive === false) {
+          await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+        }
+
+        return tx.user.update({
+          where: { id: userId },
+          data: updateData,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isActive: true,
+            mustChangePassword: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (txError) {
+      // P2034 = serialization failure: a concurrent admin change won; report it as a conflict.
+      if (txError instanceof LastAdminError ||
+          (txError instanceof Prisma.PrismaClientKnownRequestError && txError.code === 'P2034')) {
+        return res.status(409).json(LAST_ADMIN_CONFLICT);
+      }
+      throw txError;
+    }
 
     res.status(200).json({ user: updatedUser });
   } catch (error) {

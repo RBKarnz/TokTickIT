@@ -21,8 +21,8 @@ async function requesterLogin(page: any, email = 'requester1@toktickit.com', pas
 test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
   test('E2E-09: Staff opens Queue with seeded realistic data', async ({ page }) => {
     await staffLogin(page);
-    await expect(page.locator('table')).toBeVisible();
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
   });
 
   test('E2E-10: Queue search, filters, sort, and pagination boundary cases', async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
     const searchInput = page.locator('input[placeholder*="Search"]');
     await searchInput.fill('TKT');
     await page.waitForTimeout(600); // debounce 500ms
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
+    await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
 
     // Clear search
     await searchInput.fill('');
@@ -61,7 +61,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
     await staffLogin(page);
 
     // Find and click an unassigned ticket or the first available ticket
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('[data-testid="list-item"]:visible').first();
     await firstRow.click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
@@ -75,7 +75,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
 
   test('E2E-13: Reassign Ticket to another active Staff member', async ({ page }) => {
     await staffLogin(page);
-    await page.locator('table tbody tr').first().click();
+    await page.locator('[data-testid="list-item"]:visible').first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
     const reassignSelect = page.locator('select#reassignSelect, select').filter({ hasText: /Select Staff|Bob|Charlie/i }).first();
@@ -90,7 +90,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
 
   test('E2E-14: Update IT Priority independently from Requested Priority', async ({ page }) => {
     await staffLogin(page);
-    await page.locator('table tbody tr').first().click();
+    await page.locator('[data-testid="list-item"]:visible').first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
     const prioritySelect = page.locator('select#itPrioritySelect, select').filter({ hasText: /LOW|MEDIUM|HIGH|CRITICAL/i }).first();
@@ -105,7 +105,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
 
   test('E2E-15 & E2E-16: Status transition with confirmation modal & mandatory resolution summary for RESOLVED', async ({ page }) => {
     await staffLogin(page);
-    await page.locator('table tbody tr').first().click();
+    await page.locator('[data-testid="list-item"]:visible').first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
     const statusDropdown = page.locator('select#statusSelect, select').filter({ hasText: /Change Status|Open|In Progress|Resolved/i }).first();
@@ -135,7 +135,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
 
   test('E2E-17 & E2E-18: Public Comments and Internal Notes persistence', async ({ page }) => {
     await staffLogin(page);
-    await page.locator('table tbody tr').first().click();
+    await page.locator('[data-testid="list-item"]:visible').first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
     // 1. Post Public Comment
@@ -167,7 +167,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
 
   test('E2E-19: Requester views ticket: sees Public Comments but never Internal Notes tab/content', async ({ page }) => {
     await requesterLogin(page);
-    const firstTicket = page.locator('table tbody tr').first();
+    const firstTicket = page.locator('[data-testid="list-item"]:visible').first();
     if (await firstTicket.isVisible()) {
       await firstTicket.click();
       await expect(page).toHaveURL(/\/tickets\/\d+/);
@@ -183,7 +183,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
 
   test('E2E-20: Requester toggles Problem Appears Resolved without altering formal status', async ({ page }) => {
     await requesterLogin(page);
-    const firstTicket = page.locator('table tbody tr').first();
+    const firstTicket = page.locator('[data-testid="list-item"]:visible').first();
     if (await firstTicket.isVisible()) {
       await firstTicket.click();
       await expect(page).toHaveURL(/\/tickets\/\d+/);
@@ -198,7 +198,7 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
 
   test('E2E-21: Attachments continuity: view and download attachment', async ({ page }) => {
     await staffLogin(page);
-    await page.locator('table tbody tr').first().click();
+    await page.locator('[data-testid="list-item"]:visible').first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
     const attachTab = page.locator('button:has-text("Attachments"), a:has-text("Attachments")').first();

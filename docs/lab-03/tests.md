@@ -37,6 +37,14 @@ Required E2E:
 - `e2e/lab-03/staff-ticket-flow.spec.ts`
 - `e2e/lab-03/user-administration.spec.ts`
 
+Added in Lab 4 (Lab 3 technical debt — gaps found during Lab 3 final verification):
+- `server/tests/lab-03/security.api.test.ts` — SEC-01, SEC-02, SEC-03, SEC-13..16 (CSRF)
+- `server/tests/lab-03/integrity.api.test.ts` — UNIT-10, API-65, API-66 / SEC-11
+- `server/tests/lab-03/migration.api.test.ts` — API-61..64 on a disposable database
+- `server/tests/lab-03/regression.api.test.ts` — API-18, API-19
+- `client/tests/lab-03/Csrf.test.tsx` — client CSRF header handling
+- `e2e/lab-03/style.spec.ts` — STYLE-01..12 on Desktop, Tablet and Mobile projects
+
 Test data should use a disposable test database and real application persistence.
 
 ## 3. API / Integration Tests
@@ -60,8 +68,8 @@ Test data should use a disposable test database and real application persistence
 | API-15 | Security | AC-07 | Requester reads another user's Attachment | 404/403 without protected data | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-16 | Security | AC-07 | Requester calls Internal Notes | Forbidden and no note data | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
 | API-17 | Regression | AC-03, AC-20 | Requester creates Ticket through authenticated identity | Persisted requester ID equals authenticated user | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| API-18 | Regression | AC-20 | Existing Ticket retrieval | Old Ticket still available to correct Requester | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| API-19 | Regression | AC-20 | Existing Attachment flow | Existing Attachment ownership behavior preserved | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| API-18 | Regression | AC-20 | Existing Ticket retrieval | Old Ticket still available to correct Requester | `server/tests/lab-03/regression.api.test.ts` | Pass |
+| API-19 | Regression | AC-20 | Existing Attachment flow | Existing Attachment ownership behavior preserved | `server/tests/lab-03/regression.api.test.ts` | Pass |
 | API-20 | API | AC-08 | Staff queue default | Correct default ordering and pagination | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
 | API-21 | API | AC-08 | Queue search by Ticket Number | Matching records only | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
 | API-22 | API | AC-08 | Queue search by Summary | Matching records only | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
@@ -103,12 +111,12 @@ Test data should use a disposable test database and real application persistence
 | API-58 | API | AC-19 | Set initial password | Hash changes, mustChangePassword=true | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-59 | API | AC-19 | Initial password login after reset | Forced change | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-60 | Security | AC-19 | Existing target sessions after reset | Revoked | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
-| API-61 | Regression | AC-20 | Migration preserves Ticket count | Count and IDs preserved | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| API-62 | Regression | AC-20 | Migration preserves Attachment relations | Attachments still point to valid Tickets | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| API-63 | Regression | AC-20 | Migration preserves requester ownership | Each migrated Ticket maps to original Requester | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| API-64 | Migration | AC-21 | Run migration/seed twice | No duplicates or destructive change | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| API-65 | Integrity | AC-25 | Status update under concurrent stale state | No invalid silent overwrite | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| API-66 | Integrity | AC-25 | Last-admin safety in transaction | Cannot commit zero active Admins | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| API-61 | Regression | AC-20 | Migration preserves Ticket count | Count and IDs preserved | `server/tests/lab-03/migration.api.test.ts` | Pass |
+| API-62 | Regression | AC-20 | Migration preserves Attachment relations | Attachments still point to valid Tickets | `server/tests/lab-03/migration.api.test.ts` | Pass |
+| API-63 | Regression | AC-20 | Migration preserves requester ownership | Each migrated Ticket maps to original Requester | `server/tests/lab-03/migration.api.test.ts` | Pass |
+| API-64 | Migration | AC-21 | Run migration/seed twice | No duplicates or destructive change | `server/tests/lab-03/migration.api.test.ts` | Pass |
+| API-65 | Integrity | AC-25 | Status update under concurrent stale state | No invalid silent overwrite | `server/tests/lab-03/integrity.api.test.ts` | Pass |
+| API-66 | Integrity | AC-25 | Last-admin safety in transaction | Cannot commit zero active Admins | `server/tests/lab-03/integrity.api.test.ts` | Pass |
 | API-56b | API | AC-18 | Change role of last active Admin away from ADMINISTRATOR | 409 Conflict; role demotion rejected | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 
 ## 4. Unit Tests
@@ -124,7 +132,7 @@ Test data should use a disposable test database and real application persistence
 | UNIT-07 | Unit | Requester ownership rule | Authorization - Requester ownership rule | Only authenticated owner passes | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | UNIT-08 | Unit | Staff-only rule | Authorization - Staff-only rule | Requester denied for Staff/Admin internal notes operation | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | UNIT-09 | Unit | Admin-only rule | Authorization - Admin-only rule | Requester/Staff denied for Admin APIs | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| UNIT-10 | Unit | IT Priority initialization | Ticket - IT Priority initialization | Missing IT Priority copies Requested Priority | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
+| UNIT-10 | Unit | IT Priority initialization | Ticket - IT Priority initialization | Missing IT Priority copies Requested Priority | `server/tests/lab-03/integrity.api.test.ts` | Pass |
 | UNIT-11 | Unit | Status matrix | Ticket - Status matrix | Allowed transitions return true | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
 | UNIT-12 | Unit | Status matrix | Ticket - Status matrix | All unspecified transitions return false | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
 | UNIT-13 | Unit | Requester resolution flag | Ticket - Requester resolution flag | Does not modify formal status | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
@@ -178,18 +186,18 @@ Test data should use a disposable test database and real application persistence
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| STYLE-01 | UI/Style | AC-23 | All Lab 3 screens use existing Zen Green tokens/components. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-02 | UI/Style | AC-23 | No unauthorized navigation destination is rendered. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-03 | UI/Style | AC-23 | Status/Priority/Role badges are consistent. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-04 | UI/Style | AC-23 | Editable vs read-only controls are visually distinct. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-05 | UI/Style | AC-23 | Public Comments vs Internal Notes have unmistakable visual separation. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-06 | UI/Style | AC-23 | Focus indicators remain visible. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-07 | UI/Style | AC-23 | Validation placement follows Lab 2 convention. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-08 | UI/Style | AC-23 | Desktop screenshots contain no clipping/overlap. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-09 | UI/Style | AC-23 | Tablet screenshots contain no clipping/overlap. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-10 | UI/Style | AC-23 | Mobile screenshots contain no unintended horizontal overflow. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-11 | UI/Style | AC-23 | Queue switches from table to readable card representation on narrow screens. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| STYLE-12 | UI/Style | AC-23 | Required information remains legible without extreme zoom. | Meets Zen Green visual and responsive specs | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
+| STYLE-01 | UI/Style | AC-23 | All Lab 3 screens use existing Zen Green tokens/components. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-02 | UI/Style | AC-23 | No unauthorized navigation destination is rendered. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-03 | UI/Style | AC-23 | Status/Priority/Role badges are consistent. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-04 | UI/Style | AC-23 | Editable vs read-only controls are visually distinct. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-05 | UI/Style | AC-23 | Public Comments vs Internal Notes have unmistakable visual separation. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-06 | UI/Style | AC-23 | Focus indicators remain visible. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-07 | UI/Style | AC-23 | Validation placement follows Lab 2 convention. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-08 | UI/Style | AC-23 | Desktop screenshots contain no clipping/overlap. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-09 | UI/Style | AC-23 | Tablet screenshots contain no clipping/overlap. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-10 | UI/Style | AC-23 | Mobile screenshots contain no unintended horizontal overflow. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-11 | UI/Style | AC-23 | Queue switches from table to readable card representation on narrow screens. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
+| STYLE-12 | UI/Style | AC-23 | Required information remains legible without extreme zoom. | Meets Zen Green visual and responsive specs | `e2e/lab-03/style.spec.ts` | Pass |
 
 ## 7. E2E Tests
 
@@ -232,9 +240,9 @@ Test data should use a disposable test database and real application persistence
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| SEC-01 | Security | AC-25 | Password hashes are persisted but never returned | No password hash in API response bodies | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| SEC-02 | Security | AC-25 | Raw passwords do not appear in structured logs | Logs contain sanitized payloads without plain credentials | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| SEC-03 | Security | AC-25 | Session token never appears in API response bodies | Opaque session token only transmitted via HttpOnly cookie | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| SEC-01 | Security | AC-25 | Password hashes are persisted but never returned | No password hash in API response bodies | `server/tests/lab-03/security.api.test.ts` | Pass |
+| SEC-02 | Security | AC-25 | Raw passwords do not appear in structured logs | Logs contain sanitized payloads without plain credentials | `server/tests/lab-03/security.api.test.ts` | Pass |
+| SEC-03 | Security | AC-25 | Session token never appears in API response bodies | Opaque session token only transmitted via HttpOnly cookie | `server/tests/lab-03/security.api.test.ts` | Pass |
 | SEC-04 | Security | AC-25 | Session cookie has required security attributes | HttpOnly=true, SameSite=Lax, Path=/ | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | SEC-05 | Security | AC-25 | Session token is not stored in localStorage/sessionStorage | Client state uses memory context without web storage tokens | `client/tests/lab-03/Login.test.tsx` | Pass |
 | SEC-06 | Security | AC-25 | Direct API calls from incorrect roles are rejected | 403 Forbidden on role mismatch | `server/tests/lab-03/authorization.api.test.ts` | Pass |
@@ -242,12 +250,12 @@ Test data should use a disposable test database and real application persistence
 | SEC-08 | Security | AC-25 | Ticket/Attachment/Note unauthorized access does not leak existence | 404 Not Found without leaking existence disclosure | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | SEC-09 | Security | AC-25 | Comments/notes reject HTML execution by safe rendering | User input rendered strictly as text, escaping script tags | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Pass |
 | SEC-10 | Security | AC-25 | Invalid status/owner updates do not partially mutate database state | Transactional rollback on validation or permission failure | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
-| SEC-11 | Security | AC-25 | Last-active-Administrator rule is atomic | Cannot commit transaction leaving zero active Admins | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| SEC-11 | Security | AC-25 | Last-active-Administrator rule is atomic | Cannot commit transaction leaving zero active Admins | `server/tests/lab-03/integrity.api.test.ts` | Pass |
 | SEC-12 | Security | AC-25 | Existing user sessions are revoked after deactivation or forced-password reset | Subsequent requests with prior session return 401 | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
-| SEC-13 | Security | AC-25 | Mutating request missing CSRF token rejected | 403 Forbidden for state-changing request without CSRF token | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| SEC-14 | Security | AC-25 | Mutating request with invalid CSRF token rejected | 403 Forbidden for forged/invalid CSRF token | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| SEC-15 | Security | AC-25 | Cross-origin mutating request rejected | 403 Forbidden when Origin header does not match host | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| SEC-16 | Security | AC-25 | Valid CSRF token and same-origin mutating request accepted | Request processed successfully with valid session and token | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| SEC-13 | Security | AC-25 | Mutating request missing CSRF token rejected | 403 Forbidden for state-changing request without CSRF token | `server/tests/lab-03/security.api.test.ts` | Pass |
+| SEC-14 | Security | AC-25 | Mutating request with invalid CSRF token rejected | 403 Forbidden for forged/invalid CSRF token | `server/tests/lab-03/security.api.test.ts` | Pass |
+| SEC-15 | Security | AC-25 | Cross-origin mutating request rejected | 403 Forbidden when Origin header does not match host | `server/tests/lab-03/security.api.test.ts` | Pass |
+| SEC-16 | Security | AC-25 | Valid CSRF token and same-origin mutating request accepted | Request processed successfully with valid session and token | `server/tests/lab-03/security.api.test.ts` | Pass |
 
 ## 9. Migration / Regression Evidence
 

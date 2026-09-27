@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -73,7 +74,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket();
       const res = await request(app)
         .get(`/api/staff/tickets/${ticket.id}`)
-        .set('Cookie', staff1Cookie);
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie));
 
       expect(res.status).toBe(200);
       expect(res.body.id).toBe(ticket.id);
@@ -86,7 +87,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket();
       const res = await request(app)
         .get(`/api/staff/tickets/${ticket.id}`)
-        .set('Cookie', adminCookie);
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.id).toBe(ticket.id);
@@ -96,7 +97,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket();
       const res = await request(app)
         .get(`/api/staff/tickets/${ticket.id}`)
-        .set('Cookie', requesterCookie);
+        .set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie));
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('FORBIDDEN');
@@ -105,7 +106,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('returns 404 Not Found for non-existent ticket', async () => {
       const res = await request(app)
         .get('/api/staff/tickets/99999999')
-        .set('Cookie', staff1Cookie);
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie));
 
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe('NOT_FOUND');
@@ -121,7 +122,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const otherTicket = await createTestTicket({ requesterId: staff2User.id });
       const res = await request(app)
         .get(`/api/tickets/${otherTicket.id}`)
-        .set('Cookie', requesterCookie);
+        .set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie));
 
       expect([403, 404]).toContain(res.status);
       expect(['FORBIDDEN', 'NOT_FOUND']).toContain(res.body.error.code);
@@ -131,7 +132,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket();
       const res = await request(app)
         .get(`/api/tickets/${ticket.id}`)
-        .set('Cookie', adminCookie);
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.id).toBe(ticket.id);
@@ -146,11 +147,12 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ ownerId: null });
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/claim`)
-        .set('Cookie', staff1Cookie);
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie));
 
       expect(res.status).toBe(200);
       expect(res.body.owner.id).toBe(staff1User.id);
       expect(res.body.owner.name).toBe(staff1User.name);
+      expect(res.body.owner.email).toBe(staff1User.email); // owner chip renders "Name (email)"
 
       const dbTicket = await prisma.ticket.findUnique({ where: { id: ticket.id } });
       expect(dbTicket?.ownerId).toBe(staff1User.id);
@@ -160,7 +162,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ ownerId: staff1User.id });
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/claim`)
-        .set('Cookie', staff2Cookie);
+        .set('Cookie', staff2Cookie).set('X-CSRF-Token', csrfFor(staff2Cookie));
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('CONFLICT');
@@ -172,7 +174,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('rejects claim for non-existent ticket with 404 Not Found', async () => {
       const res = await request(app)
         .post('/api/staff/tickets/99999999/claim')
-        .set('Cookie', staff1Cookie);
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie));
 
       expect(res.status).toBe(404);
     });
@@ -180,8 +182,8 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('rejects Administrator and Requester with 403 Forbidden', async () => {
       const ticket = await createTestTicket({ ownerId: null });
       const [adminRes, reqRes] = await Promise.all([
-        request(app).post(`/api/staff/tickets/${ticket.id}/claim`).set('Cookie', adminCookie),
-        request(app).post(`/api/staff/tickets/${ticket.id}/claim`).set('Cookie', requesterCookie),
+        request(app).post(`/api/staff/tickets/${ticket.id}/claim`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)),
+        request(app).post(`/api/staff/tickets/${ticket.id}/claim`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)),
       ]);
 
       expect(adminRes.status).toBe(403);
@@ -197,11 +199,12 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ ownerId: staff1User.id });
       const res = await request(app)
         .put(`/api/staff/tickets/${ticket.id}/owner`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ ownerId: staff2User.id });
 
       expect(res.status).toBe(200);
       expect(res.body.owner.id).toBe(staff2User.id);
+      expect(res.body.owner.email).toBe(staff2User.email);
 
       const dbTicket = await prisma.ticket.findUnique({ where: { id: ticket.id } });
       expect(dbTicket?.ownerId).toBe(staff2User.id);
@@ -211,7 +214,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ ownerId: staff1User.id });
       const res = await request(app)
         .put(`/api/staff/tickets/${ticket.id}/owner`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ ownerId: staff1User.id });
 
       expect(res.status).toBe(200);
@@ -222,7 +225,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ ownerId: staff1User.id });
       const res = await request(app)
         .put(`/api/staff/tickets/${ticket.id}/owner`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ ownerId: inactiveStaffUser.id });
 
       expect(res.status).toBe(400);
@@ -235,8 +238,8 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('rejects assignment to Administrator or Requester with 400 Bad Request', async () => {
       const ticket = await createTestTicket({ ownerId: staff1User.id });
       const [adminTargetRes, reqTargetRes] = await Promise.all([
-        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', staff1Cookie).send({ ownerId: adminUser.id }),
-        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', staff1Cookie).send({ ownerId: requesterUser.id }),
+        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie)).send({ ownerId: adminUser.id }),
+        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie)).send({ ownerId: requesterUser.id }),
       ]);
 
       expect(adminTargetRes.status).toBe(400);
@@ -246,7 +249,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('rejects assignment for non-existent ticket with 404 Not Found', async () => {
       const res = await request(app)
         .put('/api/staff/tickets/99999999/owner')
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ ownerId: staff2User.id });
 
       expect(res.status).toBe(404);
@@ -255,8 +258,8 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('rejects Administrator and Requester callers with 403 Forbidden', async () => {
       const ticket = await createTestTicket();
       const [adminRes, reqRes] = await Promise.all([
-        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', adminCookie).send({ ownerId: staff1User.id }),
-        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', requesterCookie).send({ ownerId: staff1User.id }),
+        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)).send({ ownerId: staff1User.id }),
+        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send({ ownerId: staff1User.id }),
       ]);
 
       expect(adminRes.status).toBe(403);
@@ -272,7 +275,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ requestedPriority: 'LOW', itPriority: 'UNASSIGNED' });
       const res = await request(app)
         .patch(`/api/staff/tickets/${ticket.id}/it-priority`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ itPriority: 'CRITICAL' });
 
       expect(res.status).toBe(200);
@@ -288,7 +291,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket();
       const res = await request(app)
         .patch(`/api/staff/tickets/${ticket.id}/it-priority`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ itPriority: 'SUPER_URGENT' });
 
       expect(res.status).toBe(400);
@@ -298,7 +301,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('rejects update on non-existent ticket with 404 Not Found', async () => {
       const res = await request(app)
         .patch('/api/staff/tickets/99999999/it-priority')
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ itPriority: 'HIGH' });
 
       expect(res.status).toBe(404);
@@ -307,8 +310,8 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('rejects Administrator and Requester with 403 Forbidden', async () => {
       const ticket = await createTestTicket();
       const [adminRes, reqRes] = await Promise.all([
-        request(app).patch(`/api/staff/tickets/${ticket.id}/it-priority`).set('Cookie', adminCookie).send({ itPriority: 'HIGH' }),
-        request(app).patch(`/api/staff/tickets/${ticket.id}/it-priority`).set('Cookie', requesterCookie).send({ itPriority: 'HIGH' }),
+        request(app).patch(`/api/staff/tickets/${ticket.id}/it-priority`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)).send({ itPriority: 'HIGH' }),
+        request(app).patch(`/api/staff/tickets/${ticket.id}/it-priority`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send({ itPriority: 'HIGH' }),
       ]);
 
       expect(adminRes.status).toBe(403);
@@ -320,13 +323,13 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
   // POST /api/staff/tickets/:id/status (AC-11)
   // -------------------------------------------------------------------------
   describe('POST /api/staff/tickets/:id/status', () => {
-    it('API-34: transitions through allowed matrix states successfully', async () => {
+    it('API-34 / UNIT-11: transitions through allowed matrix states successfully', async () => {
       const ticket = await createTestTicket({ currentStatus: 'NEW' });
 
       // 1. NEW -> OPEN
       const step1 = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Open' });
       expect(step1.status).toBe(200);
       expect(step1.body.currentStatus).toBe('OPEN');
@@ -334,7 +337,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       // 2. OPEN -> IN_PROGRESS
       const step2 = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'In Progress' });
       expect(step2.status).toBe(200);
       expect(step2.body.currentStatus).toBe('IN_PROGRESS');
@@ -342,7 +345,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       // 3. IN_PROGRESS -> RESOLVED (with resolutionSummary)
       const step3 = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Resolved', resolutionSummary: 'Fixed Ethernet port connection.' });
       expect(step3.status).toBe(200);
       expect(step3.body.currentStatus).toBe('RESOLVED');
@@ -351,7 +354,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       // 4. RESOLVED -> CLOSED
       const step4 = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Closed' });
       expect(step4.status).toBe(200);
       expect(step4.body.currentStatus).toBe('CLOSED');
@@ -359,7 +362,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       // 5. CLOSED -> REOPENED
       const step5 = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Reopened' });
       expect(step5.status).toBe(200);
       expect(step5.body.currentStatus).toBe('REOPENED');
@@ -369,7 +372,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ currentStatus: 'IN_PROGRESS' });
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Resolved' }); // missing resolutionSummary
 
       expect(res.status).toBe(400);
@@ -381,7 +384,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       // NEW cannot jump directly to RESOLVED or CLOSED
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Resolved', resolutionSummary: 'Jumped resolution' });
 
       expect(res.status).toBe(409);
@@ -392,7 +395,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ currentStatus: 'OPEN' });
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Open' });
 
       expect(res.status).toBe(409);
@@ -403,7 +406,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ currentStatus: 'CANCELLED' });
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Open' });
 
       expect(res.status).toBe(409);
@@ -414,7 +417,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket({ currentStatus: 'NEW' });
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', requesterCookie)
+        .set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie))
         .send({ status: 'Open' });
 
       expect(res.status).toBe(403);
@@ -430,7 +433,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket();
       const res = await request(app)
         .post(`/api/tickets/${ticket.id}/internal-notes`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ content: 'Administrator audit inspection note.' });
 
       expect(res.status).toBe(201);
@@ -442,12 +445,12 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       const ticket = await createTestTicket();
       await request(app)
         .post(`/api/tickets/${ticket.id}/internal-notes`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ content: 'Parity testing note' });
 
       const res = await request(app)
         .get(`/api/staff/tickets/${ticket.id}/internal-notes`)
-        .set('Cookie', staff1Cookie);
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie));
 
       expect(res.status).toBe(200);
       const found = res.body.notes.find((n: any) => n.content === 'Parity testing note');
@@ -457,7 +460,7 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
     it('GET /api/staff/users: rejects Requester with 403 Forbidden', async () => {
       const res = await request(app)
         .get('/api/staff/users')
-        .set('Cookie', requesterCookie);
+        .set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie));
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('FORBIDDEN');
@@ -465,8 +468,8 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
 
     it('GET /api/staff/users: allows Administrator and IT Staff with 200 OK', async () => {
       const [adminRes, staffRes] = await Promise.all([
-        request(app).get('/api/staff/users').set('Cookie', adminCookie),
-        request(app).get('/api/staff/users').set('Cookie', staff1Cookie),
+        request(app).get('/api/staff/users').set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)),
+        request(app).get('/api/staff/users').set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie)),
       ]);
 
       expect(adminRes.status).toBe(200);

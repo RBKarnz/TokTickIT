@@ -3,6 +3,7 @@ import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
 import { hashPassword } from '../../src/auth.js';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -127,28 +128,28 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('SEC-06: Requester calling Staff Queue GET /api/staff/tickets -> 403', async () => {
       const res = await request(app)
         .get('/api/staff/tickets')
-        .set('Cookie', requester1Cookie);
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
       expect(res.status).toBe(403);
     });
 
     it('SEC-06: Requester calling Staff Detail GET /api/staff/tickets/:id -> 403', async () => {
       const res = await request(app)
         .get(`/api/staff/tickets/${requester1Ticket.id}`)
-        .set('Cookie', requester1Cookie);
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
       expect(res.status).toBe(403);
     });
 
     it('SEC-06: Requester calling Claim POST /api/staff/tickets/:id/claim -> 403', async () => {
       const res = await request(app)
         .post(`/api/staff/tickets/${requester1Ticket.id}/claim`)
-        .set('Cookie', requester1Cookie);
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
       expect(res.status).toBe(403);
     });
 
     it('SEC-06: Requester calling Owner PUT /api/staff/tickets/:id/owner -> 403', async () => {
       const res = await request(app)
         .put(`/api/staff/tickets/${requester1Ticket.id}/owner`)
-        .set('Cookie', requester1Cookie)
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie))
         .send({ ownerId: staff1User.id });
       expect(res.status).toBe(403);
     });
@@ -156,7 +157,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('SEC-06: Requester calling Status POST /api/staff/tickets/:id/status -> 403', async () => {
       const res = await request(app)
         .post(`/api/staff/tickets/${requester1Ticket.id}/status`)
-        .set('Cookie', requester1Cookie)
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie))
         .send({ status: 'OPEN' });
       expect(res.status).toBe(403);
     });
@@ -164,36 +165,36 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-08 / API-16 / SEC-06: Requester calling POST /api/staff/tickets/:id/internal-notes -> 403', async () => {
       const res = await request(app)
         .post(`/api/staff/tickets/${requester1Ticket.id}/internal-notes`)
-        .set('Cookie', requester1Cookie)
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie))
         .send({ content: 'Unauthorized note from requester' });
       expect(res.status).toBe(403);
     });
 
-    it('API-16 / SEC-06: Requester calling GET /api/staff/tickets/:id/internal-notes -> 403', async () => {
+    it('API-16 / SEC-06 / UNIT-08: Requester calling GET /api/staff/tickets/:id/internal-notes -> 403', async () => {
       const res = await request(app)
         .get(`/api/staff/tickets/${requester1Ticket.id}/internal-notes`)
-        .set('Cookie', requester1Cookie);
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
       expect(res.status).toBe(403);
     });
 
     it('API-46 / UNIT-09: Requester calling GET /api/admin/users -> 403', async () => {
       const res = await request(app)
         .get('/api/admin/users')
-        .set('Cookie', requester1Cookie);
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
       expect(res.status).toBe(403);
     });
 
     it('API-46 / UNIT-09: Staff calling GET /api/admin/users -> 403', async () => {
       const res = await request(app)
         .get('/api/admin/users')
-        .set('Cookie', staff1Cookie);
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie));
       expect(res.status).toBe(403);
     });
 
     it('UNIT-09: Staff calling POST /api/admin/users -> 403', async () => {
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({
           name: 'Hacker User',
           email: 'hacker@toktickit.com',
@@ -207,16 +208,16 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-06: User with restricted session (mustChangePassword=true) calling Ticket API -> 403', async () => {
       const res = await request(app)
         .get('/api/tickets')
-        .set('Cookie', firstLoginCookie);
+        .set('Cookie', firstLoginCookie).set('X-CSRF-Token', csrfFor(firstLoginCookie));
       expect(res.status).toBe(403);
     });
   });
 
   describe('3. Status 404 Not Found (Resource Isolation & Non-Enumeration)', () => {
-    it('API-14 / SEC-08: Requester 1 reading Requester 2 Ticket -> 404 without leaking existence', async () => {
+    it('API-14 / SEC-08 / UNIT-07: Requester 1 reading Requester 2 Ticket -> 404 without leaking existence', async () => {
       const res = await request(app)
         .get(`/api/tickets/${requester2Ticket.id}`)
-        .set('Cookie', requester1Cookie);
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
       expect([403, 404]).toContain(res.status);
       expect(res.body.ticket).toBeUndefined();
     });
@@ -224,14 +225,14 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-15 / SEC-08: Requester 1 downloading Requester 2 Attachment -> 404', async () => {
       const res = await request(app)
         .get(`/api/attachments/${testAttachment.id}/download`)
-        .set('Cookie', requester1Cookie);
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
       expect([403, 404]).toContain(res.status);
     });
 
     it('API-14 / SEC-08: Requester 1 posting comment on Requester 2 Ticket -> 404', async () => {
       const res = await request(app)
         .post(`/api/tickets/${requester2Ticket.id}/public-comments`)
-        .set('Cookie', requester1Cookie)
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie))
         .send({ content: 'Attempting cross-requester comment' });
       expect([403, 404]).toContain(res.status);
     });
@@ -239,14 +240,14 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-14: Requester 1 toggling problem resolved on Requester 2 Ticket -> 404', async () => {
       const res = await request(app)
         .post(`/api/tickets/${requester2Ticket.id}/problem-appears-resolved`)
-        .set('Cookie', requester1Cookie);
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie));
       expect([403, 404]).toContain(res.status);
     });
 
     it('SEC-08: Non-existent ticket ID for authorized Staff -> safe 404', async () => {
       const res = await request(app)
         .get('/api/staff/tickets/999999')
-        .set('Cookie', staff1Cookie);
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie));
       expect(res.status).toBe(404);
     });
   });
@@ -270,7 +271,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
 
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/claim`)
-        .set('Cookie', staff2Cookie);
+        .set('Cookie', staff2Cookie).set('X-CSRF-Token', csrfFor(staff2Cookie));
       expect(res.status).toBe(409);
 
       const updated = await prisma.ticket.findUnique({ where: { id: ticket.id } });
@@ -294,7 +295,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
 
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'IN_PROGRESS' });
       expect(res.status).toBe(409);
 
@@ -305,7 +306,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-52 / BR-08: User create with duplicate email (even with case difference) -> 409 Conflict', async () => {
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Duplicate Test',
           email: 'REQUESTER1@TOKTICKIT.COM',
@@ -319,7 +320,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-55 / UNIT-15: Administrator self-deactivation -> 409 Conflict', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ isActive: false });
       expect(res.status).toBe(409);
 
@@ -330,7 +331,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-56 / UNIT-16: Deactivating last active Administrator -> 409 Conflict', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ isActive: false });
       expect(res.status).toBe(409);
     });
@@ -338,7 +339,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-56b / UNIT-16b: Demoting last active Administrator away from ADMINISTRATOR -> 409 Conflict', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ role: 'IT_STAFF' });
       expect(res.status).toBe(409);
 
@@ -365,7 +366,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
 
       const res = await request(app)
         .put(`/api/staff/tickets/${ticket.id}/owner`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ ownerId: inactiveStaffUser.id });
       expect([422, 400]).toContain(res.status);
 
@@ -376,7 +377,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-53 / UNIT-05: Creating user with invalid role -> 422 Unprocessable Entity', async () => {
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Invalid Role User',
           email: 'invalid-role-test@toktickit.com',
@@ -405,7 +406,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
 
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
-        .set('Cookie', staff1Cookie)
+        .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'RESOLVED' });
       expect([422, 400]).toContain(res.status);
     });
@@ -415,7 +416,7 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
     it('API-13 / SEC-07: Client cannot forge requesterId in POST /api/tickets', async () => {
       const res = await request(app)
         .post('/api/tickets')
-        .set('Cookie', requester1Cookie)
+        .set('Cookie', requester1Cookie).set('X-CSRF-Token', csrfFor(requester1Cookie))
         .send({
           categoryId: category.id,
           relatedSystemId: relatedSystem.id,
@@ -452,19 +453,19 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
       expect(loginRes.status).toBe(200);
       const targetSessionCookie = loginRes.headers['set-cookie']?.[0] || '';
 
-      const preCheck = await request(app).get('/api/auth/me').set('Cookie', targetSessionCookie);
+      const preCheck = await request(app).get('/api/auth/me').set('Cookie', targetSessionCookie).set('X-CSRF-Token', csrfFor(targetSessionCookie));
       expect(preCheck.status).toBe(200);
 
       const resetRes = await request(app)
         .post(`/api/admin/users/${targetUser.id}/set-initial-password`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           initialPassword: 'ResetPassword123!',
           confirmInitialPassword: 'ResetPassword123!',
         });
       expect(resetRes.status).toBe(200);
 
-      const postCheck = await request(app).get('/api/auth/me').set('Cookie', targetSessionCookie);
+      const postCheck = await request(app).get('/api/auth/me').set('Cookie', targetSessionCookie).set('X-CSRF-Token', csrfFor(targetSessionCookie));
       expect(postCheck.status).toBe(401);
 
       // Clean up ephemeral user

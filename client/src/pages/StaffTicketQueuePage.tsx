@@ -499,6 +499,7 @@ export default function StaffTicketQueuePage() {
                 {tickets.map((ticket) => (
                   <tr
                     key={ticket.id}
+                    data-testid="list-item"
                     style={{ cursor: 'pointer' }}
                     onClick={() => navigate(`/tickets/${ticket.id}`)}
                   >
@@ -548,6 +549,7 @@ export default function StaffTicketQueuePage() {
             {tickets.map((ticket) => (
               <div
                 key={ticket.id}
+                data-testid="list-item"
                 className="card shadow-sm border-0 mb-3"
                 onClick={() => navigate(`/tickets/${ticket.id}`)}
                 style={{ cursor: 'pointer' }}

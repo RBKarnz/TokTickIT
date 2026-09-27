@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -134,7 +135,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('returns default page 1, pageSize 20, and ordered by updatedAt desc', async () => {
       const res = await request(app)
         .get('/api/staff/tickets')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.pagination).toBeDefined();
@@ -156,7 +157,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('returns data mapping matching specification (category: string, status: display label)', async () => {
       const res = await request(app)
         .get('/api/staff/tickets')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       const item = res.body.items.find((x: any) => createdTicketIds.includes(x.id));
@@ -186,7 +187,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
 
       const res = await request(app)
         .get(`/api/staff/tickets?search=${encodeURIComponent(partialNumber)}`)
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -196,7 +197,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('API-22: searches by summary substring (case-insensitive)', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?search=printer+paper+jam')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -208,7 +209,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('filters by status using DB enum', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?status=IN_PROGRESS')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -218,7 +219,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('filters by status using display label', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?status=In+Progress')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -228,7 +229,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('filters by requestedPriority', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?requestedPriority=LOW')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -238,7 +239,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('filters by itPriority', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?itPriority=CRITICAL')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -248,7 +249,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('filters by ownership=unassigned', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?ownership=unassigned')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -258,7 +259,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('filters by ownership=assigned', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?ownership=assigned')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -268,7 +269,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('filters by ownerId', async () => {
       const res = await request(app)
         .get(`/api/staff/tickets?ownerId=${staffUser.id}`)
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -280,7 +281,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('sorts by createdAt asc with secondary tie-breaker', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?sortBy=createdAt&sortOrder=asc')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       const items = res.body.items;
@@ -294,7 +295,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('sorts by category asc without error', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?sortBy=category&sortOrder=asc')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -303,7 +304,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('sorts by owner asc with null owners present without crashing', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?sortBy=owner&sortOrder=asc')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -312,7 +313,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('sorts by status asc', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?sortBy=status&sortOrder=asc')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThanOrEqual(1);
@@ -323,7 +324,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('returns pageSize=10 metadata correctly', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?pageSize=10')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.pagination.pageSize).toBe(10);
@@ -333,7 +334,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('returns pageSize=50 metadata correctly', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?pageSize=50')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.pagination.pageSize).toBe(50);
@@ -342,7 +343,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('returns totalItems=0, totalPages=0 for empty match', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?search=NON_EXISTENT_TICKET_STRING_XYZ_999')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(res.body.items).toEqual([]);
@@ -355,7 +356,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects duplicate/array search query param with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?search=one&search=two')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -364,7 +365,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects invalid pageSize with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?pageSize=15')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -373,7 +374,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects negative or invalid page with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?page=-1')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -382,7 +383,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects invalid status with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?status=INVALID_STATUS')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -391,7 +392,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects invalid requestedPriority with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?requestedPriority=SUPER_HIGH')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -400,7 +401,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects invalid itPriority with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?itPriority=SUPER_LOW')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -409,7 +410,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects invalid ownership with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?ownership=invalid')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -418,7 +419,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects non-numeric ownerId with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?ownerId=abc')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -427,7 +428,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects unknown sortBy field with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?sortBy=passwordHash')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -436,7 +437,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects invalid sortOrder with 400', async () => {
       const res = await request(app)
         .get('/api/staff/tickets?sortOrder=random')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('BAD_REQUEST');
@@ -447,7 +448,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects REQUESTER role with 403 FORBIDDEN', async () => {
       const res = await request(app)
         .get('/api/staff/tickets')
-        .set('Cookie', reqCookie);
+        .set('Cookie', reqCookie).set('X-CSRF-Token', csrfFor(reqCookie));
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('FORBIDDEN');
@@ -456,7 +457,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects ADMINISTRATOR role with 403 FORBIDDEN', async () => {
       const res = await request(app)
         .get('/api/staff/tickets')
-        .set('Cookie', adminCookie);
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('FORBIDDEN');
@@ -474,7 +475,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('returns active IT Staff users for IT Staff caller', async () => {
       const res = await request(app)
         .get('/api/staff/users')
-        .set('Cookie', staffCookie);
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.users)).toBe(true);
@@ -488,7 +489,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('returns active IT Staff users for Administrator caller', async () => {
       const res = await request(app)
         .get('/api/staff/users')
-        .set('Cookie', adminCookie);
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.users)).toBe(true);
@@ -497,7 +498,7 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
     it('rejects Requester caller with 403 FORBIDDEN', async () => {
       const res = await request(app)
         .get('/api/staff/users')
-        .set('Cookie', reqCookie);
+        .set('Cookie', reqCookie).set('X-CSRF-Token', csrfFor(reqCookie));
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('FORBIDDEN');

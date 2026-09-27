@@ -188,7 +188,7 @@ export default function MyTicketsPage() {
               </thead>
               <tbody>
                 {tickets.map(ticket => (
-                  <tr key={ticket.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/tickets/${ticket.id}`)}>
+                  <tr key={ticket.id} data-testid="list-item" style={{ cursor: 'pointer' }} onClick={() => navigate(`/tickets/${ticket.id}`)}>
                     <td className="px-4 fw-medium" style={{ color: '#0B7A46' }}>{ticket.ticketNumber}</td>
                     <td>{ticket.summary.length > 40 ? ticket.summary.substring(0, 40) + '...' : ticket.summary}</td>
                     <td className="text-muted small">{ticket.category?.name}</td>
@@ -204,7 +204,7 @@ export default function MyTicketsPage() {
           {/* Mobile Card View */}
           <div className="d-block d-md-none">
             {tickets.map(ticket => (
-              <div key={ticket.id} className="card shadow-sm border-0 mb-3" onClick={() => navigate(`/tickets/${ticket.id}`)} style={{ cursor: 'pointer' }}>
+              <div key={ticket.id} data-testid="list-item" className="card shadow-sm border-0 mb-3" onClick={() => navigate(`/tickets/${ticket.id}`)} style={{ cursor: 'pointer' }}>
                 <div className="card-body">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span className="fw-bold" style={{ color: '#0B7A46' }}>{ticket.ticketNumber}</span>

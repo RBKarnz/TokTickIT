@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -97,7 +98,7 @@ describe('Comments & Notes API (Lab 3)', () => {
     const content = 'This is a public comment from requester 1.';
     const res = await request(app)
       .post(`/api/tickets/${testTicket.id}/public-comments`)
-      .set('Cookie', req1Cookie)
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie))
       .send({ content });
 
     expect(res.status).toBe(201);
@@ -121,11 +122,11 @@ describe('Comments & Notes API (Lab 3)', () => {
     const [emptyRes, whitespaceRes] = await Promise.all([
       request(app)
         .post(`/api/tickets/${testTicket.id}/public-comments`)
-        .set('Cookie', req1Cookie)
+        .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie))
         .send({ content: '' }),
       request(app)
         .post(`/api/tickets/${testTicket.id}/public-comments`)
-        .set('Cookie', req1Cookie)
+        .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie))
         .send({ content: '    \n\t   ' }),
     ]);
 
@@ -140,7 +141,7 @@ describe('Comments & Notes API (Lab 3)', () => {
     const tooLong = 'a'.repeat(4001);
     const res = await request(app)
       .post(`/api/tickets/${testTicket.id}/public-comments`)
-      .set('Cookie', req1Cookie)
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie))
       .send({ content: tooLong });
 
     expect(res.status).toBe(400);
@@ -151,7 +152,7 @@ describe('Comments & Notes API (Lab 3)', () => {
   it('Type Guard: Public Comment rejects non-string content', async () => {
     const res = await request(app)
       .post(`/api/tickets/${testTicket.id}/public-comments`)
-      .set('Cookie', req1Cookie)
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie))
       .send({ content: 12345 });
 
     expect(res.status).toBe(400);
@@ -164,14 +165,14 @@ describe('Comments & Notes API (Lab 3)', () => {
     // Staff adds a comment
     const staffCommentRes = await request(app)
       .post(`/api/tickets/${testTicket.id}/public-comments`)
-      .set('Cookie', staffCookie)
+      .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie))
       .send({ content: 'IT Staff response to requester.' });
     expect(staffCommentRes.status).toBe(201);
 
     // Requester retrieves comments
     const getRes = await request(app)
       .get(`/api/tickets/${testTicket.id}/public-comments`)
-      .set('Cookie', req1Cookie);
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie));
 
     expect(getRes.status).toBe(200);
     expect(Array.isArray(getRes.body.comments)).toBe(true);
@@ -189,10 +190,10 @@ describe('Comments & Notes API (Lab 3)', () => {
     const [getRes, postRes] = await Promise.all([
       request(app)
         .get(`/api/tickets/${req2Ticket.id}/public-comments`)
-        .set('Cookie', req1Cookie),
+        .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie)),
       request(app)
         .post(`/api/tickets/${req2Ticket.id}/public-comments`)
-        .set('Cookie', req1Cookie)
+        .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie))
         .send({ content: 'Trying to sneak into another ticket.' }),
     ]);
 
@@ -205,7 +206,7 @@ describe('Comments & Notes API (Lab 3)', () => {
   it('Existence check: Public Comments returns 404 for non-existent ticket', async () => {
     const res = await request(app)
       .get('/api/tickets/999999/public-comments')
-      .set('Cookie', req1Cookie);
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie));
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
@@ -214,7 +215,7 @@ describe('Comments & Notes API (Lab 3)', () => {
   it('Role Check: Administrator is rejected from creating public comments with 403 Forbidden', async () => {
     const res = await request(app)
       .post(`/api/tickets/${testTicket.id}/public-comments`)
-      .set('Cookie', adminCookie)
+      .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
       .send({ content: 'Administrator attempting to post public comment.' });
 
     expect(res.status).toBe(403);
@@ -231,10 +232,10 @@ describe('Comments & Notes API (Lab 3)', () => {
     const [staffPathRes, aliasPathRes] = await Promise.all([
       request(app)
         .get(`/api/staff/tickets/${testTicket.id}/internal-notes`)
-        .set('Cookie', req1Cookie),
+        .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie)),
       request(app)
         .get(`/api/tickets/${testTicket.id}/internal-notes`)
-        .set('Cookie', req1Cookie),
+        .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie)),
     ]);
 
     expect(staffPathRes.status).toBe(403);
@@ -251,11 +252,11 @@ describe('Comments & Notes API (Lab 3)', () => {
     const [staffPathRes, aliasPathRes] = await Promise.all([
       request(app)
         .post(`/api/staff/tickets/${testTicket.id}/internal-notes`)
-        .set('Cookie', req1Cookie)
+        .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie))
         .send({ content: 'Requester trying to write internal note' }),
       request(app)
         .post(`/api/tickets/${testTicket.id}/internal-notes`)
-        .set('Cookie', req1Cookie)
+        .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie))
         .send({ content: 'Requester trying to write internal note' }),
     ]);
 
@@ -273,7 +274,7 @@ describe('Comments & Notes API (Lab 3)', () => {
     const noteContent = 'Internal IT investigation note.';
     const res = await request(app)
       .post(`/api/staff/tickets/${testTicket.id}/internal-notes`)
-      .set('Cookie', staffCookie)
+      .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie))
       .send({ content: noteContent });
 
     expect(res.status).toBe(201);
@@ -288,7 +289,7 @@ describe('Comments & Notes API (Lab 3)', () => {
   it('API-43: Internal Note rejects empty or whitespace-only content', async () => {
     const res = await request(app)
       .post(`/api/staff/tickets/${testTicket.id}/internal-notes`)
-      .set('Cookie', staffCookie)
+      .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie))
       .send({ content: '   ' });
 
     expect(res.status).toBe(400);
@@ -300,13 +301,13 @@ describe('Comments & Notes API (Lab 3)', () => {
     const [staffRes, adminRes, aliasRes] = await Promise.all([
       request(app)
         .get(`/api/staff/tickets/${testTicket.id}/internal-notes`)
-        .set('Cookie', staffCookie),
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie)),
       request(app)
         .get(`/api/staff/tickets/${testTicket.id}/internal-notes`)
-        .set('Cookie', adminCookie),
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)),
       request(app)
         .get(`/api/tickets/${testTicket.id}/internal-notes`)
-        .set('Cookie', staffCookie),
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie)),
     ]);
 
     expect(staffRes.status).toBe(200);
@@ -326,10 +327,10 @@ describe('Comments & Notes API (Lab 3)', () => {
     const [getRes, postRes] = await Promise.all([
       request(app)
         .get('/api/staff/tickets/999999/internal-notes')
-        .set('Cookie', staffCookie),
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie)),
       request(app)
         .post('/api/staff/tickets/999999/internal-notes')
-        .set('Cookie', staffCookie)
+        .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie))
         .send({ content: 'Note on ghost ticket' }),
     ]);
 
@@ -344,14 +345,14 @@ describe('Comments & Notes API (Lab 3)', () => {
   // -------------------------------------------------------------------------
 
   // API-37
-  it('API-37: Problem Appears Resolved stores timestamp without changing formal status', async () => {
+  it('API-37 / UNIT-13: Problem Appears Resolved stores timestamp without changing formal status', async () => {
     const beforeTicket = await prisma.ticket.findUnique({ where: { id: testTicket.id } });
     expect(beforeTicket!.requesterResolvedAt).toBeNull();
     const originalStatus = beforeTicket!.currentStatus;
 
     const res = await request(app)
       .post(`/api/tickets/${testTicket.id}/problem-appears-resolved`)
-      .set('Cookie', req1Cookie);
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie));
 
     expect(res.status).toBe(200);
     expect(res.body.ticketId).toBe(testTicket.id);
@@ -371,7 +372,7 @@ describe('Comments & Notes API (Lab 3)', () => {
     // Wait a tiny bit and call again
     const res = await request(app)
       .post(`/api/tickets/${testTicket.id}/problem-appears-resolved`)
-      .set('Cookie', req1Cookie);
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie));
 
     expect(res.status).toBe(200);
     const returnedTime = new Date(res.body.requesterResolvedAt).getTime();
@@ -399,7 +400,7 @@ describe('Comments & Notes API (Lab 3)', () => {
 
     const res = await request(app)
       .post(`/api/tickets/${closedTicket.id}/problem-appears-resolved`)
-      .set('Cookie', req1Cookie);
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie));
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('CONFLICT');
@@ -410,7 +411,7 @@ describe('Comments & Notes API (Lab 3)', () => {
   it('Role Guard: Non-Requester calling Problem Appears Resolved returns 403 Forbidden', async () => {
     const res = await request(app)
       .post(`/api/tickets/${testTicket.id}/problem-appears-resolved`)
-      .set('Cookie', staffCookie);
+      .set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -419,7 +420,7 @@ describe('Comments & Notes API (Lab 3)', () => {
   it('Ownership Guard: Requester calling Problem Appears Resolved on another user ticket returns 404', async () => {
     const res = await request(app)
       .post(`/api/tickets/${req2Ticket.id}/problem-appears-resolved`)
-      .set('Cookie', req1Cookie);
+      .set('Cookie', req1Cookie).set('X-CSRF-Token', csrfFor(req1Cookie));
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');

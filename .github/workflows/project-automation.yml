@@ -1,0 +1,211 @@
+name: Project Board Automation
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+
+jobs:
+  automate-project-board:
+    runs-on: ubuntu-latest
+    env:
+      # ==========================================
+      # ตั้งค่าบอร์ดและชื่อคอลัมน์ตามของโปรเจกต์คุณ
+      # ==========================================
+      PROJECT_NUMBER: 3             # Project number (URL: github.com/users/USER/projects/X)
+      STATUS_FIXING: "Fixing"       # Column when reviewer requests changes
+      STATUS_APPROVED: "Approved"   # Column when reviewer approves
+      STATUS_IN_REVIEW: "PR Review" # Column when opening or requesting review
+      STATUS_DONE: "Done"           # Column when PR merged
+
+    steps:
+      - name: Update Project V2 Status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1', 10);
+
+            // 1. ระบุ Status ปลายทางตาม Event ที่เกิดขึ้น
+            let targetStatus = null;
+
+            if (context.eventName === 'pull_request_review') {
+              const reviewState = context.payload.review.state.toLowerCase();
+              if (reviewState === 'changes_requested') {
+                targetStatus = process.env.STATUS_FIXING;
+              } else if (reviewState === 'approved') {
+                targetStatus = process.env.STATUS_APPROVED;
+              }
+            } else if (context.eventName === 'pull_request') {
+              const action = context.payload.action;
+              const isMerged = context.payload.pull_request.merged;
+
+              if (action === 'closed' && isMerged) {
+                targetStatus = process.env.STATUS_DONE;
+              } else if (['opened', 'reopened', 'ready_for_review'].includes(action)) {
+                targetStatus = process.env.STATUS_IN_REVIEW;
+              }
+            }
+
+            if (!targetStatus) {
+              console.log('No matching status transition for this event. Skipping.');
+              return;
+            }
+
+            console.log(`Target Status identified: "${targetStatus}"`);
+
+            // 2. ดึงข้อมูล Project V2 (รองรับทั้งระดับ User และ Organization)
+            let project = null;
+
+            // ตรวจสอบแบบ User ก่อน
+            try {
+              const userRes = await github.graphql(`
+                query($owner: String!, $number: Int!) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      id
+                      fields(first: 50) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options {
+                              id
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `, { owner, number: projectNumber });
+              project = userRes.user?.projectV2;
+            } catch (err) {
+              console.log('Not a user project, checking organization...');
+            }
+
+            // ถ้าไม่ใช่ User ให้ตรวจสอบแบบ Organization
+            if (!project) {
+              try {
+                const orgRes = await github.graphql(`
+                  query($owner: String!, $number: Int!) {
+                    organization(login: $owner) {
+                      projectV2(number: $number) {
+                        id
+                        fields(first: 50) {
+                          nodes {
+                            ... on ProjectV2SingleSelectField {
+                              id
+                              name
+                              options {
+                                id
+                                name
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `, { owner, number: projectNumber });
+                project = orgRes.organization?.projectV2;
+              } catch (err) {
+                console.error('Failed to query organization project:', err);
+              }
+            }
+
+            if (!project) {
+              core.setFailed(`Project ${projectNumber} not found for owner "${owner}". Please check PROJECT_NUMBER and PROJECT_TOKEN permissions.`);
+              return;
+            }
+
+            // 3. Find field "Status" and option ID
+            const statusField = project.fields.nodes.find(f => f && f.name === 'Status');
+            if (!statusField) {
+              core.setFailed('Status field not found on the project.');
+              return;
+            }
+
+            const targetOption = statusField.options.find(
+              opt => opt.name.trim().toLowerCase() === targetStatus.trim().toLowerCase()
+            );
+
+            if (!targetOption) {
+              console.warn(`Option "${targetStatus}" not found in Status field options: ${statusField.options.map(o => o.name).join(', ')}`);
+              return;
+            }
+
+            // 4. Retrieve PR ID and linked issue IDs
+            const prNumber = context.payload.pull_request.number;
+            const prData = await github.graphql(`
+              query($owner: String!, $repo: String!, $prNumber: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $prNumber) {
+                    id
+                    closingIssuesReferences(first: 10) {
+                      nodes {
+                        id
+                      }
+                    }
+                  }
+                }
+              }
+            `, { owner, repo, prNumber });
+
+            const contentIds = [prData.repository.pullRequest.id];
+            if (prData.repository.pullRequest.closingIssuesReferences?.nodes) {
+              for (const issue of prData.repository.pullRequest.closingIssuesReferences.nodes) {
+                contentIds.push(issue.id);
+              }
+            }
+
+            console.log(`Found ${contentIds.length} items (PR + linked issues) to update.`);
+
+            // 5. อัปเดตสถานะของ PR และ Issue บน Project Board
+            for (const contentId of contentIds) {
+              try {
+                // เพิ่มเข้า Project (หรือดึง ID ถ้ามีอยู่แล้ว)
+                const addRes = await github.graphql(`
+                  mutation($projectId: ID!, $contentId: ID!) {
+                    addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                      item {
+                        id
+                      }
+                    }
+                  }
+                `, { projectId: project.id, contentId });
+
+                const itemId = addRes.addProjectV2ItemById.item.id;
+
+                // อัปเดตฟิลด์ Status
+                await github.graphql(`
+                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                    updateProjectV2ItemFieldValue(
+                      input: {
+                        projectId: $projectId
+                        itemId: $itemId
+                        fieldId: $fieldId
+                        value: { singleSelectOptionId: $optionId }
+                      }
+                    ) {
+                      projectV2Item {
+                        id
+                      }
+                    }
+                  }
+                `, {
+                  projectId: project.id,
+                  itemId,
+                  fieldId: statusField.id,
+                  optionId: targetOption.id
+                });
+
+                console.log(`Successfully updated item ${itemId} to "${targetOption.name}"`);
+              } catch (updateErr) {
+                console.error(`Error updating item ${contentId}:`, updateErr.message);
+              }
+            }

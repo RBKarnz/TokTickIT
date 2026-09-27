@@ -588,7 +588,7 @@ export default function TicketDetailPage() {
                     {ticket.owner ? (
                       <span className="badge bg-light text-dark border py-2 px-3 fs-6">
                         <i className="bi bi-person-check-fill me-2 text-success"></i>
-                        {ticket.owner.name} ({ticket.owner.email})
+                        {ticket.owner.name}{ticket.owner.email ? ` (${ticket.owner.email})` : ''}
                       </span>
                     ) : (
                       <span className="badge bg-secondary py-2 px-3 fs-6">Unassigned</span>
