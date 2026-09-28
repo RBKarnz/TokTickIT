@@ -384,6 +384,179 @@ async function main() {
   console.log("Internal notes seeded.");
 
   // -------------------------------------------------------------------------
+  // Lab 4 fixtures — Actions Taken and status history (BR-36, AC-22)
+  // Fixed ticket numbers "TKT-2026-L4-NNN" are ignored by the ticket-number
+  // generator (it only counts TKT-YYYY-<digits>), so API numbering is unchanged.
+  // Dates are in July 2026, before every Lab 2-3 seed ticket, so the fixtures
+  // never become the first row of a list sorted by updatedAt (Lab 3 E2E).
+  // Zero metrics by design: requester4 (David) has no Tickets and staff3
+  // (Charlie) owns no Ticket and has no Action assigned.
+  // -------------------------------------------------------------------------
+  const admin = seededUsers["admin@toktickit.com"];
+  const at = (day: number, hour: number) => new Date(Date.UTC(2026, 6, day, hour, 0, 0));
+
+  type FixtureAction = {
+    performedById: number;
+    assignedToId: number;
+    status: "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+    description: string;
+    result?: string;
+    followUpNote?: string;
+  };
+  type Fixture = {
+    ticketNumber: string;
+    summary: string;
+    ownerId: number;
+    itPriority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    path: Array<"NEW" | "OPEN" | "IN_PROGRESS" | "WAITING_FOR_REQUESTER" | "RESOLVED" | "CLOSED">;
+    resolutionSummary?: string;
+    actions: FixtureAction[];
+  };
+
+  const lab4Fixtures: Fixture[] = [
+    {
+      ticketNumber: "TKT-2026-L4-001", summary: "Lab 4 fixture: no actions yet", ownerId: staff1.id, itPriority: "LOW",
+      path: ["NEW", "OPEN"], actions: [],
+    },
+    {
+      ticketNumber: "TKT-2026-L4-002", summary: "Lab 4 fixture: one planned action", ownerId: staff1.id, itPriority: "MEDIUM",
+      path: ["NEW", "OPEN", "IN_PROGRESS"],
+      actions: [
+        { performedById: staff1.id, assignedToId: staff1.id, status: "PLANNED", description: "Check the VPN client version on the laptop." },
+      ],
+    },
+    {
+      ticketNumber: "TKT-2026-L4-003", summary: "Lab 4 fixture: many actions by different staff", ownerId: staff1.id, itPriority: "HIGH",
+      path: ["NEW", "OPEN", "IN_PROGRESS"],
+      actions: [
+        { performedById: staff1.id, assignedToId: staff2.id, status: "COMPLETED", description: "Collected network logs from the access point.", result: "Logs show repeated DHCP timeouts." },
+        { performedById: staff2.id, assignedToId: staff2.id, status: "IN_PROGRESS", description: "Replacing the faulty access point in building 3." },
+        { performedById: admin.id, assignedToId: staff1.id, status: "CANCELLED", description: "Vendor escalation, not needed after the log review." },
+      ],
+    },
+    {
+      ticketNumber: "TKT-2026-L4-004", summary: "Lab 4 fixture: ready for resolution", ownerId: staff2.id, itPriority: "MEDIUM",
+      path: ["NEW", "OPEN", "IN_PROGRESS"],
+      actions: [
+        { performedById: staff2.id, assignedToId: staff2.id, status: "COMPLETED", description: "Reset the mailbox rules.", result: "Mail sync works on desktop and mobile." },
+      ],
+    },
+    {
+      ticketNumber: "TKT-2026-L4-005", summary: "Lab 4 fixture: pending follow-up blocks resolution", ownerId: staff1.id, itPriority: "CRITICAL",
+      path: ["NEW", "OPEN", "IN_PROGRESS"],
+      actions: [
+        { performedById: staff1.id, assignedToId: staff1.id, status: "COMPLETED", description: "Restored access to the grade submission app.", result: "Access restored for the requester." },
+        { performedById: staff1.id, assignedToId: staff2.id, status: "PLANNED", description: "Confirm the fix with the faculty office.", followUpNote: "Call the faculty office after the next grade upload." },
+      ],
+    },
+    {
+      ticketNumber: "TKT-2026-L4-006", summary: "Lab 4 fixture: waiting for requester", ownerId: staff2.id, itPriority: "HIGH",
+      path: ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"],
+      actions: [
+        { performedById: staff2.id, assignedToId: staff2.id, status: "IN_PROGRESS", description: "Waiting for the requester to test the new printer driver.", followUpNote: "Ask the requester to print a test page." },
+      ],
+    },
+    {
+      ticketNumber: "TKT-2026-L4-007", summary: "Lab 4 fixture: resolved with completed actions", ownerId: staff1.id, itPriority: "LOW",
+      path: ["NEW", "OPEN", "IN_PROGRESS", "RESOLVED"],
+      resolutionSummary: "Replaced the laptop charger; the laptop charges normally.",
+      actions: [
+        { performedById: staff1.id, assignedToId: staff1.id, status: "COMPLETED", description: "Tested the laptop with a spare charger.", result: "Laptop charges with the spare charger." },
+        { performedById: staff2.id, assignedToId: staff2.id, status: "COMPLETED", description: "Issued a new charger to the requester.", result: "Charger handed over." },
+      ],
+    },
+    {
+      ticketNumber: "TKT-2026-L4-008", summary: "Lab 4 fixture: closed", ownerId: staff2.id, itPriority: "MEDIUM",
+      path: ["NEW", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"],
+      resolutionSummary: "Password reset completed and verified with the requester.",
+      actions: [
+        { performedById: staff2.id, assignedToId: staff2.id, status: "COMPLETED", description: "Reset the account password.", result: "Requester signed in successfully." },
+      ],
+    },
+  ];
+
+  for (const [index, f] of lab4Fixtures.entries()) {
+    const day = index + 1; // 1..8 July 2026, one day per fixture
+    const ticket = await prisma.ticket.upsert({
+      where: { ticketNumber: f.ticketNumber },
+      update: {},
+      create: {
+        ticketNumber: f.ticketNumber,
+        requesterId: sarah.id,
+        ownerId: f.ownerId,
+        categoryId: catSoftware.id,
+        relatedSystemId: sysLaptop.id,
+        requestedPriority: f.itPriority,
+        itPriority: f.itPriority,
+        currentStatus: f.path[f.path.length - 1],
+        resolutionSummary: f.resolutionSummary ?? null,
+        summary: f.summary,
+        description: `${f.summary}. Seeded for Lab 4 Actions Taken, workflow and dashboard tests.`,
+        createdAt: at(day, 1),
+        updatedAt: at(day, f.path.length),
+      },
+    });
+
+    // Full status path, written once (history is append-only).
+    if ((await prisma.ticketStatusHistory.count({ where: { ticketId: ticket.id } })) === 0) {
+      await prisma.ticketStatusHistory.createMany({
+        data: f.path.map((toStatus, step) => ({
+          ticketId: ticket.id,
+          fromStatus: step === 0 ? null : f.path[step - 1],
+          toStatus,
+          changedById: step === 0 ? null : f.ownerId,
+          reason: step === 0 ? "Ticket created" : "Seeded workflow step",
+          createdAt: at(day, step + 1),
+        })),
+      });
+    }
+
+    // Upsert on (ticketId, idempotencyKey) keeps Actions repeat-safe.
+    for (const [n, a] of f.actions.entries()) {
+      const idempotencyKey = `seed-${f.ticketNumber}-${n + 1}`;
+      await prisma.actionTaken.upsert({
+        where: { ticketId_idempotencyKey: { ticketId: ticket.id, idempotencyKey } },
+        update: {},
+        create: {
+          ticketId: ticket.id,
+          performedById: a.performedById,
+          assignedToId: a.assignedToId,
+          actionAt: at(day, 2 + n),
+          description: a.description,
+          result: a.result ?? null,
+          status: a.status,
+          followUpRequired: a.followUpNote !== undefined,
+          followUpNote: a.followUpNote ?? null,
+          idempotencyKey,
+        },
+      });
+    }
+  }
+  console.log(`Lab 4 fixtures seeded: ${lab4Fixtures.length} tickets.`);
+
+  // -------------------------------------------------------------------------
+  // Initial status history for every Ticket that has none (BR-34): covers
+  // Tickets seeded on a fresh database and Tickets created through the API.
+  // -------------------------------------------------------------------------
+  const ticketsWithoutHistory = await prisma.ticket.findMany({
+    where: { statusHistory: { none: {} } },
+    select: { id: true, currentStatus: true, ownerId: true, updatedAt: true },
+  });
+  if (ticketsWithoutHistory.length > 0) {
+    await prisma.ticketStatusHistory.createMany({
+      data: ticketsWithoutHistory.map((t) => ({
+        ticketId: t.id,
+        fromStatus: null,
+        toStatus: t.currentStatus,
+        changedById: t.ownerId,
+        reason: "Initial status (seed backfill)",
+        createdAt: t.updatedAt,
+      })),
+    });
+  }
+  console.log(`Initial status history added for ${ticketsWithoutHistory.length} tickets.`);
+
+  // -------------------------------------------------------------------------
   // Summary
   // -------------------------------------------------------------------------
   const counts = {
@@ -394,6 +567,8 @@ async function main() {
     attachments: await prisma.attachment.count(),
     publicComments: await prisma.publicComment.count(),
     internalNotes: await prisma.internalNote.count(),
+    actionsTaken: await prisma.actionTaken.count(),
+    statusHistory: await prisma.ticketStatusHistory.count(),
   };
 
   console.log("Seeding completed successfully.");
