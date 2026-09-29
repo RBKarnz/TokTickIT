@@ -41,30 +41,30 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| API-01 | API | AC-01 | Create valid Action Taken by IT Staff | 201 Created, ticket linked, creator auto-set, assignee set | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-02 | API | AC-01, AC-15 | Create valid Action Taken by Administrator | 201 Created, admin accepted as performer and assignee | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-03 | API | AC-03 | Client attempts to spoof `performedById` | Server ignores client value, sets authenticated user ID | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-04 | API | AC-04 | Create action with `followUpRequired=true` but missing note | 422 Unprocessable, field error on `followUpNote` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-05 | API | AC-04 | Create action with `followUpRequired=false` but note supplied | 422 Unprocessable, note must be empty when follow-up false | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-06 | API | AC-05 | Assign action to inactive IT Staff user | 422 Unprocessable, assignee must be active staff or admin | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-07 | API | AC-05 | Assign action to user with `REQUESTER` role | 422 Unprocessable, requesters cannot be assigned actions | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-08 | API | AC-06 | Move action from `PLANNED` to `IN_PROGRESS` | 200 OK, status updated, version incremented | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-09 | API | AC-06 | Complete action without providing `result` | 422 Unprocessable, result required on completion | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-10 | API | AC-06 | Move action from `IN_PROGRESS` to `COMPLETED` with result | 200 OK, terminal status set, version incremented | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-11 | API | AC-06 | Move action from `PLANNED` to `CANCELLED` | 200 OK, terminal status set | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-12 | API | AC-06 | Attempt update on `COMPLETED` action | 409 Conflict with code `ACTION_CLOSED` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-13 | API | AC-06 | Attempt update on `CANCELLED` action | 409 Conflict with code `ACTION_CLOSED` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-14 | API | AC-07 | List actions for ticket with multiple actions | 200 OK, items ordered by `actionAt ASC, id ASC` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-15 | API | AC-08 | Requester reads actions of own ticket | 200 OK, full action details returned read-only | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-16 | API | AC-08 | Requester attempts to create action on own ticket | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-17 | API | AC-08 | Requester attempts to update action on own ticket | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-18 | API | AC-08 | Requester reads actions of another user's ticket | 404 Not Found (safe non-disclosure) | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-19 | API | AC-09 | Create action with `Idempotency-Key` header | 201 Created | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-20 | API | AC-09 | Repeat action creation with identical `Idempotency-Key` | 200 OK, `Idempotent-Replay: true`, no duplicate row created | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-21 | API | AC-14 | Update action with mismatched `expectedVersion` | 409 Conflict with code `STALE_UPDATE`, current state in body | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-22 | API | AC-10 | Attempt to add action to `CLOSED` ticket | 409 Conflict, cannot add actions to closed tickets | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-23 | API | AC-10 | Attempt to add action to `CANCELLED` ticket | 409 Conflict, cannot add actions to cancelled tickets | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-24 | API | AC-01 | Create action with `actionAt` timestamp >5 minutes in future | 422 Unprocessable, timestamp cannot exceed future tolerance | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| API-01 | API | AC-01 | Create valid Action Taken by IT Staff | 201 Created, ticket linked, creator auto-set, assignee set | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-02 | API | AC-01, AC-15 | Create valid Action Taken by Administrator | 201 Created, admin accepted as performer and assignee | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-03 | API | AC-03 | Client attempts to spoof `performedById` | Server ignores client value, sets authenticated user ID | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-04 | API | AC-04 | Create action with `followUpRequired=true` but missing note | 422 Unprocessable, field error on `followUpNote` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-05 | API | AC-04 | Create action with `followUpRequired=false` but note supplied | 422 Unprocessable, note must be empty when follow-up false | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-06 | API | AC-05 | Assign action to inactive IT Staff user | 422 Unprocessable, assignee must be active staff or admin | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-07 | API | AC-05 | Assign action to user with `REQUESTER` role | 422 Unprocessable, requesters cannot be assigned actions | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-08 | API | AC-06 | Move action from `PLANNED` to `IN_PROGRESS` | 200 OK, status updated, version incremented | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-09 | API | AC-06 | Complete action without providing `result` | 422 Unprocessable, result required on completion | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-10 | API | AC-06 | Move action from `IN_PROGRESS` to `COMPLETED` with result | 200 OK, terminal status set, version incremented | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-11 | API | AC-06 | Move action from `PLANNED` to `CANCELLED` | 200 OK, terminal status set | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-12 | API | AC-06 | Attempt update on `COMPLETED` action | 409 Conflict with code `ACTION_CLOSED` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-13 | API | AC-06 | Attempt update on `CANCELLED` action | 409 Conflict with code `ACTION_CLOSED` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-14 | API | AC-07 | List actions for ticket with multiple actions | 200 OK, items ordered by `actionAt ASC, id ASC` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-15 | API | AC-08 | Requester reads actions of own ticket | 200 OK, full action details returned read-only | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-16 | API | AC-08 | Requester attempts to create action on own ticket | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-17 | API | AC-08 | Requester attempts to update action on own ticket | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-18 | API | AC-08 | Requester reads actions of another user's ticket | 404 Not Found (safe non-disclosure) | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-19 | API | AC-09 | Create action with `Idempotency-Key` header | 201 Created | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-20 | API | AC-09 | Repeat action creation with identical `Idempotency-Key` | 200 OK, `Idempotent-Replay: true`, no duplicate row created | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-21 | API | AC-14 | Update action with mismatched `expectedVersion` | 409 Conflict with code `STALE_UPDATE`, current state in body | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-22 | API | AC-10 | Attempt to add action to `CLOSED` ticket | 409 Conflict, cannot add actions to closed tickets | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-23 | API | AC-10 | Attempt to add action to `CANCELLED` ticket | 409 Conflict, cannot add actions to cancelled tickets | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-24 | API | AC-01 | Create action with `actionAt` timestamp >5 minutes in future | 422 Unprocessable, timestamp cannot exceed future tolerance | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-25 | API | AC-10 | IT Staff executes permitted transition `OPEN` -> `IN_PROGRESS` | 200 OK, ticket status updated | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | API-26 | API | AC-10, AC-15 | Administrator executes transition `NEW` -> `OPEN` | 200 OK, admin permitted | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | API-27 | API | AC-10 | Execute unpermitted transition `NEW` -> `RESOLVED` directly | 409 Conflict, invalid status transition | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
@@ -86,11 +86,11 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| UNIT-01 | Unit | AC-06 | Action status transition helper validation | Validates permitted next states from matrix | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| UNIT-01 | Unit | AC-06 | Action status transition helper validation | Validates permitted next states from matrix | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | UNIT-02 | Unit | AC-10 | Ticket status matrix transition helper | Returns true only for matrix-approved state pairs | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | UNIT-03 | Unit | AC-11 | Resolution gate pure evaluator | Evaluates summary, completed action, follow-up flags | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| UNIT-04 | Unit | AC-04 | Follow-up note validator | Rejects empty note if follow-up required is true | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| UNIT-05 | Unit | AC-01 | Action datetime tolerance checker | Rejects timestamps > 5 minutes in future | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| UNIT-04 | Unit | AC-04 | Follow-up note validator | Rejects empty note if follow-up required is true | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| UNIT-05 | Unit | AC-01 | Action datetime tolerance checker | Rejects timestamps > 5 minutes in future | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | UNIT-06 | Unit | AC-16 | Open group status classifier | Maps 5 statuses to Open group, 3 to Non-Open | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
 | UNIT-07 | Unit | AC-02 | Asia/Bangkok 7-day rolling window calculator | Calculates rolling 168h boundary without timezone offset errors | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
 | UNIT-08 | Unit | AC-16 | Dashboard metric builder aggregator | Correctly folds Prisma aggregates into response envelope | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
