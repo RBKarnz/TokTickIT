@@ -138,31 +138,30 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
     await page.locator('[data-testid="list-item"]:visible').first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
-    // 1. Post Public Comment
-    const commentTab = page.locator('button:has-text("Public Comments"), a:has-text("Public Comments")').first();
-    if (await commentTab.isVisible()) {
-      await commentTab.click();
-    }
-    const commentInput = page.locator('textarea[placeholder*="comment"]').first();
-    if (await commentInput.isVisible()) {
-      const testComment = `E2E Public Comment ${Date.now()}`;
-      await commentInput.fill(testComment);
-      await page.locator('button:has-text("Post Comment"), button:has-text("Submit Comment")').first().click();
-      await expect(page.locator(`text=${testComment}`)).toBeVisible();
-    }
+    // 1. Post Public Comment (waits for each control instead of skipping when not yet rendered)
+    await page.locator('button:has-text("Public Comments")').first().click();
+    const commentInput = page.getByLabel('Add a Public Comment');
+    await expect(commentInput).toBeVisible();
+    const testComment = `E2E Public Comment ${Date.now()}`;
+    await commentInput.fill(testComment);
+    await page.locator('button:has-text("Post Comment")').first().click();
+    await expect(page.locator(`text=${testComment}`)).toBeVisible();
 
     // 2. Post Internal Note (Staff only)
-    const notesTab = page.locator('button:has-text("Internal Notes"), a:has-text("Internal Notes")').first();
-    if (await notesTab.isVisible()) {
-      await notesTab.click();
-      const noteInput = page.locator('textarea[placeholder*="note"]').first();
-      if (await noteInput.isVisible()) {
-        const testNote = `E2E Internal Note ${Date.now()}`;
-        await noteInput.fill(testNote);
-        await page.locator('button:has-text("Add Note"), button:has-text("Post Note")').first().click();
-        await expect(page.locator(`text=${testNote}`)).toBeVisible();
-      }
-    }
+    await page.locator('button:has-text("Internal Notes")').first().click();
+    const noteInput = page.getByLabel('Add an Internal Note');
+    await expect(noteInput).toBeVisible();
+    const testNote = `E2E Internal Note ${Date.now()}`;
+    await noteInput.fill(testNote);
+    await page.locator('button:has-text("Post Internal Note")').first().click();
+    await expect(page.locator(`text=${testNote}`)).toBeVisible();
+
+    // 3. Both are still there after a reload (persisted in the database)
+    await page.reload();
+    await page.locator('button:has-text("Public Comments")').first().click();
+    await expect(page.locator(`text=${testComment}`)).toBeVisible();
+    await page.locator('button:has-text("Internal Notes")').first().click();
+    await expect(page.locator(`text=${testNote}`)).toBeVisible();
   });
 
   test('E2E-19: Requester views ticket: sees Public Comments but never Internal Notes tab/content', async ({ page }) => {
