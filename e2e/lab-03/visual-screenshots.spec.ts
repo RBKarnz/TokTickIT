@@ -2,6 +2,7 @@ import { test, expect, Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
+import { resetFirstLoginPassword } from './helpers';
 
 const screenshotsBase = path.resolve(process.cwd(), 'artifacts/lab-03/screenshots');
 
@@ -169,6 +170,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     });
 
     test('06-first-login-change-password: Mandatory password reset view for first-time users', async ({ page }) => {
+      await resetFirstLoginPassword();
       await loginAs(page, 'firstlogin@toktickit.com', 'Password123!', /\/change-password/);
 
       await page.locator('#current').fill('Password123!');
@@ -369,11 +371,9 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await page.waitForTimeout(200);
 
       const targetRow = page.locator('[data-testid="list-item"]:visible:has(.badge:has-text("In Progress"))').first();
-      if (await targetRow.isVisible()) {
-        await targetRow.click();
-      } else {
-        await page.locator('[data-testid="list-item"]:visible').first().click();
-      }
+      // Screenshots 01-11 need an In Progress Ticket; fail instead of silently using another one
+      await expect(targetRow).toBeVisible();
+      await targetRow.click();
       await page.waitForURL(/\/tickets\/\d+/);
 
       // Robust wait: ensure loading spinner is detached and ticket header is visible!
@@ -418,31 +418,22 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     });
 
     test('04-permitted-status-changes: Permitted ticket status transitions according to state machine', async ({ page }) => {
+      // An In Progress Ticket must offer Resolved; the screenshot shows its confirmation modal
       const statusSelect = page.locator('select[aria-label="Change Status"]').first();
-      if (await statusSelect.isVisible()) {
-        const options = await statusSelect.locator('option').allInnerTexts();
-        const resolveOption = options.find((o) => o.includes('Resolved'));
-        if (resolveOption) {
-          await statusSelect.selectOption({ label: resolveOption.trim() });
-          await page.locator('button:has-text("Update Status")').click();
-          const modal = page.locator('.modal.show, .modal[style*="block"], [role="dialog"]').first();
-          await expect(modal).toBeVisible();
+      await expect(statusSelect).toBeVisible();
+      expect(await statusSelect.locator('option').allInnerTexts()).toContain('Resolved');
+      await statusSelect.selectOption({ label: 'Resolved' });
+      await page.locator('button:has-text("Update Status")').click();
+      const modal = page.locator('.modal.show, .modal[style*="block"], [role="dialog"]').first();
+      await expect(modal).toBeVisible();
 
-          // Capture modal cleanly without fullPage to avoid backdrop splitting
-          await page.screenshot({
-            path: path.join(screenshotsBase, 'staff-ticket-detail', '04-permitted-status-changes.png'),
-            fullPage: false,
-          });
-          await modal.locator('button:has-text("Cancel")').click();
-          await page.waitForTimeout(300);
-          return;
-        }
-      }
-
+      // Capture modal cleanly without fullPage to avoid backdrop splitting
       await page.screenshot({
         path: path.join(screenshotsBase, 'staff-ticket-detail', '04-permitted-status-changes.png'),
-        fullPage: true,
+        fullPage: false,
       });
+      await modal.locator('button:has-text("Cancel")').click();
+      await page.waitForTimeout(300);
     });
 
     test('05-public-comments-section: Public discussion thread visible to requester and staff', async ({ page }) => {
@@ -849,6 +840,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // View 2: Mandatory First-Login Password Change (Desktop, Tablet, Mobile)
     // -----------------------------------------------------------------------
     test('02-change-password responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
+      await resetFirstLoginPassword();
       await loginAs(page, 'firstlogin@toktickit.com', 'Password123!', /\/change-password/);
       await page.locator('#current').fill('Password123!');
       await page.locator('#newPwd').fill('NewSecurePass123!');
