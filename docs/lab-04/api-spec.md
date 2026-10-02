@@ -112,6 +112,7 @@
   - `201 Created` for a newly created action.
   - `200 OK` with header `Idempotent-Replay: true` if an action with the same `Idempotency-Key` already exists for this ticket.
 - **Errors:**
+  - `400 BAD_REQUEST`: `Idempotency-Key` header is empty or longer than 100 characters.
   - `403 FORBIDDEN`: Requester role, or invalid CSRF.
   - `404 NOT_FOUND`: Ticket not found.
   - `409 CONFLICT`: Ticket is in terminal status (`CLOSED` or `CANCELLED`).
@@ -140,6 +141,8 @@
   - Status transition must follow Action Status Matrix (`PLANNED` -> `IN_PROGRESS`/`COMPLETED`/`CANCELLED`; `IN_PROGRESS` -> `COMPLETED`/`CANCELLED`) -> `409 CONFLICT`.
   - Setting status to `COMPLETED` requires a non-empty `result` string -> `422 VALIDATION_ERROR`.
   - `assignedToId`: If changed, must reference an active `IT_STAFF` or `ADMINISTRATOR` -> `422 VALIDATION_ERROR`.
+  - Follow-up rules match create; setting `followUpRequired` to `false` without sending `followUpNote` clears the stored note.
+  - `performedById` and `ticketId` are never changed by this endpoint (BR-01, BR-03).
 - **Response:** `200 OK` returning updated action object with incremented `version`.
 - **Errors:**
   - `403 FORBIDDEN`: Requester role, or invalid CSRF.

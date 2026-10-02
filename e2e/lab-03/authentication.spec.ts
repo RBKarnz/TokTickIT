@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { resetFirstLoginPassword } from './helpers';
 
 test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
   test.beforeEach(async ({ page }) => {
@@ -38,6 +39,7 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
   });
 
   test('E2E-02 & E2E-08: Initial password login forces change password, prevents URL bypass, and lands after success', async ({ page }) => {
+    await resetFirstLoginPassword();
     await page.goto('/login');
     await page.locator('input[type="email"]').fill('firstlogin@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
@@ -137,13 +139,16 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(/\/tickets|\/$/); // wait for the session before navigating
 
     await page.goto('/tickets');
     const firstTicket = page.locator('[data-testid="list-item"]:visible').first();
-    if (await firstTicket.isVisible()) {
-      await firstTicket.click();
-      await expect(page.locator('body')).not.toContainText('Internal Notes');
-    }
+    await expect(firstTicket).toBeVisible();
+    await firstTicket.click();
+    // Wait for the detail page to load before checking that Internal Notes are absent
+    await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
+    await expect(page.locator('button:has-text("Public Comments")').first()).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('Internal Notes');
   });
 
   test('Core Regression: Authenticated ticket creation without dev requester selector', async ({ page }) => {

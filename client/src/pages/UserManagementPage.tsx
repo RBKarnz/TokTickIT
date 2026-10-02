@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../AuthContext.js';
 import {
   fetchAdminUsers,
@@ -152,8 +152,11 @@ export default function UserManagementPage() {
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
-  // Load users from API
+  // Load users from API. Only the latest request may update state, so a slow
+  // older response (e.g. the unfiltered first load) cannot overwrite a newer filter.
+  const latestRequestId = useRef(0);
   const loadUsers = useCallback(async () => {
+    const requestId = ++latestRequestId.current;
     setLoading(true);
     setFetchError(null);
     try {
@@ -161,11 +164,13 @@ export default function UserManagementPage() {
         search: search.trim() || undefined,
         role: roleFilter || undefined,
       });
+      if (requestId !== latestRequestId.current) return;
       setUsers(data.items || []);
     } catch (err: any) {
+      if (requestId !== latestRequestId.current) return;
       setFetchError(err.message || 'Failed to fetch users');
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestId.current) setLoading(false);
     }
   }, [search, roleFilter]);
 

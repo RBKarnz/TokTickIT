@@ -23,6 +23,7 @@ import {
   csrfProtection,
   csrfTokenFor,
 } from './auth.js';
+import { actionsRouter } from './actions.js';
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -1684,6 +1685,9 @@ app.post('/api/admin/users/:userId/set-initial-password', requireNormalAuth, req
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to set initial password.' } });
   }
 });
+
+// Actions Taken endpoints (Lab 4), kept in their own module
+app.use(actionsRouter);
 
 export default app;
 
