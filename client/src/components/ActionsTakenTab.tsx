@@ -66,6 +66,7 @@ export default function ActionsTakenTab({
 
   // Form fields
   const [actionAt, setActionAt] = useState('');
+  const initialActionAtRef = useRef('');
   const [assignedToId, setAssignedToId] = useState<number>(0);
   const [status, setStatus] = useState<ActionStatus>('PLANNED');
   const [description, setDescription] = useState('');
@@ -138,11 +139,9 @@ export default function ActionsTakenTab({
     setEditingActionId(action.id);
     setExpectedVersion(action.version);
 
-    try {
-      setActionAt(toDatetimeLocal(new Date(action.actionAt)));
-    } catch {
-      setActionAt(toDatetimeLocal(new Date()));
-    }
+    const localActionAt = toDatetimeLocal(new Date(action.actionAt));
+    initialActionAtRef.current = localActionAt;
+    setActionAt(localActionAt);
     setAssignedToId(action.assignedTo.id);
     setStatus(action.status);
     setDescription(action.description);
@@ -181,6 +180,15 @@ export default function ActionsTakenTab({
     } catch (err: any) {
       setFormError(err.message || 'Failed to reload actions');
     }
+  };
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const validateClient = (): boolean => {
@@ -237,8 +245,9 @@ export default function ActionsTakenTab({
     setFormError('');
     setStaleError('');
 
+    const actionAtUnchanged = formMode === 'edit' && actionAt === initialActionAtRef.current;
     const input: ActionInput = {
-      actionAt: actionAt ? new Date(actionAt).toISOString() : new Date().toISOString(),
+      actionAt: actionAtUnchanged ? undefined : actionAt ? new Date(actionAt).toISOString() : new Date().toISOString(),
       assignedToId,
       status,
       description: description.trim(),
@@ -411,7 +420,10 @@ export default function ActionsTakenTab({
                     id="actionAt"
                     className={`form-control form-control-sm ${fieldErrors.actionAt ? 'is-invalid' : ''}`}
                     value={actionAt}
-                    onChange={(e) => setActionAt(e.target.value)}
+                    onChange={(e) => {
+                      setActionAt(e.target.value);
+                      clearFieldError('actionAt');
+                    }}
                     aria-describedby={fieldErrors.actionAt ? 'actionAt-error' : undefined}
                   />
                   {fieldErrors.actionAt && (
@@ -430,7 +442,10 @@ export default function ActionsTakenTab({
                     id="assignedToId"
                     className={`form-select form-select-sm ${fieldErrors.assignedToId ? 'is-invalid' : ''}`}
                     value={assignedToId}
-                    onChange={(e) => setAssignedToId(parseInt(e.target.value, 10))}
+                    onChange={(e) => {
+                      setAssignedToId(parseInt(e.target.value, 10));
+                      clearFieldError('assignedToId');
+                    }}
                     aria-describedby={fieldErrors.assignedToId ? 'assignedToId-error' : undefined}
                   >
                     {assignees.map((user) => (
@@ -455,7 +470,11 @@ export default function ActionsTakenTab({
                     id="status"
                     className={`form-select form-select-sm ${fieldErrors.status ? 'is-invalid' : ''}`}
                     value={status}
-                    onChange={(e) => setStatus(e.target.value as ActionStatus)}
+                    onChange={(e) => {
+                      setStatus(e.target.value as ActionStatus);
+                      clearFieldError('status');
+                      clearFieldError('result');
+                    }}
                     aria-describedby={fieldErrors.status ? 'status-error' : undefined}
                   >
                     {formMode === 'create' ? (
@@ -498,7 +517,10 @@ export default function ActionsTakenTab({
                     rows={3}
                     className={`form-control form-control-sm ${fieldErrors.description ? 'is-invalid' : ''}`}
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      clearFieldError('description');
+                    }}
                     placeholder="Enter detailed action narrative..."
                     aria-describedby={fieldErrors.description ? 'description-error' : undefined}
                   />
@@ -522,7 +544,10 @@ export default function ActionsTakenTab({
                     rows={2}
                     className={`form-control form-control-sm ${fieldErrors.result ? 'is-invalid' : ''}`}
                     value={result}
-                    onChange={(e) => setResult(e.target.value)}
+                    onChange={(e) => {
+                      setResult(e.target.value);
+                      clearFieldError('result');
+                    }}
                     placeholder="Enter action outcome (required when completed)..."
                     aria-describedby={fieldErrors.result ? 'result-error' : undefined}
                   />
@@ -541,7 +566,10 @@ export default function ActionsTakenTab({
                       id="followUpRequired"
                       className="form-check-input"
                       checked={followUpRequired}
-                      onChange={(e) => setFollowUpRequired(e.target.checked)}
+                      onChange={(e) => {
+                        setFollowUpRequired(e.target.checked);
+                        clearFieldError('followUpNote');
+                      }}
                     />
                     <label htmlFor="followUpRequired" className="form-check-label small fw-bold">
                       Follow-Up Required
@@ -563,7 +591,10 @@ export default function ActionsTakenTab({
                       rows={2}
                       className={`form-control form-control-sm ${fieldErrors.followUpNote ? 'is-invalid' : ''}`}
                       value={followUpNote}
-                      onChange={(e) => setFollowUpNote(e.target.value)}
+                      onChange={(e) => {
+                        setFollowUpNote(e.target.value);
+                        clearFieldError('followUpNote');
+                      }}
                       placeholder="Enter follow-up instructions..."
                       aria-describedby={fieldErrors.followUpNote ? 'followUpNote-error' : undefined}
                     />
@@ -588,7 +619,10 @@ export default function ActionsTakenTab({
                     rows={2}
                     className={`form-control form-control-sm ${fieldErrors.attachmentNotes ? 'is-invalid' : ''}`}
                     value={attachmentNotes}
-                    onChange={(e) => setAttachmentNotes(e.target.value)}
+                    onChange={(e) => {
+                      setAttachmentNotes(e.target.value);
+                      clearFieldError('attachmentNotes');
+                    }}
                     placeholder="e.g., Check router_config.png for verified port settings."
                     aria-describedby={fieldErrors.attachmentNotes ? 'attachmentNotes-error' : undefined}
                   />
@@ -634,7 +668,7 @@ export default function ActionsTakenTab({
       {/* Loading State */}
       {loading && (
         <div className="text-center py-4" role="status">
-          <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+          <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true"></div>
           <span className="text-muted small">Loading actions taken...</span>
         </div>
       )}
