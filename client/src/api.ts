@@ -506,3 +506,150 @@ export async function setUserInitialPassword(userId: number, data: {
   return await res.json();
 }
 
+// ---------------------------------------------------------------------------
+// Lab 4: Actions Taken (api-spec §3)
+// ---------------------------------------------------------------------------
+
+export type ActionStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  actionAt: string;
+  description: string;
+  result: string | null;
+  status: ActionStatus;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  performedBy: {
+    id: number;
+    name: string;
+  };
+  assignedTo: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionInput {
+  actionAt?: string;
+  description: string;
+  result?: string | null;
+  status?: ActionStatus;
+  assignedToId: number;
+  followUpRequired: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+}
+
+export interface AssigneeUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
+export class ApiError extends Error {
+  status: number;
+  code: string;
+  fieldErrors?: Record<string, string>;
+  current?: ActionTaken;
+
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fieldErrors?: Record<string, string>,
+    current?: ActionTaken,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.fieldErrors = fieldErrors;
+    this.current = current;
+  }
+}
+
+async function handleActionError(res: Response): Promise<never> {
+  const data = await res.json().catch(() => null);
+  const status = res.status;
+  const code = data?.error?.code || (status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : 'ERROR');
+  const message = data?.error?.message || `Request failed with status ${status}`;
+  const fieldErrors = data?.error?.fieldErrors;
+  const current = data?.error?.current;
+  throw new ApiError(status, code, message, fieldErrors, current);
+}
+
+export async function fetchActions(ticketId: number): Promise<ActionTaken[]> {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/actions`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  const data = await res.json();
+  return data.items || [];
+}
+
+export async function fetchAssignees(): Promise<AssigneeUser[]> {
+  const res = await csrfFetch(`${API_URL}/api/staff/assignees`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  const data = await res.json();
+  return data.users || [];
+}
+
+export async function createAction(
+  ticketId: number,
+  input: ActionInput,
+  idempotencyKey?: string,
+): Promise<ActionTaken> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] = idempotencyKey;
+  }
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/actions`, {
+    method: 'POST',
+    headers,
+    credentials: 'include',
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  return await res.json();
+}
+
+export async function updateAction(
+  actionId: number,
+  input: Partial<ActionInput> & { expectedVersion?: number },
+  expectedVersion?: number,
+): Promise<ActionTaken> {
+  const version = expectedVersion !== undefined ? expectedVersion : input.expectedVersion;
+  const payload = { ...input, expectedVersion: version };
+  const res = await csrfFetch(`${API_URL}/api/actions/${actionId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  return await res.json();
+}
+
+

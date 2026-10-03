@@ -91,6 +91,8 @@ describe('TicketDetailPage - IT Staff Operations (Lab 3 UI-20 to UI-26)', () => 
     vi.spyOn(api, 'fetchStaffUsers').mockResolvedValue(mockStaffList);
     vi.spyOn(api, 'fetchPublicComments').mockResolvedValue([]);
     vi.spyOn(api, 'fetchInternalNotes').mockResolvedValue([...mockNotes]);
+    vi.spyOn(api, 'fetchActions').mockResolvedValue([]);
+    vi.spyOn(api, 'fetchAssignees').mockResolvedValue([]);
   });
 
   // UI-20: Breadcrumb & Role-aware navigation

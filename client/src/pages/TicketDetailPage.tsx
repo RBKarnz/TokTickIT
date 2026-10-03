@@ -21,6 +21,7 @@ import {
   InternalNote,
 } from '../api.js';
 import { getPriorityBadge, getStatusBadge } from '../utils.js';
+import ActionsTakenTab from '../components/ActionsTakenTab.js';
 
 const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
   NEW: ['OPEN', 'CANCELLED'],
@@ -90,7 +91,8 @@ export default function TicketDetailPage() {
   const [commentError, setCommentError] = useState('');
 
   // Internal Notes state (Staff & Admin only)
-  const [activeTab, setActiveTab] = useState<'attachments' | 'comments' | 'notes'>('attachments');
+  const [activeTab, setActiveTab] = useState<'attachments' | 'comments' | 'notes' | 'actions'>('attachments');
+  const [actionsCount, setActionsCount] = useState<number>(0);
   const [internalNotes, setInternalNotes] = useState<InternalNote[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [newNote, setNewNote] = useState('');
@@ -834,6 +836,18 @@ export default function TicketDetailPage() {
               </button>
             </li>
           )}
+          <li className="nav-item">
+            <button
+              className={`nav-link fw-bold ${activeTab === 'actions' ? 'active' : 'text-muted'}`}
+              style={{
+                color: activeTab === 'actions' ? '#0B7A46' : undefined,
+                borderBottomColor: activeTab === 'actions' ? '#F5F7F6' : undefined,
+              }}
+              onClick={() => setActiveTab('actions')}
+            >
+              <i className="bi bi-list-check me-1"></i> Actions Taken ({actionsCount})
+            </button>
+          </li>
         </ul>
 
         {/* Tab Content Card */}
@@ -1179,6 +1193,17 @@ export default function TicketDetailPage() {
                 </form>
               </div>
             )}
+
+            {/* TAB 4: Actions Taken */}
+            <div className={activeTab === 'actions' ? '' : 'd-none'}>
+              <ActionsTakenTab
+                ticketId={ticket.id}
+                canWrite={isStaffOrAdmin}
+                currentUserId={user?.id ?? 0}
+                ticketStatus={ticket.currentStatus}
+                onCountChange={setActionsCount}
+              />
+            </div>
           </div>
         </div>
       </div>
