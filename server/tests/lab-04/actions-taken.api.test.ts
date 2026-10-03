@@ -438,6 +438,49 @@ describe('Actions Taken API (Lab 4)', () => {
     });
   });
 
+  describe('assignees (GET /api/staff/assignees)', () => {
+    it('API-41: staff gets active IT Staff and Administrators, inactive users excluded', async () => {
+      const res = await request(app).get('/api/staff/assignees').set('Cookie', staffCookie);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.users)).toBe(true);
+      const roles = new Set(res.body.users.map((u: { role: string }) => u.role));
+      expect(roles.has('IT_STAFF')).toBe(true);
+      expect(roles.has('ADMINISTRATOR')).toBe(true);
+      expect(roles.has('REQUESTER')).toBe(false);
+      const ids = res.body.users.map((u: { id: number }) => u.id);
+      expect(ids).toContain(staff.id);
+      expect(ids).toContain(admin.id);
+      expect(ids).not.toContain(inactiveStaff.id);
+      expect(ids).not.toContain(req1.id);
+
+      expect(res.body.users[0]).toHaveProperty('id');
+      expect(res.body.users[0]).toHaveProperty('name');
+      expect(res.body.users[0]).toHaveProperty('email');
+      expect(res.body.users[0]).toHaveProperty('role');
+
+      for (let i = 1; i < res.body.users.length; i++) {
+        const prev = res.body.users[i - 1];
+        const curr = res.body.users[i];
+        const cmp = prev.name.localeCompare(curr.name);
+        if (cmp === 0) {
+          expect(prev.id).toBeLessThanOrEqual(curr.id);
+        } else {
+          expect(cmp).toBeLessThan(0);
+        }
+      }
+    });
+
+    it('API-42: Requester gets 403', async () => {
+      const res = await request(app).get('/api/staff/assignees').set('Cookie', req1Cookie);
+      expect(res.status).toBe(403);
+    });
+
+    it('API-43: no session gets 401', async () => {
+      const res = await request(app).get('/api/staff/assignees');
+      expect(res.status).toBe(401);
+    });
+  });
+
   describe('session and CSRF', () => {
     it('returns 401 without a session', async () => {
       expect((await request(app).get(`/api/tickets/${ticket.id}/actions`)).status).toBe(401);
