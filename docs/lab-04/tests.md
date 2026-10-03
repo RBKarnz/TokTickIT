@@ -81,6 +81,9 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | API-38 | API | AC-17 | Administrator dashboard returns user counts | 200 OK, active and inactive counts per role present | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
 | API-39 | API | AC-18 | Staff queue API accepts drill-down parameters (`actionAssignee=me`) | 200 OK, filtered list matches dashboard action count | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
 | API-40 | API | AC-19 | Dashboard endpoint on empty database state | 200 OK, counts are 0, arrays are empty `[]`, never `null` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| API-41 | API | AC-01 | List assignable users for the Actions Taken form | 200 OK, active IT Staff and Administrators only, inactive users excluded | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-42 | API | AC-08 | Requester requests the assignable user list | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-43 | API | AC-01 | Assignable user list without a session | 401 Unauthorized | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 
 ## 4. Unit Tests
 
@@ -132,17 +135,23 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | UI-03 | UI | AC-16, AC-20 | Staff dashboard metric cards rendering | Displays operational cards, status pills, urgent list | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
 | UI-04 | UI | AC-17 | Administrator dashboard user account breakdown | Renders active/inactive user counts per role | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
 | UI-05 | UI | AC-18 | Dashboard drill-down link parameters | Clicking metric navigates to queue with pre-filled filters | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
-| UI-06 | UI | AC-07 | Actions Taken list rendering on Ticket Detail | Lists actions with formatted timestamps and status badges | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| UI-07 | UI | AC-04 | Create action conditional follow-up validation | Checking follow-up reveals required note field | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| UI-08 | UI | AC-06 | Edit action status dropdown filtering | Shows only permitted next action statuses | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| UI-09 | UI | AC-08 | Requester view on Actions Taken tab | Read-only list; form and edit buttons hidden; info note shown | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| UI-10 | UI | AC-25 | 409 conflict handling preserves form input | Banner displayed; typed summary and notes preserved | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| UI-11 | UI | AC-25 | Action submit button double-click guard | Button disabled with loading spinner while request in flight | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
+| UI-06 | UI | AC-07 | Actions Taken list rendering on Ticket Detail | Lists actions with formatted timestamps and status badges | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-07 | UI | AC-04 | Create action conditional follow-up validation | Checking follow-up reveals required note field | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-08 | UI | AC-06 | Edit action status dropdown filtering | Shows only permitted next action statuses | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-09 | UI | AC-08 | Requester view on Actions Taken tab | Read-only list; form and edit buttons hidden; info note shown | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-10 | UI | AC-14, AC-25 | 409 conflict handling preserves form input | Banner displayed; typed summary and notes preserved | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-11 | UI | AC-25 | Action submit button double-click guard | Button disabled with loading spinner while request in flight | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-12 | UI | AC-10 | Status change dropdown permitted options | Dropdown shows only permitted transitions for current status | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-13 | UI | AC-11 | Resolution gate modal checklist rendering | Checks off passed criteria; disables confirm on missing items | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-14 | UI | AC-13 | Status history timeline rendering | Displays chronological entries with actor, time, and reason | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-15 | UI | AC-15 | Administrator operational ticket view | Full staff operations accessible without permission errors | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-16 | UI | AC-20 | Header navigation active page highlight | Applies `aria-current="page"` and green underline to active route | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
+| UI-17 | UI | AC-09 | Double click on Save Action | `createAction` is called exactly once | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-18 | UI | AC-09, AC-25 | Create fails, then retry | Typed values kept; retry sends the same `Idempotency-Key`; one action added | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-19 | UI | AC-07 | Actions Taken loading, empty and load-failure states | Failure alert with Retry, loading indicator, empty message | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-20 | UI | AC-04 | Server 422 field errors on the action form | Errors shown under the matching fields; typed values kept | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-21 | UI | AC-27 | Actions Taken table rows and mobile cards | Both layouts rendered with labelled fields for every action | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-22 | UI | AC-01 | Administrator opens the create form | Assigned To lists IT Staff and Administrators; defaults to the current user | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 
 ## 9. UI Style, Responsive & Accessibility Tests
 
@@ -244,15 +253,15 @@ Seeded by `server/prisma/seed.ts` for `requester3@toktickit.com` with fixed numb
 
 | Acceptance Criterion | Covered by Test IDs |
 |---|---|
-| AC-01 | API-01, API-02, API-24, E2E-01, UNIT-05 |
+| AC-01 | API-01, API-02, API-24, API-41, UI-22, E2E-01, UNIT-05 |
 | AC-02 | API-36, UNIT-07, E2E-09 |
 | AC-03 | API-03, SEC-06 |
-| AC-04 | API-04, API-05, UNIT-04, UI-07 |
+| AC-04 | API-04, API-05, UNIT-04, UI-07, UI-20 |
 | AC-05 | API-06, API-07 |
 | AC-06 | API-08, API-09, API-10, API-11, API-12, API-13, UNIT-01, UI-08, E2E-02 |
-| AC-07 | API-14, UI-06, E2E-01 |
-| AC-08 | API-15, API-16, API-17, API-18, UI-09, E2E-05, SEC-04, SEC-05 |
-| AC-09 | API-19, API-20, E2E-11 |
+| AC-07 | API-14, UI-06, UI-19, E2E-01 |
+| AC-08 | API-15, API-16, API-17, API-18, API-42, UI-09, E2E-05, SEC-04, SEC-05 |
+| AC-09 | API-19, API-20, UI-17, UI-18, E2E-11 |
 | AC-10 | API-22, API-23, API-25, API-26, API-27, API-28, UNIT-02, UI-12, WF-03, WF-04 |
 | AC-11 | API-29, API-30, API-31, API-32, UNIT-03, UI-13, WF-01, WF-02, E2E-03, E2E-04 |
 | AC-12 | API-33 |
@@ -268,9 +277,9 @@ Seeded by `server/prisma/seed.ts` for `requester3@toktickit.com` with fixed numb
 | AC-22 | MIG-04 |
 | AC-23 | SEC-01, SEC-02, SEC-03 |
 | AC-24 | E2E-12, Section 12 regression suite |
-| AC-25 | UI-10, UI-11 |
+| AC-25 | UI-10, UI-11, UI-18 |
 | AC-26 | UI-16, Manual inspection checklist |
-| AC-27 | STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08 |
+| AC-27 | UI-21, STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08 |
 | AC-28 | PERF-01, PERF-02 |
 | AC-29 | Complete test suite coverage across Sections 3 through 11 |
 | AC-30 | SEC-07, SEC-08, Test strategy adherence |

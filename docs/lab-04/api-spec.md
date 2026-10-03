@@ -152,6 +152,26 @@
   - `409 CONFLICT`: Illegal action status transition.
   - `422 VALIDATION_ERROR`: Validation rule violation.
 
+### 3.4 List Assignable Users
+
+- **Endpoint:** `GET /api/staff/assignees`
+- **Authorized Roles:** `IT_STAFF`, `ADMINISTRATOR`
+- **Purpose:** Options for the Assigned To control of an Action Taken (BR-04). `GET /api/staff/users` is unchanged and still returns active `IT_STAFF` only, because the Ticket Owner must be IT Staff.
+- **Ordering:** `name ASC, id ASC`
+- **Response:** `200 OK`
+  ```json
+  {
+    "users": [
+      { "id": 2, "name": "Michael Staff", "email": "michael.staff@toktick.it", "role": "IT_STAFF" },
+      { "id": 9, "name": "System Admin", "email": "admin@toktick.it", "role": "ADMINISTRATOR" }
+    ]
+  }
+  ```
+  Only active users with role `IT_STAFF` or `ADMINISTRATOR` are returned.
+- **Errors:**
+  - `401 UNAUTHORIZED`: No session.
+  - `403 FORBIDDEN`: Requester role.
+
 ## 4. Ticket Workflow
 
 ### 4.1 Update Ticket Status (Enhanced)
@@ -378,6 +398,7 @@ Per Lab 4 handout Section 4.3 (superseding Lab 3 BR-23 and BR-41), Administrator
 | `GET /api/tickets/:id/actions` | 401 | 200 | 404 | 200 | 200 | 200 (Safe read) |
 | `POST /api/tickets/:id/actions` | 401 | 403 | 403 | 201/200 | 201/200 | 403 |
 | `PATCH /api/actions/:id` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /api/staff/assignees` | 401 | 403 | 403 | 200 | 200 | 200 (Safe read) |
 | `POST /api/staff/tickets/:id/status` | 401 | 403 | 403 | 200 | 200 | 403 |
 | `GET /api/tickets/:id/status-history` | 401 | 200 | 404 | 200 | 200 | 200 (Safe read) |
 | `GET /api/dashboard/requester` | 401 | 200 | N/A | 403 | 403 | 200 (Safe read) |

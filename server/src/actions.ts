@@ -165,6 +165,34 @@ function sendReplay(res: Response, action: ReturnType<typeof toActionDto>) {
 
 export const actionsRouter = Router();
 
+// GET /api/staff/assignees — active IT Staff and Administrators (BR-04, ui-spec §6.3).
+actionsRouter.get('/api/staff/assignees', requireNormalAuth, async (req: Request, res: Response) => {
+  if (!STAFF_ROLES.includes(req.sessionUser!.role)) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Forbidden' } });
+  }
+
+  try {
+    const prisma = getPrisma();
+    const users = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: { in: ['IT_STAFF', 'ADMINISTRATOR'] },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error('Error fetching assignees:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch assignees' } });
+  }
+});
+
 // GET /api/tickets/:ticketId/actions — all roles; Requesters only on their own Tickets.
 actionsRouter.get('/api/tickets/:ticketId/actions', requireNormalAuth, async (req: Request, res: Response) => {
   const ticketId = parseId(req.params.ticketId);
