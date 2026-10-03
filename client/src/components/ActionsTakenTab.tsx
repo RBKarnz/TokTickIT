@@ -693,7 +693,7 @@ export default function ActionsTakenTab({
       {/* Action List (Desktop Table) */}
       {!loading && !loadError && actions.length > 0 && (
         <>
-          <div className="table-responsive d-none d-md-block">
+          <div className="table-responsive d-none d-lg-block">
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
@@ -754,7 +754,7 @@ export default function ActionsTakenTab({
           </div>
 
           {/* Action List (Mobile Cards) */}
-          <div className="d-block d-md-none">
+          <div className="d-block d-lg-none">
             {actions.map((action) => {
               const isClosed = action.status === 'COMPLETED' || action.status === 'CANCELLED';
               return (

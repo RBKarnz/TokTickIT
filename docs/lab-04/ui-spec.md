@@ -98,7 +98,7 @@ On `TicketDetailPage.tsx`, the tab navigation contains:
 
 ### 6.2 Actions Taken List View
 
-- **Columns (Desktop & Tablet):**
+- **Columns (Desktop, >= 992px):**
   1. **Date/Time:** Formatted Asia/Bangkok timestamp.
   2. **Description:** Action narrative text.
   3. **Result:** Action outcome (or `"—"` if not yet completed).
@@ -111,7 +111,7 @@ On `TicketDetailPage.tsx`, the tab navigation contains:
 - **Requester View:** Requesters see all list items and read-only details. An informational alert states:
   > *"Actions recorded by IT Staff. Private staff correspondence is kept in Internal Notes."*
   Create form and Edit buttons are completely suppressed for Requesters.
-- **Mobile View (<768px):** The table transitions to stacked individual cards with clear key-value labels and tap targets.
+- **Mobile & Tablet View (<992px):** The table transitions to stacked individual cards with clear key-value labels and tap targets. The nine-column table does not fit a 768px viewport without clipping, so tablets use the card layout as well.
 
 ### 6.3 Create Action Mode (Staff & Admin)
 
