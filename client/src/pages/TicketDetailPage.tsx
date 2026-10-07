@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext.js';
 import {
@@ -17,11 +17,17 @@ import {
   fetchStaffUsers,
   fetchInternalNotes,
   postInternalNote,
+  fetchActions,
+  fetchStatusHistory,
+  ApiError,
   PublicComment,
   InternalNote,
+  ActionTaken,
+  StatusHistoryItem,
 } from '../api.js';
 import { getPriorityBadge, getStatusBadge } from '../utils.js';
 import ActionsTakenTab from '../components/ActionsTakenTab.js';
+import StatusHistoryTimeline from '../components/StatusHistoryTimeline.js';
 
 const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
   NEW: ['OPEN', 'CANCELLED'],
@@ -42,6 +48,16 @@ const STATUS_LABELS: Record<string, string> = {
   CLOSED: 'Closed',
   REOPENED: 'Reopened',
   CANCELLED: 'Cancelled',
+};
+
+const STALE_TICKET_MESSAGE =
+  'This ticket was modified by another staff member while you were editing. Please reload to review the latest state.';
+
+// Server reasons returned in error.details on 409 RESOLUTION_GATE.
+const GATE_REASONS: Record<string, string> = {
+  RESOLUTION_SUMMARY_REQUIRED: 'A Resolution Summary is required.',
+  COMPLETED_ACTION_REQUIRED: 'At least one completed Action Taken is required.',
+  PENDING_FOLLOW_UP: 'A follow-up action is still pending.',
 };
 
 export default function TicketDetailPage() {
@@ -74,6 +90,17 @@ export default function TicketDetailPage() {
   const [resolutionSummaryInput, setResolutionSummaryInput] = useState('');
   const [isTransitioningStatus, setIsTransitioningStatus] = useState(false);
   const [statusModalError, setStatusModalError] = useState('');
+  const [statusReasonInput, setStatusReasonInput] = useState('');
+  const [gateActions, setGateActions] = useState<ActionTaken[] | null>(null);
+  const [gateActionsError, setGateActionsError] = useState('');
+  const [gateServerReasons, setGateServerReasons] = useState<string[]>([]);
+  const [staleConflict, setStaleConflict] = useState(false);
+  const statusSubmitLock = useRef(false);
+
+  // Status history (all roles)
+  const [statusHistory, setStatusHistory] = useState<StatusHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyError, setHistoryError] = useState('');
 
   // Attachments state
   const [isUploading, setIsUploading] = useState(false);
@@ -128,6 +155,29 @@ export default function TicketDetailPage() {
     }
   };
 
+  const loadHistory = async (ticketId: number) => {
+    setLoadingHistory(true);
+    setHistoryError('');
+    try {
+      setStatusHistory(await fetchStatusHistory(ticketId));
+    } catch (err: any) {
+      setHistoryError(err.message || 'Failed to load status history');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Data for the resolution gate checklist; fetched fresh each time the modal opens.
+  const loadGateActions = async (ticketId: number) => {
+    setGateActions(null);
+    setGateActionsError('');
+    try {
+      setGateActions(await fetchActions(ticketId));
+    } catch (err: any) {
+      setGateActionsError(err.message || 'Failed to load Actions Taken');
+    }
+  };
+
   const loadTicket = async () => {
     if (!user || !id) return;
     try {
@@ -138,6 +188,7 @@ export default function TicketDetailPage() {
       setSelectedOwnerId(data.ownerId || (data.owner ? data.owner.id : ''));
       setError('');
       loadComments(data.id);
+      loadHistory(data.id);
       if (isStaffOrAdmin) {
         loadNotes(data.id);
       }
@@ -154,7 +205,7 @@ export default function TicketDetailPage() {
   }, [id, user]);
 
   useEffect(() => {
-    if (isStaff) {
+    if (isStaffOrAdmin) {
       fetchStaffUsers()
         .then((res) => {
           if (res && res.users) {
@@ -163,7 +214,7 @@ export default function TicketDetailPage() {
         })
         .catch(console.error);
     }
-  }, [isStaff]);
+  }, [isStaffOrAdmin]);
 
   const handleClaim = async () => {
     if (!ticket) return;
@@ -231,10 +282,18 @@ export default function TicketDetailPage() {
   const handleInitiateStatusChange = (newStatus: string) => {
     setOperationErrorMsg('');
     setOperationSuccessMsg('');
-    if (['RESOLVED', 'CLOSED', 'CANCELLED'].includes(newStatus)) {
+    setStaleConflict(false);
+    // Matrix column "Requires Confirmation Modal": Resolved, Closed, Cancelled, and Reopened from Closed.
+    const needsModal =
+      ['RESOLVED', 'CLOSED', 'CANCELLED'].includes(newStatus) ||
+      (newStatus === 'REOPENED' && ticket?.currentStatus === 'CLOSED');
+    if (needsModal) {
       setTargetStatus(newStatus);
       setResolutionSummaryInput(ticket?.resolutionSummary || '');
+      setStatusReasonInput('');
       setStatusModalError('');
+      setGateServerReasons([]);
+      if (newStatus === 'RESOLVED') loadGateActions(ticket.id);
       setShowStatusModal(true);
     } else {
       executeStatusChange(newStatus);
@@ -242,28 +301,49 @@ export default function TicketDetailPage() {
   };
 
   const executeStatusChange = async (statusToSet: string, summary?: string) => {
+    // Synchronous guard: two clicks in the same tick both see the old state.
+    if (statusSubmitLock.current) return;
+    statusSubmitLock.current = true;
     setIsTransitioningStatus(true);
     setStatusModalError('');
+    setGateServerReasons([]);
+    setStaleConflict(false);
     try {
-      const updated = await updateTicketStatus(ticket.id, statusToSet, summary);
+      const updated = await updateTicketStatus(ticket.id, statusToSet, summary, {
+        reason: statusReasonInput.trim() || undefined,
+        expectedVersion: ticket.version,
+      });
       setTicket((prev: any) => ({
         ...prev,
-        ...updated,
         currentStatus: updated.currentStatus || statusToSet,
-        resolutionSummary: summary !== undefined ? summary : prev.resolutionSummary,
+        resolutionSummary: updated.resolutionSummary ?? (summary !== undefined ? summary : prev.resolutionSummary),
+        version: updated.version ?? prev.version,
+        updatedAt: updated.updatedAt ?? prev.updatedAt,
       }));
+      if (Array.isArray(updated.history)) {
+        setStatusHistory(updated.history);
+      } else {
+        loadHistory(ticket.id);
+      }
       setOperationSuccessMsg(`Status successfully updated to ${STATUS_LABELS[statusToSet] || statusToSet}`);
       setShowStatusModal(false);
       setTargetStatus('');
       setSelectedTargetStatus('');
       setResolutionSummaryInput('');
+      setStatusReasonInput('');
     } catch (err: any) {
-      if (showStatusModal) {
+      // Typed values and the open modal are kept on every failure.
+      if (err instanceof ApiError && err.code === 'STALE_UPDATE') {
+        setStaleConflict(true);
+      } else if (err instanceof ApiError && err.code === 'RESOLUTION_GATE') {
+        setGateServerReasons(err.details?.length ? err.details : ['UNKNOWN']);
+      } else if (showStatusModal) {
         setStatusModalError(err.message || 'Failed to update status');
       } else {
         setOperationErrorMsg(err.message || 'Failed to update status');
       }
     } finally {
+      statusSubmitLock.current = false;
       setIsTransitioningStatus(false);
     }
   };
@@ -273,6 +353,16 @@ export default function TicketDetailPage() {
     setTargetStatus('');
     setSelectedTargetStatus('');
     setStatusModalError('');
+    setStatusReasonInput('');
+    setGateServerReasons([]);
+    setStaleConflict(false);
+  };
+
+  // Refetches the latest state after a stale update; typed values and selections are kept.
+  const handleReloadTicket = async () => {
+    setStaleConflict(false);
+    await loadTicket();
+    if (showStatusModal && targetStatus === 'RESOLVED') loadGateActions(ticket.id);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -432,6 +522,34 @@ export default function TicketDetailPage() {
 
   const availableTransitions = ALLOWED_STATUS_TRANSITIONS[ticket.currentStatus] || [];
 
+  // Resolution gate checklist (ui-spec §7.1); the backend enforces the same rules.
+  const gateChecklist = [
+    { label: 'Resolution Summary provided', met: resolutionSummaryInput.trim().length > 0 },
+    {
+      label: 'At least one completed Action Taken exists',
+      met: !!gateActions && gateActions.some((a) => a.status === 'COMPLETED'),
+    },
+    {
+      label: 'No pending follow-up actions exist',
+      met:
+        !!gateActions &&
+        !gateActions.some((a) => a.followUpRequired && (a.status === 'PLANNED' || a.status === 'IN_PROGRESS')),
+    },
+  ];
+  const gatePassed = gateChecklist.every((item) => item.met);
+
+  const staleBanner = staleConflict && (
+    <div className="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3" role="alert">
+      <span>
+        <i className="bi bi-exclamation-triangle-fill me-2"></i>
+        {STALE_TICKET_MESSAGE}
+      </span>
+      <button type="button" className="btn btn-sm btn-outline-dark" onClick={handleReloadTicket}>
+        Reload Ticket
+      </button>
+    </div>
+  );
+
   return (
     <>
       <div className="container py-4" style={{ maxWidth: '960px' }}>
@@ -477,6 +595,8 @@ export default function TicketDetailPage() {
             <button type="button" className="btn-close" onClick={() => setOperationErrorMsg('')}></button>
           </div>
         )}
+
+        {!showStatusModal && staleBanner}
 
         {/* Requester Notification for Staff/Admin */}
         {ticket.requesterResolvedAt && isStaffOrAdmin && (
@@ -546,7 +666,7 @@ export default function TicketDetailPage() {
               </div>
               <div className="col-12 col-md-3">
                 <label className="form-label text-muted small fw-bold mb-1">IT Priority</label>
-                {isStaff ? (
+                {isStaffOrAdmin ? (
                   <div className="d-flex align-items-center gap-2 mt-1">
                     <select
                       className="form-select form-select-sm"
@@ -597,7 +717,7 @@ export default function TicketDetailPage() {
                     )}
 
                     {/* Claim Ticket: only if unassigned */}
-                    {isStaff && !ticket.owner && (
+                    {isStaffOrAdmin && !ticket.owner && (
                       <button
                         type="button"
                         className="btn btn-sm btn-outline-success d-flex align-items-center"
@@ -619,7 +739,7 @@ export default function TicketDetailPage() {
                     )}
 
                     {/* Reassign Owner: only if already assigned */}
-                    {isStaff && ticket.owner && staffUsers.length > 0 && (
+                    {isStaffOrAdmin && ticket.owner && staffUsers.length > 0 && (
                       <div className="d-flex align-items-center gap-2 mt-1">
                         <select
                           className="form-select form-select-sm"
@@ -650,7 +770,7 @@ export default function TicketDetailPage() {
                 </div>
 
                 {/* Change Status Dropdown next to Assigned Owner */}
-                {isStaff && (
+                {isStaffOrAdmin && (
                   <div className="col-12 col-md-6">
                     <label className="form-label text-muted small fw-bold mb-2">Change Status</label>
                     {ticket.currentStatus === 'CANCELLED' ? (
@@ -793,6 +913,13 @@ export default function TicketDetailPage() {
             )}
           </div>
         </div>
+
+        <StatusHistoryTimeline
+          items={statusHistory}
+          loading={loadingHistory}
+          error={historyError}
+          onRetry={() => loadHistory(ticket.id)}
+        />
 
         {/* Tabs Section: Attachments, Public Comments, Internal Notes */}
         <ul className="nav nav-tabs mb-3" style={{ borderBottomColor: '#E2E8F0' }}>
@@ -1223,6 +1350,10 @@ export default function TicketDetailPage() {
                     <span className="text-danger">
                       <i className="bi bi-x-circle-fill me-2"></i>Cancel Ticket
                     </span>
+                  ) : targetStatus === 'REOPENED' ? (
+                    <span className="text-secondary">
+                      <i className="bi bi-arrow-clockwise me-2"></i>Reopen Ticket
+                    </span>
                   ) : (
                     <span className="text-secondary">
                       <i className="bi bi-archive-fill me-2"></i>Close Ticket
@@ -1237,8 +1368,19 @@ export default function TicketDetailPage() {
                 ></button>
               </div>
               <div className="modal-body">
+                {staleBanner}
                 {statusModalError && (
                   <div className="alert alert-danger py-2 small mb-3">{statusModalError}</div>
+                )}
+                {gateServerReasons.length > 0 && (
+                  <div className="alert alert-warning py-2 small mb-3" role="alert">
+                    <strong>This ticket cannot be resolved yet:</strong>
+                    <ul className="mb-0 ps-3">
+                      {gateServerReasons.map((code) => (
+                        <li key={code}>{GATE_REASONS[code] || 'The resolution conditions are not met.'}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 {targetStatus === 'RESOLVED' && (
                   <div>
@@ -1262,6 +1404,40 @@ export default function TicketDetailPage() {
                       ></textarea>
                       <small className="text-muted">{resolutionSummaryInput.length} / 4000 characters</small>
                     </div>
+                    <div className="mb-3">
+                      <div className="fw-bold small mb-1">Resolution Gate Checklist</div>
+                      {gateActionsError ? (
+                        <div className="alert alert-danger py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2 mb-0" role="alert">
+                          <span>{gateActionsError}</span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => loadGateActions(ticket.id)}
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : gateActions === null ? (
+                        <div className="text-muted small" role="status">
+                          <span className="spinner-border spinner-border-sm me-2"></span>Checking Actions Taken...
+                        </div>
+                      ) : (
+                        <ul className="list-unstyled small mb-0">
+                          {gateChecklist.map((item) => (
+                            <li
+                              key={item.label}
+                              data-testid="gate-item"
+                              data-met={item.met}
+                              className={item.met ? 'text-success' : 'text-danger fw-bold'}
+                            >
+                              <i className={`bi ${item.met ? 'bi-check-circle-fill' : 'bi-x-circle-fill'} me-2`}></i>
+                              <span className="visually-hidden">{item.met ? 'Met: ' : 'Missing: '}</span>
+                              {item.label}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 )}
                 {targetStatus === 'CLOSED' && (
@@ -1274,6 +1450,27 @@ export default function TicketDetailPage() {
                     Are you sure you want to cancel this ticket? Cancelling a ticket is a terminal action.
                   </p>
                 )}
+                {targetStatus === 'REOPENED' && (
+                  <p className="text-muted mb-0">
+                    Are you sure you want to reopen this closed ticket? It will return to the active queue.
+                  </p>
+                )}
+                <div className="mt-3">
+                  <label htmlFor="statusReasonInput" className="form-label fw-bold small">
+                    Reason <span className="text-muted fw-normal">(optional)</span>
+                  </label>
+                  <textarea
+                    id="statusReasonInput"
+                    className="form-control"
+                    rows={2}
+                    value={statusReasonInput}
+                    onChange={(e) => setStatusReasonInput(e.target.value)}
+                    placeholder="Why is the status changing?"
+                    maxLength={1000}
+                    disabled={isTransitioningStatus}
+                  ></textarea>
+                  <small className="text-muted">{statusReasonInput.length} / 1000 characters</small>
+                </div>
               </div>
               <div className="modal-footer border-top">
                 <button
@@ -1301,7 +1498,7 @@ export default function TicketDetailPage() {
                   }
                   disabled={
                     isTransitioningStatus ||
-                    (targetStatus === 'RESOLVED' && resolutionSummaryInput.trim().length === 0)
+                    (targetStatus === 'RESOLVED' && !gatePassed)
                   }
                 >
                   {isTransitioningStatus ? (

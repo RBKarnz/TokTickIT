@@ -136,7 +136,8 @@ function RequireStaffQueue() {
   if (isLoading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
   if (user.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
-  if (user.role !== 'IT_STAFF') return <Navigate to="/" replace />;
+  // Lab 4 BR-14: Administrators use the queue like IT Staff.
+  if (user.role !== 'IT_STAFF' && user.role !== 'ADMINISTRATOR') return <Navigate to="/" replace />;
   return <StaffTicketQueuePage />;
 }
 
@@ -202,7 +203,7 @@ function AppShell() {
             <i className="bi bi-clock-history me-2"></i>TokTickIT
           </Link>
           <div className="d-flex align-items-center gap-2">
-            {user?.role === 'IT_STAFF' && (
+            {(user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') && (
               <Link className="text-white text-decoration-none fw-semibold me-1 d-none d-sm-inline" to="/staff/queue">
                 <i className="bi bi-inbox me-1"></i>Ticket Queue
               </Link>
