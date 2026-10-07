@@ -41,6 +41,9 @@ describe('Integrity Tests (Lab 3 API-65, API-66 / SEC-11, UNIT-10)', () => {
       await prisma.session.deleteMany({ where: { userId: temp.id } });
       await prisma.user.delete({ where: { id: temp.id } });
     }
+    // Lab 4: status changes write history rows, which must go before their tickets.
+    await prisma.ticketStatusHistory.deleteMany({ where: { ticketId: { in: createdTicketIds } } });
+    await prisma.actionTaken.deleteMany({ where: { ticketId: { in: createdTicketIds } } });
     await prisma.ticket.deleteMany({ where: { id: { in: createdTicketIds } } });
   });
 
@@ -73,6 +76,18 @@ describe('Integrity Tests (Lab 3 API-65, API-66 / SEC-11, UNIT-10)', () => {
       },
     });
     createdTicketIds.push(ticket.id);
+    // Lab 4 BR-19: a COMPLETED action keeps RESOLVED a valid contender in the race.
+    const staff1 = await prisma.user.findUniqueOrThrow({ where: { email: 'staff1@toktickit.com' } });
+    await prisma.actionTaken.create({
+      data: {
+        ticketId: ticket.id,
+        performedById: staff1.id,
+        assignedToId: staff1.id,
+        description: 'Integrity test action',
+        result: 'Done',
+        status: 'COMPLETED',
+      },
+    });
 
     const [a, b] = await Promise.all([
       request(app).post(`/api/staff/tickets/${ticket.id}/status`)

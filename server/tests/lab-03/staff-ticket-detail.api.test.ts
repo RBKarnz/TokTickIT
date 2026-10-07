@@ -179,15 +179,15 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       expect(res.status).toBe(404);
     });
 
-    it('rejects Administrator and Requester with 403 Forbidden', async () => {
+    // Lab 4 BR-14 supersedes Lab 3 BR-23/BR-41: Administrators may claim.
+    it('rejects Requester with 403 Forbidden and lets Administrator claim', async () => {
       const ticket = await createTestTicket({ ownerId: null });
-      const [adminRes, reqRes] = await Promise.all([
-        request(app).post(`/api/staff/tickets/${ticket.id}/claim`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)),
-        request(app).post(`/api/staff/tickets/${ticket.id}/claim`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)),
-      ]);
+      const reqRes = await request(app).post(`/api/staff/tickets/${ticket.id}/claim`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie));
+      const adminRes = await request(app).post(`/api/staff/tickets/${ticket.id}/claim`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
 
-      expect(adminRes.status).toBe(403);
       expect(reqRes.status).toBe(403);
+      expect(adminRes.status).toBe(200);
+      expect(adminRes.body.owner.id).toBe(adminUser.id);
     });
   });
 
@@ -255,15 +255,15 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       expect(res.status).toBe(404);
     });
 
-    it('rejects Administrator and Requester callers with 403 Forbidden', async () => {
+    // Lab 4 BR-14: Administrators may assign; the target must still be IT Staff.
+    it('rejects Requester callers with 403 Forbidden and lets Administrator assign', async () => {
       const ticket = await createTestTicket();
-      const [adminRes, reqRes] = await Promise.all([
-        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)).send({ ownerId: staff1User.id }),
-        request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send({ ownerId: staff1User.id }),
-      ]);
+      const reqRes = await request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send({ ownerId: staff1User.id });
+      const adminRes = await request(app).put(`/api/staff/tickets/${ticket.id}/owner`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)).send({ ownerId: staff1User.id });
 
-      expect(adminRes.status).toBe(403);
       expect(reqRes.status).toBe(403);
+      expect(adminRes.status).toBe(200);
+      expect(adminRes.body.owner.id).toBe(staff1User.id);
     });
   });
 
@@ -307,15 +307,15 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       expect(res.status).toBe(404);
     });
 
-    it('rejects Administrator and Requester with 403 Forbidden', async () => {
+    // Lab 4 BR-14: Administrators may set IT Priority.
+    it('rejects Requester with 403 Forbidden and lets Administrator update', async () => {
       const ticket = await createTestTicket();
-      const [adminRes, reqRes] = await Promise.all([
-        request(app).patch(`/api/staff/tickets/${ticket.id}/it-priority`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)).send({ itPriority: 'HIGH' }),
-        request(app).patch(`/api/staff/tickets/${ticket.id}/it-priority`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send({ itPriority: 'HIGH' }),
-      ]);
+      const reqRes = await request(app).patch(`/api/staff/tickets/${ticket.id}/it-priority`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send({ itPriority: 'HIGH' });
+      const adminRes = await request(app).patch(`/api/staff/tickets/${ticket.id}/it-priority`).set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie)).send({ itPriority: 'HIGH' });
 
-      expect(adminRes.status).toBe(403);
       expect(reqRes.status).toBe(403);
+      expect(adminRes.status).toBe(200);
+      expect(adminRes.body.itPriority).toBe('HIGH');
     });
   });
 
@@ -341,6 +341,18 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
         .send({ status: 'In Progress' });
       expect(step2.status).toBe(200);
       expect(step2.body.currentStatus).toBe('IN_PROGRESS');
+
+      // Lab 4 BR-19: Resolved needs at least one COMPLETED Action Taken.
+      await prisma.actionTaken.create({
+        data: {
+          ticketId: ticket.id,
+          performedById: staff1User.id,
+          assignedToId: staff1User.id,
+          description: 'Reseated the Ethernet cable.',
+          result: 'Link restored.',
+          status: 'COMPLETED',
+        },
+      });
 
       // 3. IN_PROGRESS -> RESOLVED (with resolutionSummary)
       const step3 = await request(app)
@@ -368,15 +380,17 @@ describe('Staff Ticket Detail API (Lab 3)', () => {
       expect(step5.body.currentStatus).toBe('REOPENED');
     });
 
-    it('rejects transitioning to RESOLVED without resolutionSummary with 400 Bad Request', async () => {
+    // Lab 4 AC-11: a missing summary is now a resolution gate failure (409).
+    it('rejects transitioning to RESOLVED without resolutionSummary with 409 RESOLUTION_GATE', async () => {
       const ticket = await createTestTicket({ currentStatus: 'IN_PROGRESS' });
       const res = await request(app)
         .post(`/api/staff/tickets/${ticket.id}/status`)
         .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'Resolved' }); // missing resolutionSummary
 
-      expect(res.status).toBe(400);
-      expect(res.body.error.code).toBe('BAD_REQUEST');
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('RESOLUTION_GATE');
+      expect(res.body.error.details).toContain('RESOLUTION_SUMMARY_REQUIRED');
     });
 
     it('API-35: rejects forbidden status transitions with 409 Conflict', async () => {
