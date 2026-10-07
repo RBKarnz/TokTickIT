@@ -147,6 +147,7 @@ describe('Actions Taken UI (Lab 4)', () => {
     vi.spyOn(api, 'fetchPublicComments').mockResolvedValue([]);
     vi.spyOn(api, 'fetchInternalNotes').mockResolvedValue([]);
     vi.spyOn(api, 'fetchActions').mockResolvedValue([...mockActions]);
+    vi.spyOn(api, 'fetchStatusHistory').mockResolvedValue([]);
     vi.spyOn(api, 'fetchAssignees').mockResolvedValue([...mockAssignees]);
   });
 
