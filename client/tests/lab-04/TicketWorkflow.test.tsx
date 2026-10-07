@@ -177,7 +177,7 @@ describe('Ticket Workflow UI (Lab 4)', () => {
     expect(within(timeline).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('UI-14b: a Requester sees the same timeline on their own ticket', async () => {
+  it('UI-28: a Requester sees the same timeline on their own ticket', async () => {
     vi.spyOn(authApi, 'fetchCurrentUser').mockResolvedValue(requesterUser);
     renderTicketDetail();
     expect(await screen.findAllByTestId('history-item')).toHaveLength(3);
