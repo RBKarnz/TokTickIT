@@ -187,9 +187,16 @@
     "expectedVersion": 2
   }
   ```
+- **Field Rules:**
+  - `status`: Required. A status code or its display label.
+  - `resolutionSummary`: Required in the request when the target is `RESOLVED`; a summary already stored on the Ticket does not satisfy the gate.
+  - `reason`: Optional string, trimmed, at most 1000 characters -> `422 VALIDATION_ERROR` when longer or not a string.
+  - `expectedVersion`: Optional integer -> `422 VALIDATION_ERROR` when not an integer. The UI always sends it.
+- **Order of Checks:** role (`403`) -> input (`400`/`422`) -> Ticket exists (`404`) -> `STALE_UPDATE` (only when `expectedVersion` is sent) -> self-transition and matrix (`CONFLICT`) -> `RESOLUTION_GATE`.
+- **Version Scope:** Only a status change checks and increments `Ticket.version`. Claim, owner assignment, IT Priority and Problem Appears Resolved leave it unchanged.
 - **Business Logic & Guards:**
   - Transition must exist in Final Ticket Status Matrix -> `409 CONFLICT`.
-  - If `expectedVersion` is provided and does not match `Ticket.version` -> `409 STALE_UPDATE`.
+  - If `expectedVersion` is provided and does not match `Ticket.version` -> `409 STALE_UPDATE` with `error.current = { ticketId, currentStatus, resolutionSummary, version, updatedAt }`.
   - If target status is `RESOLVED`, evaluate **Resolution Gate**:
     1. `resolutionSummary` must be non-empty after trimming -> `RESOLUTION_SUMMARY_REQUIRED`.
     2. Ticket must have at least one Action Taken with status `COMPLETED` -> `COMPLETED_ACTION_REQUIRED`.
@@ -205,22 +212,25 @@
     "currentStatus": "RESOLVED",
     "resolutionSummary": "Ethernet drop replaced and verified at 1 Gbps.",
     "version": 3,
+    "updatedAt": "2026-09-26T11:00:00.000Z",
     "history": [
       {
         "id": 12,
         "fromStatus": "IN_PROGRESS",
         "toStatus": "RESOLVED",
-        "changedBy": { "id": 2, "name": "Michael Staff" },
+        "changedBy": { "id": 2, "name": "Michael Staff", "role": "IT_STAFF" },
         "reason": "Completed work after physical cable replacement.",
         "createdAt": "2026-09-26T11:00:00.000Z"
       }
     ]
   }
   ```
+  `history` is the complete status history of the Ticket in the order of §4.2, so the client can refresh its timeline without a second request.
 - **Errors:**
   - `401 UNAUTHORIZED`: No session.
   - `403 FORBIDDEN`: Requester role, or invalid CSRF.
   - `404 NOT_FOUND`: Ticket not found.
+  - `422 VALIDATION_ERROR`: Invalid `reason` or `expectedVersion`.
   - `409 RESOLUTION_GATE`: Gate check failed.
   - `409 STALE_UPDATE`: Version mismatch.
   - `409 CONFLICT`: Forbidden transition.
@@ -245,7 +255,7 @@
         "id": 5,
         "fromStatus": "NEW",
         "toStatus": "OPEN",
-        "changedBy": { "id": 2, "name": "Michael Staff" },
+        "changedBy": { "id": 2, "name": "Michael Staff", "role": "IT_STAFF" },
         "reason": "Claimed by staff",
         "createdAt": "2026-09-21T09:12:00.000Z"
       }
@@ -382,14 +392,15 @@ Per Lab 4 handout Section 4.3 (superseding Lab 3 BR-23 and BR-41), Administrator
 | Endpoint | Previous Roles (Lab 3) | New Roles (Lab 4) | Behavioral Changes / Notes |
 |---|---|---|---|
 | `GET /api/staff/tickets` | `IT_STAFF` | `IT_STAFF`, `ADMINISTRATOR` | Queue access; supports new drill-down query params |
-| `GET /api/staff/tickets/:id` | `IT_STAFF`, `ADMINISTRATOR` | `IT_STAFF`, `ADMINISTRATOR` | Includes `version`, actions count, history count |
-| `POST /api/staff/tickets/:id/claim` | `IT_STAFF` | `IT_STAFF`, `ADMINISTRATOR` | Claim ticket; returns owner `email` in response |
+| `GET /api/staff/tickets/:id` | `IT_STAFF`, `ADMINISTRATOR` | `IT_STAFF`, `ADMINISTRATOR` | Includes `version` and `_count: { actionsTaken, statusHistory }` |
+| `POST /api/staff/tickets/:id/claim` | `IT_STAFF` | `IT_STAFF`, `ADMINISTRATOR` | Claim ticket; an Administrator who claims becomes the Ticket Owner; returns owner `email` in response |
 | `PUT /api/staff/tickets/:id/owner` | `IT_STAFF` | `IT_STAFF`, `ADMINISTRATOR` | Reassign ticket; assignee must still be active `IT_STAFF`; returns owner `email` |
 | `PATCH /api/staff/tickets/:id/it-priority` | `IT_STAFF` | `IT_STAFF`, `ADMINISTRATOR` | Set IT Priority |
 | `POST /api/staff/tickets/:id/status` | `IT_STAFF` | `IT_STAFF`, `ADMINISTRATOR` | Enforces matrix, resolution gate, OCC, and history logging |
 | `GET /api/staff/tickets/:id/internal-notes` | `IT_STAFF`, `ADMINISTRATOR` | `IT_STAFF`, `ADMINISTRATOR` | Unchanged read access |
 | `POST /api/staff/tickets/:id/internal-notes` | `IT_STAFF`, `ADMINISTRATOR` | `IT_STAFF`, `ADMINISTRATOR` | Unchanged create access |
-| `POST /api/tickets/:id/public-comments` | All roles | All roles | IT Staff and Admin comments marked as staff responses |
+| `POST /api/tickets/:id/public-comments` | `REQUESTER` (own), `IT_STAFF` | All roles | Administrators may now post; IT Staff and Admin comments marked as staff responses |
+| `GET /api/attachments/:id/download` | `REQUESTER` (own), `IT_STAFF` | `REQUESTER` (own), `IT_STAFF`, `ADMINISTRATOR` | Administrators may now download attachments like IT Staff |
 
 ## 8. Authorization & Safe Error Table
 

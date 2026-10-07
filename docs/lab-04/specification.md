@@ -120,7 +120,7 @@ The service desk currently supports Ticket submission, triage, assignment, prior
 ### Roles
 
 - **BR-14** Administrators may perform every IT Staff operation. This supersedes Lab 3 BR-23 and BR-41.
-- **BR-15** The Ticket Owner must be an active IT Staff member (unchanged from Lab 3).
+- **BR-15** A Ticket may be assigned only to an active IT Staff member (unchanged from Lab 3). An Administrator becomes Ticket Owner only by claiming an unassigned Ticket (BR-14).
 
 ### Ticket Status and Resolution
 
