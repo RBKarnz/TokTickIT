@@ -112,6 +112,7 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | WF-04 | Workflow | AC-10 | Closed ticket reopen: CLOSED -> REOPENED | Transitions successfully; the reason is stored in the history entry | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | WF-05 | Workflow | AC-13 | Status history append count matches state transitions | Exactly N history records created for N transitions | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | WF-06 | Workflow | AC-14 | Concurrent status updates on same ticket | First update succeeds; second update yields 409 | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| WF-07 | Workflow | AC-11 | Re-resolve after REOPENED without resending resolutionSummary | Gate falls back to the stored summary; resolves successfully | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 
 ## 6. Migration & Regression Tests
 
@@ -286,7 +287,7 @@ Seeded by `server/prisma/seed.ts` for `requester3@toktickit.com` with fixed numb
 | AC-08 | API-15, API-16, API-17, API-18, API-42, UI-09, E2E-05, SEC-04, SEC-05 |
 | AC-09 | API-19, API-20, UI-17, UI-18, E2E-11 |
 | AC-10 | API-22, API-23, API-25, API-26, API-27, API-28, API-44, API-45, UNIT-02, UI-12, WF-03, WF-04 |
-| AC-11 | API-29, API-30, API-31, API-32, UNIT-03, UI-13, UI-23, WF-01, WF-02, E2E-03, E2E-04 |
+| AC-11 | API-29, API-30, API-31, API-32, UNIT-03, UI-13, UI-23, WF-01, WF-02, WF-07, E2E-03, E2E-04 |
 | AC-12 | API-33 |
 | AC-13 | API-34, API-47, UI-14, UI-25, UI-27, UI-28, WF-05 |
 | AC-14 | API-21, API-35, UI-10, UI-24, WF-06, E2E-10 |

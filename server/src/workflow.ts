@@ -191,13 +191,16 @@ const handleStatusChange = async (req: Request, res: Response) => {
         throw new WorkflowError(409, 'CONFLICT', `Invalid status transition from ${ticket.currentStatus} to ${target}.`);
       }
 
-      // BR-21: the gate is checked here for every client.
+      // BR-21: the gate is checked here for every client. A caller that omits
+      // resolutionSummary (e.g. re-resolving after REOPENED) falls back to the
+      // summary already stored on the ticket, rather than being forced to resend it.
+      const effectiveResolutionSummary = resolutionSummary || ticket.resolutionSummary || '';
       if (target === 'RESOLVED') {
         const actions = await tx.actionTaken.findMany({
           where: { ticketId },
           select: { status: true, followUpRequired: true },
         });
-        const failures = evaluateResolutionGate({ resolutionSummary, actions });
+        const failures = evaluateResolutionGate({ resolutionSummary: effectiveResolutionSummary, actions });
         if (failures.length > 0) {
           throw new WorkflowError(
             409,

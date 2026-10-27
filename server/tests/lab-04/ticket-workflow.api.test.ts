@@ -415,6 +415,30 @@ describe('Ticket workflow API (Lab 4)', () => {
       expect(resolved.status).toBe(200);
     });
 
+    it('WF-07: re-resolving after REOPENED falls back to the stored resolution summary when none is resent', async () => {
+      const t = await makeTicket('NEW');
+      await addAction(t.id);
+      expect((await setStatus(t.id, staffCookie, { status: 'OPEN' })).status).toBe(200);
+      expect((await setStatus(t.id, staffCookie, { status: 'IN_PROGRESS' })).status).toBe(200);
+
+      const action = await send('post', `/api/tickets/${t.id}/actions`, staffCookie, {
+        description: 'Replaced the cable.', assignedToId: staff.id, status: 'COMPLETED', result: 'Link stable.',
+      });
+      expect(action.status).toBe(201);
+
+      const resolved = await setStatus(t.id, staffCookie, { status: 'RESOLVED', resolutionSummary: 'Replaced the cable.' });
+      expect(resolved.status).toBe(200);
+      expect(resolved.body.resolutionSummary).toBe('Replaced the cable.');
+
+      expect((await setStatus(t.id, staffCookie, { status: 'REOPENED' })).status).toBe(200);
+      expect((await setStatus(t.id, staffCookie, { status: 'IN_PROGRESS' })).status).toBe(200);
+
+      // No resolutionSummary in this request: the gate must fall back to the one already stored.
+      const resolvedAgain = await setStatus(t.id, staffCookie, { status: 'RESOLVED' });
+      expect(resolvedAgain.status).toBe(200);
+      expect(resolvedAgain.body.resolutionSummary).toBe('Replaced the cable.');
+    });
+
     it('WF-03: a cancelled ticket accepts no further status change', async () => {
       const t = await makeTicket('NEW');
       expect((await setStatus(t.id, staffCookie, { status: 'CANCELLED', reason: 'Duplicate' })).status).toBe(200);
