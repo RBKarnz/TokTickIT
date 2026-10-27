@@ -23,7 +23,8 @@ import {
   csrfProtection,
   csrfTokenFor,
 } from './auth.js';
-import { actionsRouter } from './actions.js';
+import { actionsRouter, STAFF_ROLES } from './actions.js';
+import { workflowRouter, STATUS_TO_LABEL, LABEL_TO_STATUS } from './workflow.js';
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -534,9 +535,6 @@ app.get('/api/attachments/:id', requireNormalAuth, requireRole('REQUESTER'), asy
 });
 
 app.get('/api/attachments/:id/download', requireNormalAuth, async (req, res) => {
-  if (req.sessionUser!.role === 'ADMINISTRATOR') {
-    return res.status(403).json({ error: { code: "FORBIDDEN", message: "Forbidden" } });
-  }
   try {
     const attachmentId = parseInt(req.params.id);
     const attachment = await getPrisma().attachment.findUnique({
@@ -602,10 +600,6 @@ app.post('/api/tickets/:id/public-comments', requireNormalAuth, async (req, res)
   }
   if (content.length > 4000) {
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content cannot exceed 4000 characters.' } });
-  }
-
-  if (req.sessionUser!.role === 'ADMINISTRATOR') {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Administrators are not permitted to post public comments.' } });
   }
 
   try {
@@ -806,37 +800,8 @@ app.post('/api/tickets/:id/problem-appears-resolved', requireNormalAuth, async (
   }
 });
 
-// Status display mappings per Lab 3 specification
-export const STATUS_TO_LABEL: Record<string, string> = {
-  NEW: 'New',
-  OPEN: 'Open',
-  IN_PROGRESS: 'In Progress',
-  WAITING_FOR_REQUESTER: 'Waiting for Requester',
-  RESOLVED: 'Resolved',
-  CLOSED: 'Closed',
-  REOPENED: 'Reopened',
-  CANCELLED: 'Cancelled',
-};
-
-export const LABEL_TO_STATUS: Record<string, string> = {
-  ...Object.entries(STATUS_TO_LABEL).reduce(
-    (acc, [k, v]) => ({ ...acc, [v.toLowerCase()]: k, [k.toLowerCase()]: k }),
-    {} as Record<string, string>
-  ),
-  waiting_on_requester: 'WAITING_FOR_REQUESTER',
-  'waiting on requester': 'WAITING_FOR_REQUESTER',
-};
-
-export const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
-  NEW: ['OPEN', 'CANCELLED'],
-  OPEN: ['IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'CANCELLED'],
-  IN_PROGRESS: ['WAITING_FOR_REQUESTER', 'RESOLVED', 'CANCELLED'],
-  WAITING_FOR_REQUESTER: ['IN_PROGRESS', 'RESOLVED', 'CANCELLED'],
-  RESOLVED: ['CLOSED', 'REOPENED'],
-  CLOSED: ['REOPENED'],
-  REOPENED: ['IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CANCELLED'],
-  CANCELLED: [],
-};
+// Status mappings and the transition matrix live in workflow.ts; re-exported for existing imports.
+export { STATUS_TO_LABEL, LABEL_TO_STATUS, ALLOWED_STATUS_TRANSITIONS } from './workflow.js';
 
 // GET /api/staff/tickets/:id - Detailed ticket view for IT Staff and Administrator
 app.get('/api/staff/tickets/:id', requireNormalAuth, async (req, res) => {
@@ -867,6 +832,7 @@ app.get('/api/staff/tickets/:id', requireNormalAuth, async (req, res) => {
           include: { author: { select: { id: true, name: true, role: true } } },
           orderBy: { createdAt: 'asc' },
         },
+        _count: { select: { actionsTaken: true, statusHistory: true } },
       },
     });
 
@@ -883,8 +849,8 @@ app.get('/api/staff/tickets/:id', requireNormalAuth, async (req, res) => {
 
 // POST /api/staff/tickets/:id/claim - Claim unassigned ticket (AC-09)
 app.post('/api/staff/tickets/:id/claim', requireNormalAuth, async (req, res) => {
-  if (req.sessionUser!.role !== 'IT_STAFF') {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can claim tickets.' } });
+  if (!STAFF_ROLES.includes(req.sessionUser!.role)) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff and Administrators can claim tickets.' } });
   }
 
   const ticketId = parseInt(req.params.id, 10);
@@ -918,8 +884,8 @@ app.post('/api/staff/tickets/:id/claim', requireNormalAuth, async (req, res) => 
 
 // PUT /api/staff/tickets/:id/owner - Assign/reassign ticket to active IT Staff (AC-09)
 app.put('/api/staff/tickets/:id/owner', requireNormalAuth, async (req, res) => {
-  if (req.sessionUser!.role !== 'IT_STAFF') {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can assign tickets.' } });
+  if (!STAFF_ROLES.includes(req.sessionUser!.role)) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff and Administrators can assign tickets.' } });
   }
 
   const ticketId = parseInt(req.params.id, 10);
@@ -963,8 +929,8 @@ app.put('/api/staff/tickets/:id/owner', requireNormalAuth, async (req, res) => {
 
 // PATCH /api/staff/tickets/:id/it-priority - Update IT Priority independently (AC-10)
 app.patch('/api/staff/tickets/:id/it-priority', requireNormalAuth, async (req, res) => {
-  if (req.sessionUser!.role !== 'IT_STAFF') {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can update IT priority.' } });
+  if (!STAFF_ROLES.includes(req.sessionUser!.role)) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff and Administrators can update IT priority.' } });
   }
 
   const ticketId = parseInt(req.params.id, 10);
@@ -998,88 +964,6 @@ app.patch('/api/staff/tickets/:id/it-priority', requireNormalAuth, async (req, r
   }
 });
 
-// POST /api/staff/tickets/:id/status - Execute status transitions enforcing matrix (AC-11)
-app.post('/api/staff/tickets/:id/status', requireNormalAuth, async (req, res) => {
-  if (req.sessionUser!.role !== 'IT_STAFF') {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can change ticket status.' } });
-  }
-
-  const ticketId = parseInt(req.params.id, 10);
-  if (isNaN(ticketId)) {
-    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ticket ID' } });
-  }
-
-  if (!req.body.status || typeof req.body.status !== 'string') {
-    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Status is required.' } });
-  }
-
-  const normalizedTarget = LABEL_TO_STATUS[req.body.status.trim().toLowerCase()];
-  if (!normalizedTarget) {
-    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid status value.' } });
-  }
-
-  try {
-    const prisma = getPrisma();
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
-    if (!ticket) {
-      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
-    }
-
-    // Self-transition check
-    if (normalizedTarget === ticket.currentStatus) {
-      return res.status(409).json({ error: { code: 'CONFLICT', message: 'Ticket is already in the requested status.' } });
-    }
-
-    // Allowed transition matrix check
-    const allowedNext = ALLOWED_STATUS_TRANSITIONS[ticket.currentStatus] || [];
-    if (!allowedNext.includes(normalizedTarget)) {
-      return res.status(409).json({
-        error: {
-          code: 'CONFLICT',
-          message: `Invalid status transition from ${ticket.currentStatus} to ${normalizedTarget}.`,
-        },
-      });
-    }
-
-    // Resolution summary requirement when transitioning to RESOLVED
-    if (normalizedTarget === 'RESOLVED') {
-      if (!req.body.resolutionSummary || typeof req.body.resolutionSummary !== 'string' || !req.body.resolutionSummary.trim()) {
-        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Resolution summary is required when resolving a ticket.' } });
-      }
-    }
-
-    const dataToUpdate: any = { currentStatus: normalizedTarget };
-    if (req.body.resolutionSummary && typeof req.body.resolutionSummary === 'string') {
-      dataToUpdate.resolutionSummary = req.body.resolutionSummary.trim();
-    }
-
-    // Conditional write (API-65): only succeeds if the status is still the one we validated,
-    // so a concurrent transition cannot be silently overwritten.
-    const { count } = await prisma.ticket.updateMany({
-      where: { id: ticketId, currentStatus: ticket.currentStatus },
-      data: dataToUpdate,
-    });
-    if (count === 0) {
-      return res.status(409).json({
-        error: { code: 'CONFLICT', message: 'Ticket status was changed by another request. Reload and try again.' },
-      });
-    }
-    const updated = await prisma.ticket.findUniqueOrThrow({
-      where: { id: ticketId },
-      select: { id: true, currentStatus: true, resolutionSummary: true },
-    });
-
-    res.status(200).json({
-      ticketId: updated.id,
-      currentStatus: updated.currentStatus,
-      resolutionSummary: updated.resolutionSummary,
-    });
-  } catch (error) {
-    console.error('Error changing ticket status:', error);
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to change ticket status' } });
-  }
-});
-
 // GET /api/staff/users - Active IT Staff users for dropdowns
 app.get('/api/staff/users', requireNormalAuth, async (req, res) => {
   if (req.sessionUser!.role !== 'IT_STAFF' && req.sessionUser!.role !== 'ADMINISTRATOR') {
@@ -1102,8 +986,8 @@ app.get('/api/staff/users', requireNormalAuth, async (req, res) => {
 
 // GET /api/staff/tickets - IT Staff Ticket Queue with search, filters, sorting & pagination
 app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
-  if (req.sessionUser!.role !== 'IT_STAFF') {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff can access the ticket queue.' } });
+  if (!STAFF_ROLES.includes(req.sessionUser!.role)) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only IT Staff and Administrators can access the ticket queue.' } });
   }
 
   try {
@@ -1688,6 +1572,7 @@ app.post('/api/admin/users/:userId/set-initial-password', requireNormalAuth, req
 
 // Actions Taken endpoints (Lab 4), kept in their own module
 app.use(actionsRouter);
+app.use(workflowRouter);
 
 export default app;
 

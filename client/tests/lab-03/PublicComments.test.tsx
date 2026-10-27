@@ -68,6 +68,7 @@ describe('TicketDetailPage - Public Comments & Problem Appears Resolved (Lab 3)'
     vi.spyOn(authApi, 'fetchCurrentUser').mockResolvedValue(mockUser);
     vi.spyOn(api, 'fetchTicketDetail').mockResolvedValue({ ...mockTicket });
     vi.spyOn(api, 'fetchPublicComments').mockResolvedValue([...mockComments]);
+    vi.spyOn(api, 'fetchStatusHistory').mockResolvedValue([]);
   });
 
   it('renders Public Comments tab and shows comment count', async () => {

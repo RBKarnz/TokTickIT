@@ -131,7 +131,8 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/admin\/users/);
     await expect(page.locator('nav.navbar')).toContainText('User Management');
-    await expect(page.locator('nav.navbar')).not.toContainText('Ticket Queue');
+    // Lab 4 BR-14 supersedes Lab 3 BR-23/BR-41: Administrators also use the Ticket Queue.
+    await expect(page.locator('nav.navbar')).toContainText('Ticket Queue');
   });
 
   test('E2E-07: Requester cannot reach Internal Notes on Ticket Detail', async ({ page }) => {

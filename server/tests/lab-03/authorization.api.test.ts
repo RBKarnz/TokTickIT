@@ -408,7 +408,9 @@ describe('Direct API Authorization & Security Tests (Lab 3)', () => {
         .post(`/api/staff/tickets/${ticket.id}/status`)
         .set('Cookie', staff1Cookie).set('X-CSRF-Token', csrfFor(staff1Cookie))
         .send({ status: 'RESOLVED' });
-      expect([422, 400]).toContain(res.status);
+      // Lab 4 AC-11: reported as a resolution gate failure.
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('RESOLUTION_GATE');
     });
   });
 

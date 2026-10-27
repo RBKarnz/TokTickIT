@@ -454,13 +454,14 @@ describe('IT Staff Ticket Queue API (Lab 3)', () => {
       expect(res.body.error.code).toBe('FORBIDDEN');
     });
 
-    it('rejects ADMINISTRATOR role with 403 FORBIDDEN', async () => {
+    // Lab 4 BR-14 supersedes Lab 3 BR-23/BR-41: Administrators may open the queue.
+    it('allows ADMINISTRATOR role with 200 OK', async () => {
       const res = await request(app)
         .get('/api/staff/tickets')
         .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
 
-      expect(res.status).toBe(403);
-      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.items)).toBe(true);
     });
 
     it('rejects unauthenticated request with 401 UNAUTHORIZED', async () => {

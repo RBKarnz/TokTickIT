@@ -147,6 +147,7 @@ describe('Actions Taken UI (Lab 4)', () => {
     vi.spyOn(api, 'fetchPublicComments').mockResolvedValue([]);
     vi.spyOn(api, 'fetchInternalNotes').mockResolvedValue([]);
     vi.spyOn(api, 'fetchActions').mockResolvedValue([...mockActions]);
+    vi.spyOn(api, 'fetchStatusHistory').mockResolvedValue([]);
     vi.spyOn(api, 'fetchAssignees').mockResolvedValue([...mockAssignees]);
   });
 
@@ -258,7 +259,7 @@ describe('Actions Taken UI (Lab 4)', () => {
     fireEvent.click(screen.getByRole('button', { name: /actions taken/i }));
 
     expect(
-      await screen.findByText(/actions recorded by it staff\. private staff correspondence is kept in internal notes\./i),
+      await screen.findByText(/actions recorded by it staff\. private staff discussions are not shown here\./i),
     ).toBeInTheDocument();
 
     const rows = await screen.findAllByTestId('action-row');

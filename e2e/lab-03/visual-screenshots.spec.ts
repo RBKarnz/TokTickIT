@@ -377,7 +377,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await page.waitForURL(/\/tickets\/\d+/);
 
       // Robust wait: ensure loading spinner is detached and ticket header is visible!
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
       await page.waitForTimeout(300);
     });
@@ -465,11 +465,11 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     test('07-attachment-continuity: Display of attachments originally uploaded during ticket creation', async ({ page }) => {
       // Step 1: Log in as requester and upload an attachment to one of their tickets
       await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
       await page.locator('[data-testid="list-item"]:visible').first().click();
       await page.waitForURL(/\/tickets\/\d+/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       // Get ticket ID from URL
@@ -492,7 +492,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       // Step 2: Log in as staff and view the same ticket's attachments
       await loginAs(page, 'staff1@toktickit.com', 'Password123!', /\/staff\/queue/);
       await page.goto(`/tickets/${ticketId}`);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       const staffAttachmentsTab = page.locator('button:has-text("Attachments")').first();
@@ -507,7 +507,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
     test('08-requester-resolution-summary: Resolution notes and resolved badge indicator in Requester view', async ({ page }) => {
       await loginAs(page, 'requester3@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
 
       // Click Sarah\'s resolved ticket "Monitor won't turn on"
       const resolvedRow = page.locator('tr').filter({ hasText: "Monitor won't turn on" }).first();
@@ -515,7 +515,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await resolvedRow.click();
       await page.waitForURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
       await expect(page.locator('h6:has-text("Resolution Summary")')).toBeVisible();
       await expect(page.locator('.badge:has-text("RESOLVED")').first()).toBeVisible();
@@ -528,13 +528,13 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
     test('09-role-restricted-forbidden-ui: UI feedback when unauthorized role views ticket (controls hidden)', async ({ page }) => {
       await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
 
       await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
       await page.locator('[data-testid="list-item"]:visible').first().click();
       await page.waitForURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
       await page.waitForTimeout(300);
 
@@ -567,7 +567,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
       // Attempt direct access to requester1's ticket (/tickets/1)
       await page.goto('/tickets/1');
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h2:has-text("Ticket Not Found")')).toBeVisible();
       await expect(page.locator('.bi-search')).toBeVisible();
 
@@ -895,7 +895,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await page.locator('[data-testid="list-item"]:visible').first().click();
       await page.waitForURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       // Desktop
@@ -942,7 +942,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // -----------------------------------------------------------------------
     test('06-requester-tickets responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
       await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
 
       // Desktop
@@ -978,7 +978,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // -----------------------------------------------------------------------
     test('07-requester-detail responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
       await loginAs(page, 'requester3@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
 
       // Open resolved ticket
       const resolvedRow = page.locator('tr').filter({ hasText: "Monitor won't turn on" }).first();
@@ -986,7 +986,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await resolvedRow.click();
       await page.waitForURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       // Desktop

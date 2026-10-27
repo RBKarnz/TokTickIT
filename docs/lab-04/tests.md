@@ -65,17 +65,17 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | API-22 | API | AC-10 | Attempt to add action to `CLOSED` ticket | 409 Conflict, cannot add actions to closed tickets | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-23 | API | AC-10 | Attempt to add action to `CANCELLED` ticket | 409 Conflict, cannot add actions to cancelled tickets | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-24 | API | AC-01 | Create action with `actionAt` timestamp >5 minutes in future | 422 Unprocessable, timestamp cannot exceed future tolerance | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
-| API-25 | API | AC-10 | IT Staff executes permitted transition `OPEN` -> `IN_PROGRESS` | 200 OK, ticket status updated | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-26 | API | AC-10, AC-15 | Administrator executes transition `NEW` -> `OPEN` | 200 OK, admin permitted | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-27 | API | AC-10 | Execute unpermitted transition `NEW` -> `RESOLVED` directly | 409 Conflict, invalid status transition | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-28 | API | AC-10 | Requester attempts status change endpoint | 403 Forbidden | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-29 | API | AC-11 | Transition to `RESOLVED` without `resolutionSummary` | 409 Conflict with details `RESOLUTION_SUMMARY_REQUIRED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-30 | API | AC-11 | Transition to `RESOLVED` with zero completed actions | 409 Conflict with details `COMPLETED_ACTION_REQUIRED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-31 | API | AC-11 | Transition to `RESOLVED` with pending follow-up action | 409 Conflict with details `PENDING_FOLLOW_UP` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-32 | API | AC-11 | Transition to `RESOLVED` fulfilling all three gate rules | 200 OK, status changes to `RESOLVED`, history appended | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-33 | API | AC-12 | Requester calls `problem-appears-resolved` | 200 OK, timestamp recorded, status stays unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-34 | API | AC-13 | Retrieve status history for ticket after transitions | 200 OK, list ordered `createdAt ASC, id ASC`, actor populated | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-35 | API | AC-14 | Status transition with stale `expectedVersion` | 409 Conflict with code `STALE_UPDATE` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| API-25 | API | AC-10 | IT Staff executes permitted transition `OPEN` -> `IN_PROGRESS` | 200 OK, ticket status updated | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-26 | API | AC-10, AC-15 | Administrator executes transition `NEW` -> `OPEN` | 200 OK, admin permitted | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-27 | API | AC-10 | Execute unpermitted transition `NEW` -> `RESOLVED` directly | 409 Conflict, invalid status transition | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-28 | API | AC-10 | Requester attempts status change endpoint | 403 Forbidden | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-29 | API | AC-11 | Transition to `RESOLVED` without `resolutionSummary` | 409 Conflict with details `RESOLUTION_SUMMARY_REQUIRED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-30 | API | AC-11 | Transition to `RESOLVED` with zero completed actions | 409 Conflict with details `COMPLETED_ACTION_REQUIRED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-31 | API | AC-11 | Transition to `RESOLVED` with pending follow-up action | 409 Conflict with details `PENDING_FOLLOW_UP` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-32 | API | AC-11 | Transition to `RESOLVED` fulfilling all three gate rules | 200 OK, status changes to `RESOLVED`, history appended | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-33 | API | AC-12 | Requester calls `problem-appears-resolved` | 200 OK, timestamp recorded, status stays unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-34 | API | AC-13 | Retrieve status history for ticket after transitions | 200 OK, list ordered `createdAt ASC, id ASC`, actor populated | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-35 | API | AC-14 | Status transition with stale `expectedVersion` | 409 Conflict with code `STALE_UPDATE` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | API-36 | API | AC-02 | Requester retrieves dashboard data | 200 OK, counts and lists contain only requester's tickets | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
 | API-37 | API | AC-16 | IT Staff dashboard metrics match direct database queries | 200 OK, every metric value matches Prisma count assertion | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
 | API-38 | API | AC-17 | Administrator dashboard returns user counts | 200 OK, active and inactive counts per role present | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
@@ -84,14 +84,18 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | API-41 | API | AC-01 | List assignable users for the Actions Taken form | 200 OK, active IT Staff and Administrators only, inactive users excluded | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-42 | API | AC-08 | Requester requests the assignable user list | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-43 | API | AC-01 | Assignable user list without a session | 401 Unauthorized | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-44 | API | AC-10 | Status change through the alias `PATCH /api/tickets/:id/status` | 200 OK, same behaviour as the staff route, reason stored in history | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-45 | API | AC-10 | Status change with `reason` over 1000 characters or a non-integer `expectedVersion` | 422 Unprocessable, ticket unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-46 | API | AC-15 | Administrator uses queue, claim, assign, IT Priority, public comment and staff ticket detail | 200/201 on every operation; `version` unchanged by non-status writes | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-47 | API | AC-13 | `POST`, `PUT`, `PATCH`, `DELETE` on the status-history path | 404 Not Found, history rows unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 
 ## 4. Unit Tests
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
 | UNIT-01 | Unit | AC-06 | Action status transition helper validation | Validates permitted next states from matrix | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
-| UNIT-02 | Unit | AC-10 | Ticket status matrix transition helper | Returns true only for matrix-approved state pairs | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| UNIT-03 | Unit | AC-11 | Resolution gate pure evaluator | Evaluates summary, completed action, follow-up flags | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| UNIT-02 | Unit | AC-10 | Ticket status matrix transition helper | Returns true only for matrix-approved state pairs | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| UNIT-03 | Unit | AC-11 | Resolution gate pure evaluator | Evaluates summary, completed action, follow-up flags | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | UNIT-04 | Unit | AC-04 | Follow-up note validator | Rejects empty note if follow-up required is true | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | UNIT-05 | Unit | AC-01 | Action datetime tolerance checker | Rejects timestamps > 5 minutes in future | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | UNIT-06 | Unit | AC-16 | Open group status classifier | Maps 5 statuses to Open group, 3 to Non-Open | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
@@ -102,12 +106,13 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| WF-01 | Workflow | AC-01, AC-11 | Full lifecycle: NEW -> OPEN -> IN_PROGRESS -> RESOLVED -> CLOSED | Actions recorded, gate passed, closed confirmed | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| WF-02 | Workflow | AC-11 | Reopened ticket lifecycle: REOPENED -> IN_PROGRESS -> RESOLVED | Gate re-evaluated on second resolution; passes | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| WF-03 | Workflow | AC-10 | Terminal ticket lifecycle: NEW -> CANCELLED | Terminal status prevents any subsequent changes | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| WF-04 | Workflow | AC-10 | Closed ticket reopen: CLOSED -> REOPENED | Successfully transitions with mandatory reason | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| WF-05 | Workflow | AC-13 | Status history append count matches state transitions | Exactly N history records created for N transitions | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| WF-06 | Workflow | AC-14 | Concurrent status updates on same ticket | First update succeeds; second update yields 409 | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| WF-01 | Workflow | AC-01, AC-11 | Full lifecycle: NEW -> OPEN -> IN_PROGRESS -> RESOLVED -> CLOSED | Actions recorded, gate passed, closed confirmed | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| WF-02 | Workflow | AC-11 | Reopened ticket lifecycle: REOPENED -> IN_PROGRESS -> RESOLVED | Gate re-evaluated on second resolution; passes | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| WF-03 | Workflow | AC-10 | Terminal ticket lifecycle: NEW -> CANCELLED | Terminal status prevents any subsequent changes | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| WF-04 | Workflow | AC-10 | Closed ticket reopen: CLOSED -> REOPENED | Transitions successfully; the reason is stored in the history entry | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| WF-05 | Workflow | AC-13 | Status history append count matches state transitions | Exactly N history records created for N transitions | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| WF-06 | Workflow | AC-14 | Concurrent status updates on same ticket | First update succeeds; second update yields 409 | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| WF-07 | Workflow | AC-11 | Re-resolve after REOPENED without resending resolutionSummary | Gate falls back to the stored summary; resolves successfully | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 
 ## 6. Migration & Regression Tests
 
@@ -141,10 +146,10 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | UI-09 | UI | AC-08 | Requester view on Actions Taken tab | Read-only list; form and edit buttons hidden; info note shown | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-10 | UI | AC-14, AC-25 | 409 conflict handling preserves form input | Banner displayed; typed summary and notes preserved | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-11 | UI | AC-25 | Action submit button double-click guard | Button disabled with loading spinner while request in flight | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
-| UI-12 | UI | AC-10 | Status change dropdown permitted options | Dropdown shows only permitted transitions for current status | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
-| UI-13 | UI | AC-11 | Resolution gate modal checklist rendering | Checks off passed criteria; disables confirm on missing items | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
-| UI-14 | UI | AC-13 | Status history timeline rendering | Displays chronological entries with actor, time, and reason | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
-| UI-15 | UI | AC-15 | Administrator operational ticket view | Full staff operations accessible without permission errors | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
+| UI-12 | UI | AC-10 | Status change dropdown permitted options | Dropdown shows only permitted transitions for current status | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-13 | UI | AC-11 | Resolution gate modal checklist rendering | Checks off passed criteria; disables confirm on missing items | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-14 | UI | AC-13 | Status history timeline rendering | Displays chronological entries with actor, time, and reason | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-15 | UI | AC-15 | Administrator operational ticket view | Full staff operations accessible without permission errors | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 | UI-16 | UI | AC-20 | Header navigation active page highlight | Applies `aria-current="page"` and green underline to active route | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
 | UI-17 | UI | AC-09 | Double click on Save Action | `createAction` is called exactly once | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-18 | UI | AC-09, AC-25 | Create fails, then retry | Typed values kept; retry sends the same `Idempotency-Key`; one action added | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
@@ -152,6 +157,12 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | UI-20 | UI | AC-04 | Server 422 field errors on the action form | Errors shown under the matching fields; typed values kept | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-21 | UI | AC-27 | Actions Taken table rows and mobile cards | Both layouts rendered with labelled fields for every action | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-22 | UI | AC-01 | Administrator opens the create form | Assigned To lists IT Staff and Administrators; defaults to the current user | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-23 | UI | AC-11 | Server `409 RESOLUTION_GATE` in the resolution modal | Reasons from `error.details` listed; typed summary and reason kept | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-24 | UI | AC-14, AC-25 | `409 STALE_UPDATE` on a status change | Warning banner with Reload Ticket; typed values kept; retry sends the fresh version | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-25 | UI | AC-13 | Refresh after a successful status change | Status, timeline and version update without a reload | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-26 | UI | AC-25 | Double click on Confirm in the status modal | `updateTicketStatus` is called exactly once; button locked while in flight | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-27 | UI | AC-13 | Status history loading, failure and empty states | Loading indicator, failure alert with Retry, empty message | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-28 | UI | AC-13 | Requester views the status history of an own ticket | Same read-only timeline is shown | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 
 ## 9. UI Style, Responsive & Accessibility Tests
 
@@ -210,13 +221,26 @@ All automated test suites from Labs 1 through 3 are preserved in the repository 
 
 ### Expected Test Adjustments for BR-14 (Ticket Workflow & Resolution Gate Issue)
 
-In Lab 3, tests asserted that Administrators could not perform IT Staff ticket operations (`BR-23` and `BR-41`). Per Lab 4 handout Section 4.3, Administrators are granted full operational IT Staff permissions. The following Lab 3 test assertions will be updated in the Ticket Workflow & Resolution Gate Issue to expect `200/201` instead of `403`:
-1. `server/tests/lab-03/authorization.api.test.ts`: Admin claiming ticket -> now allowed (`200`).
-2. `server/tests/lab-03/authorization.api.test.ts`: Admin updating IT Priority -> now allowed (`200`).
-3. `server/tests/lab-03/authorization.api.test.ts`: Admin updating ticket status -> now allowed (`200`).
-4. `server/tests/lab-03/comments-notes.api.test.ts`: Admin creating internal note -> now allowed (`201`).
+In Lab 3, tests asserted that Administrators could not perform IT Staff ticket operations (`BR-23` and `BR-41`), and that a Ticket could be resolved with a Resolution Summary alone. Per Lab 4 handout Section 4.3 (BR-14) and the resolution gate (BR-18 to BR-21), the following Lab 3 tests were updated in the Ticket Workflow & Resolution Gate Issue:
 
-All other Lab 1–3 assertions remain strictly unchanged.
+| File | Test | Change | Rule |
+|---|---|---|---|
+| `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Claim by Administrator | `403` -> `200`, Administrator becomes owner | BR-14 |
+| `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Assign owner by Administrator | `403` -> `200` | BR-14 |
+| `server/tests/lab-03/staff-ticket-detail.api.test.ts` | IT Priority by Administrator | `403` -> `200` | BR-14 |
+| `server/tests/lab-03/staff-ticket-detail.api.test.ts` | API-34 status lifecycle | Adds one `COMPLETED` Action Taken before `RESOLVED` | BR-19 |
+| `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Resolved without summary | `400 BAD_REQUEST` -> `409 RESOLUTION_GATE` | BR-18, AC-11 |
+| `server/tests/lab-03/authorization.api.test.ts` | Resolved without summary | `400/422` -> `409 RESOLUTION_GATE` | BR-18, AC-11 |
+| `server/tests/lab-03/staff-queue.api.test.ts` | Queue for Administrator | `403` -> `200` | BR-14 |
+| `server/tests/lab-03/comments-notes.api.test.ts` | Public comment by Administrator | `403` -> `201` | BR-14 |
+| `server/tests/lab-03/integrity.api.test.ts` | API-65 concurrent status change | Adds one `COMPLETED` Action Taken; cleanup removes history and actions first | BR-19, BR-23 |
+| `client/tests/lab-03/StaffTicketDetail.test.tsx` | UI-23 status change (2 tests) | Expects `expectedVersion`; the resolve test mocks one `COMPLETED` action | BR-19, BR-25 |
+| `client/tests/lab-03/StaffTicketDetail.test.tsx` | Administrator view | Read-only -> Claim, IT Priority and Change Status are shown | BR-14 |
+| `client/tests/lab-03/*.test.tsx`, `client/tests/lab-04/ActionsTaken.test.tsx` | `beforeEach` | Mocks `fetchStatusHistory` | FR-13 |
+| `e2e/lab-03/staff-ticket-flow.spec.ts` | E2E-15 & E2E-16 | Creates one `COMPLETED` Action Taken before resolving | BR-19 |
+| `e2e/lab-03/authentication.spec.ts` | E2E-06 | Administrator navbar now contains `Ticket Queue` | BR-14 |
+
+All other Lab 1–3 assertions remain strictly unchanged. No Lab 1 or Lab 2 test file was edited.
 
 ## 13. Test Data Rules
 
@@ -262,12 +286,12 @@ Seeded by `server/prisma/seed.ts` for `requester3@toktickit.com` with fixed numb
 | AC-07 | API-14, UI-06, UI-19, E2E-01 |
 | AC-08 | API-15, API-16, API-17, API-18, API-42, UI-09, E2E-05, SEC-04, SEC-05 |
 | AC-09 | API-19, API-20, UI-17, UI-18, E2E-11 |
-| AC-10 | API-22, API-23, API-25, API-26, API-27, API-28, UNIT-02, UI-12, WF-03, WF-04 |
-| AC-11 | API-29, API-30, API-31, API-32, UNIT-03, UI-13, WF-01, WF-02, E2E-03, E2E-04 |
+| AC-10 | API-22, API-23, API-25, API-26, API-27, API-28, API-44, API-45, UNIT-02, UI-12, WF-03, WF-04 |
+| AC-11 | API-29, API-30, API-31, API-32, UNIT-03, UI-13, UI-23, WF-01, WF-02, WF-07, E2E-03, E2E-04 |
 | AC-12 | API-33 |
-| AC-13 | API-34, UI-14, WF-05 |
-| AC-14 | API-21, API-35, UI-10, WF-06, E2E-10 |
-| AC-15 | API-02, API-26, UI-15, E2E-06 |
+| AC-13 | API-34, API-47, UI-14, UI-25, UI-27, UI-28, WF-05 |
+| AC-14 | API-21, API-35, UI-10, UI-24, WF-06, E2E-10 |
+| AC-15 | API-02, API-26, API-46, UI-15, E2E-06 |
 | AC-16 | API-37, UNIT-06, UNIT-08, UI-03 |
 | AC-17 | API-38, UI-04 |
 | AC-18 | API-39, UI-05, E2E-08, E2E-09 |
@@ -277,7 +301,7 @@ Seeded by `server/prisma/seed.ts` for `requester3@toktickit.com` with fixed numb
 | AC-22 | MIG-04 |
 | AC-23 | SEC-01, SEC-02, SEC-03 |
 | AC-24 | E2E-12, Section 12 regression suite |
-| AC-25 | UI-10, UI-11, UI-18 |
+| AC-25 | UI-10, UI-11, UI-18, UI-24, UI-26 |
 | AC-26 | UI-16, Manual inspection checklist |
 | AC-27 | UI-21, STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08 |
 | AC-28 | PERF-01, PERF-02 |

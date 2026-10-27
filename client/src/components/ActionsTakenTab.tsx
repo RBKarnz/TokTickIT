@@ -338,7 +338,7 @@ export default function ActionsTakenTab({
       {/* Requester Info Banner */}
       {!canWrite && (
         <div className="alert alert-info py-2 small mb-3">
-          Actions recorded by IT Staff. Private staff correspondence is kept in Internal Notes.
+          Actions recorded by IT Staff. Private staff discussions are not shown here.
         </div>
       )}
 

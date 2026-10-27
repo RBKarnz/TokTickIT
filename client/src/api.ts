@@ -358,20 +358,45 @@ export async function updateTicketItPriority(ticketId: number, itPriority: strin
   return await res.json();
 }
 
-export async function updateTicketStatus(ticketId: number, status: string, resolutionSummary?: string) {
+export interface StatusHistoryItem {
+  id: number;
+  fromStatus: string | null;
+  toStatus: string;
+  changedBy: { id: number; name: string; role: string } | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+// Throws ApiError so the UI can read `code`, `details` (RESOLUTION_GATE) and `current` (STALE_UPDATE).
+export async function updateTicketStatus(
+  ticketId: number,
+  status: string,
+  resolutionSummary?: string,
+  options: { reason?: string; expectedVersion?: number } = {},
+) {
   const res = await csrfFetch(`${API_URL}/api/staff/tickets/${ticketId}/status`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     credentials: 'include',
-    body: JSON.stringify({ status, resolutionSummary }),
+    body: JSON.stringify({ status, resolutionSummary, ...options }),
   });
   if (!res.ok) {
-    const errorData = await res.json().catch(() => null);
-    throw new Error(errorData?.error?.message || 'Failed to update ticket status');
+    await handleActionError(res);
   }
   return await res.json();
+}
+
+export async function fetchStatusHistory(ticketId: number): Promise<StatusHistoryItem[]> {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/status-history`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  const data = await res.json();
+  return data.items || [];
 }
 
 export interface InternalNote {
@@ -559,6 +584,7 @@ export class ApiError extends Error {
   code: string;
   fieldErrors?: Record<string, string>;
   current?: ActionTaken;
+  details?: string[];
 
   constructor(
     status: number,
@@ -566,6 +592,7 @@ export class ApiError extends Error {
     message: string,
     fieldErrors?: Record<string, string>,
     current?: ActionTaken,
+    details?: string[],
   ) {
     super(message);
     this.name = 'ApiError';
@@ -573,6 +600,7 @@ export class ApiError extends Error {
     this.code = code;
     this.fieldErrors = fieldErrors;
     this.current = current;
+    this.details = details;
   }
 }
 
@@ -583,7 +611,7 @@ async function handleActionError(res: Response): Promise<never> {
   const message = data?.error?.message || `Request failed with status ${status}`;
   const fieldErrors = data?.error?.fieldErrors;
   const current = data?.error?.current;
-  throw new ApiError(status, code, message, fieldErrors, current);
+  throw new ApiError(status, code, message, fieldErrors, current, data?.error?.details);
 }
 
 export async function fetchActions(ticketId: number): Promise<ActionTaken[]> {

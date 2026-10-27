@@ -41,6 +41,7 @@ const mockBaseTicket = {
   currentStatus: 'NEW',
   requesterResolvedAt: null,
   resolutionSummary: null,
+  version: 1,
   requesterId: 1,
   ownerId: null,
   owner: null,
@@ -93,6 +94,7 @@ describe('TicketDetailPage - IT Staff Operations (Lab 3 UI-20 to UI-26)', () => 
     vi.spyOn(api, 'fetchInternalNotes').mockResolvedValue([...mockNotes]);
     vi.spyOn(api, 'fetchActions').mockResolvedValue([]);
     vi.spyOn(api, 'fetchAssignees').mockResolvedValue([]);
+    vi.spyOn(api, 'fetchStatusHistory').mockResolvedValue([]);
   });
 
   // UI-20: Breadcrumb & Role-aware navigation
@@ -211,7 +213,8 @@ describe('TicketDetailPage - IT Staff Operations (Lab 3 UI-20 to UI-26)', () => 
     fireEvent.click(updateBtn);
 
     await waitFor(() => {
-      expect(statusSpy).toHaveBeenCalledWith(20, 'OPEN', undefined);
+      // Lab 4 BR-25: the ticket version is sent with every status change.
+      expect(statusSpy).toHaveBeenCalledWith(20, 'OPEN', undefined, { reason: undefined, expectedVersion: 1 });
     });
 
     expect(await screen.findByText(/status successfully updated to open/i)).toBeInTheDocument();
@@ -223,6 +226,25 @@ describe('TicketDetailPage - IT Staff Operations (Lab 3 UI-20 to UI-26)', () => 
       ...mockBaseTicket,
       currentStatus: 'IN_PROGRESS',
     });
+    // Lab 4 BR-19: the resolution gate needs one COMPLETED Action Taken.
+    vi.spyOn(api, 'fetchActions').mockResolvedValue([
+      {
+        id: 1,
+        ticketId: 20,
+        actionAt: '2026-09-17T09:00:00.000Z',
+        description: 'Restarted Exchange services.',
+        result: 'Outbound queue cleared.',
+        status: 'COMPLETED',
+        followUpRequired: false,
+        followUpNote: null,
+        attachmentNotes: null,
+        performedBy: { id: 10, name: 'Bob Staff' },
+        assignedTo: { id: 10, name: 'Bob Staff', email: 'staff1@toktickit.com' },
+        version: 1,
+        createdAt: '2026-09-17T09:00:00.000Z',
+        updatedAt: '2026-09-17T09:00:00.000Z',
+      },
+    ]);
 
     const statusSpy = vi.spyOn(api, 'updateTicketStatus').mockResolvedValue({
       id: 20,
@@ -255,7 +277,7 @@ describe('TicketDetailPage - IT Staff Operations (Lab 3 UI-20 to UI-26)', () => 
     fireEvent.change(summaryInput, {
       target: { value: 'Restarted Exchange services and cleared outbound queue.' },
     });
-    expect(confirmBtn).not.toBeDisabled();
+    await waitFor(() => expect(confirmBtn).not.toBeDisabled());
 
     // Submit modal
     fireEvent.click(confirmBtn);
@@ -264,7 +286,8 @@ describe('TicketDetailPage - IT Staff Operations (Lab 3 UI-20 to UI-26)', () => 
       expect(statusSpy).toHaveBeenCalledWith(
         20,
         'RESOLVED',
-        'Restarted Exchange services and cleared outbound queue.'
+        'Restarted Exchange services and cleared outbound queue.',
+        { reason: undefined, expectedVersion: 1 }
       );
     });
 
@@ -367,8 +390,8 @@ describe('TicketDetailPage - IT Staff Operations (Lab 3 UI-20 to UI-26)', () => 
     expect(screen.queryByText(/internal communication will appear here/i)).not.toBeInTheDocument();
   });
 
-  // Admin access: Administrator can read/post internal notes but ticket ops are read-only
-  it('Administrator can view and post internal notes, while ticket operations are read-only', async () => {
+  // Lab 4 BR-14 supersedes Lab 3 BR-23/BR-41: Administrators get the IT Staff ticket operations.
+  it('Administrator can view internal notes and use the IT Staff ticket operations', async () => {
     vi.spyOn(authApi, 'fetchCurrentUser').mockResolvedValue(mockAdminUser);
     vi.spyOn(api, 'fetchStaffTicketDetail').mockResolvedValue({ ...mockBaseTicket });
 
@@ -379,12 +402,11 @@ describe('TicketDetailPage - IT Staff Operations (Lab 3 UI-20 to UI-26)', () => 
     const notesTab = await screen.findByRole('button', { name: /internal notes/i });
     expect(notesTab).toBeInTheDocument();
 
-    // Claim button and reassign dropdown are NOT rendered for Admin
-    expect(screen.queryByRole('button', { name: /claim ticket/i })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/reassign owner/i)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/it priority/i)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/change status/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /update status/i })).not.toBeInTheDocument();
+    // Claim, IT Priority and Change Status are rendered for Admin (the ticket is unassigned)
+    expect(screen.getByRole('button', { name: /claim ticket/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/it priority/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/change status/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /update status/i })).toBeInTheDocument();
   });
 
   // REOPENED status badge styling

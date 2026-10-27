@@ -212,15 +212,15 @@ describe('Comments & Notes API (Lab 3)', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 
-  it('Role Check: Administrator is rejected from creating public comments with 403 Forbidden', async () => {
+  // Lab 4 BR-14 supersedes Lab 3 BR-23/BR-41: Administrators may post public comments.
+  it('Role Check: Administrator can create public comments with 201 Created', async () => {
     const res = await request(app)
       .post(`/api/tickets/${testTicket.id}/public-comments`)
       .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
-      .send({ content: 'Administrator attempting to post public comment.' });
+      .send({ content: 'Administrator posting a public comment.' });
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
-    expect(res.body.error.message).toBe('Administrators are not permitted to post public comments.');
+    expect(res.status).toBe(201);
+    expect(res.body.comment.author.role).toBe('ADMINISTRATOR');
   });
 
   // -------------------------------------------------------------------------

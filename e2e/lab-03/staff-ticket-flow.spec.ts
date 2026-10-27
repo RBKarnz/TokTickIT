@@ -254,6 +254,17 @@ test.describe('IT Staff Ticket Flow & Operations (E2E-09 to E2E-21)', () => {
     await page.getByRole('button', { name: 'Update Status' }).click();
     await expect(statusBadge(page)).toHaveText('IN PROGRESS');
 
+    // Lab 4 BR-19: Resolved needs at least one COMPLETED Action Taken on the Ticket.
+    await asStaff1(async (api) => {
+      const me = await (await api.ctx.get('/api/auth/me')).json();
+      await apiCall(api, 'POST', `/api/tickets/${ticket.id}/actions`, {
+        description: 'Replaced the faulty network cable.',
+        result: 'Link is stable.',
+        status: 'COMPLETED',
+        assignedToId: me.user.id,
+      });
+    });
+
     await changeStatus.selectOption({ label: 'Resolved' });
     await page.getByRole('button', { name: 'Update Status' }).click();
     const modal = page.locator('.modal.show');
