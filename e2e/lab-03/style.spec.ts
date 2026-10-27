@@ -51,7 +51,8 @@ test.describe('UI Style / Responsive / Accessibility (STYLE-01 to STYLE-12)', ()
     expect(await nav()).not.toMatch(/User Management/);
     await loginAs(page, 'admin@toktickit.com', /\/admin\/users/);
     expect(await nav()).toContain('User Management');
-    expect(await nav()).not.toMatch(/Ticket Queue/);
+    // Lab 4 BR-14 supersedes Lab 3 BR-23/BR-41: Administrators also use the Ticket Queue.
+    expect(await nav()).toContain('Ticket Queue');
   });
 
   test('STYLE-03: status, priority and role badges always carry a text label (not colour alone)', async ({ page }) => {

@@ -259,7 +259,7 @@ describe('Actions Taken UI (Lab 4)', () => {
     fireEvent.click(screen.getByRole('button', { name: /actions taken/i }));
 
     expect(
-      await screen.findByText(/actions recorded by it staff\. private staff correspondence is kept in internal notes\./i),
+      await screen.findByText(/actions recorded by it staff\. private staff discussions are not shown here\./i),
     ).toBeInTheDocument();
 
     const rows = await screen.findAllByTestId('action-row');
