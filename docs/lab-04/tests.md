@@ -198,14 +198,14 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| SEC-01 | Security | AC-23 | State-changing request missing `X-CSRF-Token` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-02 | Security | AC-23 | State-changing request with forged CSRF token | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-03 | Security | AC-23 | State-changing request from unauthorized `Origin` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-04 | Security | AC-08 | Requester calls direct POST to create Action Taken | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-05 | Security | AC-08 | Requester calls direct GET for other user's actions | 404 Not Found (safe non-disclosure) | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-06 | Security | AC-03 | Client sends forged `performedById` parameter | Server ignores parameter; stores authenticated user ID | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-07 | Security | AC-30 | API response payload auditing | No passwords, hashes, session secrets in responses | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-08 | Security | AC-30 | XSS payload injection in action description | Script tags safely escaped and rendered as text | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| SEC-01 | Security | AC-23 | State-changing request missing `X-CSRF-Token` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-02 | Security | AC-23 | State-changing request with forged CSRF token | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-03 | Security | AC-23 | State-changing request from unauthorized `Origin` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-04 | Security | AC-08 | Requester calls direct POST to create Action Taken | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-05 | Security | AC-08 | Requester calls direct GET for other user's actions | 404 Not Found (safe non-disclosure) | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-06 | Security | AC-03 | Client sends forged `performedById` parameter | Server ignores parameter; stores authenticated user ID | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-07 | Security | AC-30 | API response payload auditing | No passwords, hashes, session secrets in responses | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-08 | Security | AC-30 | XSS payload injection in action description | Script tags safely escaped and rendered as text | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 
 ## 12. Lab 1–3 Regression Coverage
 

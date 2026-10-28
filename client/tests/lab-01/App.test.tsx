@@ -1,17 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import App, { TempHome } from "../../src/App.js";
-import { RequesterProvider } from "../../src/RequesterContext.js";
 import { BrowserRouter } from "react-router-dom";
 import * as api from "../../src/api.js";
 
 const renderTempHome = () => {
   return render(
-    <RequesterProvider>
-      <BrowserRouter>
-        <TempHome />
-      </BrowserRouter>
-    </RequesterProvider>
+    <BrowserRouter>
+      <TempHome />
+    </BrowserRouter>
   );
 };
 
