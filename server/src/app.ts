@@ -25,7 +25,7 @@ import {
 } from './auth.js';
 import { actionsRouter, STAFF_ROLES } from './actions.js';
 import { workflowRouter, STATUS_TO_LABEL, LABEL_TO_STATUS } from './workflow.js';
-import { dashboardRouter, OPEN_GROUP_STATUSES } from './dashboard.js';
+import { dashboardRouter, OPEN_GROUP_STATUSES, myOpenActionsTicketFilter, pendingFollowUpsTicketFilter } from './dashboard.js';
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -1209,12 +1209,14 @@ app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
       where.ownerId = parsedOwnerId;
     }
 
+    // Shared verbatim with the "My Open Actions" / "Pending Follow-ups" dashboard
+    // cards (dashboard.ts) so this list's total can never drift from the card count.
     const actionFilters: any[] = [];
     if (actionAssigneeMe) {
-      actionFilters.push({ actionsTaken: { some: { assignedToId: req.sessionUser!.id, status: { in: ['PLANNED', 'IN_PROGRESS'] } } } });
+      actionFilters.push(myOpenActionsTicketFilter(req.sessionUser!.id));
     }
     if (followUpPending) {
-      actionFilters.push({ actionsTaken: { some: { followUpRequired: true, status: { in: ['PLANNED', 'IN_PROGRESS'] } } } });
+      actionFilters.push(pendingFollowUpsTicketFilter());
     }
     if (actionFilters.length > 0) {
       where.AND = [...(where.AND ?? []), ...actionFilters];

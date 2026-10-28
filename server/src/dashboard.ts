@@ -24,6 +24,19 @@ const ALL_ROLES: Role[] = ['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR'];
 const OPEN_ACTION_STATUSES: ActionStatus[] = ['PLANNED', 'IN_PROGRESS'];
 const RECENT_LIST_LIMIT = 5;
 
+// Shared Ticket-level filters for the "My Open Actions" and "Pending Follow-ups"
+// cards, reused verbatim by the Staff Queue drill-down (app.ts) so the card
+// count and the drill-down list total can never drift apart (AC-16, AC-18).
+// Both cards count distinct Tickets, matching what the queue list shows —
+// not Action rows, since one Ticket can have several matching Actions.
+export function myOpenActionsTicketFilter(userId: number): Prisma.TicketWhereInput {
+  return { actionsTaken: { some: { assignedToId: userId, status: { in: OPEN_ACTION_STATUSES } } } };
+}
+
+export function pendingFollowUpsTicketFilter(): Prisma.TicketWhereInput {
+  return { actionsTaken: { some: { followUpRequired: true, status: { in: OPEN_ACTION_STATUSES } } } };
+}
+
 // BR-26: last 7 days is the rolling 168 hours before the request. The instant
 // comparison below is timezone-agnostic; "Asia/Bangkok" only labels the
 // response for client-side display.
@@ -78,7 +91,8 @@ dashboardRouter.get('/api/dashboard/requester', requireNormalAuth, async (req: R
   const prisma = getPrisma();
 
   try {
-    const [openTickets, waitingForMe, resolved, closed, recentlyUpdated, resolvedCandidates] = await Promise.all([
+    const cutoff = rollingWindowCutoff();
+    const [openTickets, waitingForMe, resolved, closed, recentlyUpdated, recentlyResolvedRows] = await Promise.all([
       prisma.ticket.count({ where: { requesterId, currentStatus: { in: OPEN_GROUP_STATUSES } } }),
       prisma.ticket.count({ where: { requesterId, currentStatus: 'WAITING_FOR_REQUESTER' } }),
       prisma.ticket.count({ where: { requesterId, currentStatus: 'RESOLVED' } }),
@@ -89,23 +103,23 @@ dashboardRouter.get('/api/dashboard/requester', requireNormalAuth, async (req: R
         take: RECENT_LIST_LIMIT,
         select: ticketListSelect,
       }),
-      // BR-31/BR-32: "recently resolved" needs the latest history row per ticket,
-      // so the gate below re-checks the actual transition time, not just currentStatus.
+      // BR-31/BR-32: a Ticket currently RESOLVED had its RESOLVED transition as the
+      // last history row by definition, so filtering that row's createdAt in the
+      // database (instead of loading every RESOLVED Ticket and filtering in JS)
+      // is equivalent, and ticket.updatedAt is that same transition's timestamp.
       prisma.ticket.findMany({
-        where: { requesterId, currentStatus: 'RESOLVED' },
-        select: {
-          ...ticketListSelect,
-          statusHistory: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1, select: { createdAt: true } },
+        where: {
+          requesterId,
+          currentStatus: 'RESOLVED',
+          statusHistory: { some: { toStatus: 'RESOLVED', createdAt: { gte: cutoff } } },
         },
+        orderBy: { updatedAt: 'desc' },
+        take: RECENT_LIST_LIMIT,
+        select: ticketListSelect,
       }),
     ]);
 
-    const cutoff = rollingWindowCutoff();
-    const recentlyResolved = resolvedCandidates
-      .filter((t) => t.statusHistory[0] && t.statusHistory[0].createdAt >= cutoff)
-      .sort((a, b) => b.statusHistory[0]!.createdAt.getTime() - a.statusHistory[0]!.createdAt.getTime())
-      .slice(0, RECENT_LIST_LIMIT)
-      .map(toRequesterTicketDto);
+    const recentlyResolved = recentlyResolvedRows.map(toRequesterTicketDto);
 
     res.status(200).json({
       openTickets: { count: openTickets, drillDown: '/tickets?statusGroup=open' },
@@ -148,8 +162,8 @@ dashboardRouter.get('/api/dashboard/staff', requireNormalAuth, async (req: Reque
     ] = await Promise.all([
       prisma.ticket.count({ where: { ownerId: null, currentStatus: { in: OPEN_GROUP_STATUSES } } }),
       prisma.ticket.count({ where: { ownerId: me, currentStatus: { in: OPEN_GROUP_STATUSES } } }),
-      prisma.actionTaken.count({ where: { assignedToId: me, status: { in: OPEN_ACTION_STATUSES } } }),
-      prisma.actionTaken.count({ where: { followUpRequired: true, status: { in: OPEN_ACTION_STATUSES } } }),
+      prisma.ticket.count({ where: myOpenActionsTicketFilter(me) }),
+      prisma.ticket.count({ where: pendingFollowUpsTicketFilter() }),
       prisma.ticket.groupBy({ by: ['currentStatus'], _count: { _all: true } }),
       prisma.ticket.groupBy({ by: ['itPriority'], where: { currentStatus: { in: OPEN_GROUP_STATUSES } }, _count: { _all: true } }),
       prisma.ticket.findMany({

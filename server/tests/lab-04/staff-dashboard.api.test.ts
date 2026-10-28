@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
-import { isOpenGroupStatus, OPEN_GROUP_STATUSES } from '../../src/dashboard.js';
+import { isOpenGroupStatus, OPEN_GROUP_STATUSES, myOpenActionsTicketFilter, pendingFollowUpsTicketFilter } from '../../src/dashboard.js';
 
 const prisma = getPrisma();
 const PASSWORD = 'Password123!';
@@ -113,8 +113,9 @@ describe('Staff & Administrator dashboard API (Lab 4)', () => {
     const [directUnassigned, directMyOwnedOpen, directMyOpenActions, directPendingFollowUps] = await Promise.all([
       prisma.ticket.count({ where: { ownerId: null, currentStatus: { in: OPEN_GROUP_STATUSES as any } } }),
       prisma.ticket.count({ where: { ownerId: staff.id, currentStatus: { in: OPEN_GROUP_STATUSES as any } } }),
-      prisma.actionTaken.count({ where: { assignedToId: staff.id, status: { in: ['PLANNED', 'IN_PROGRESS'] } } }),
-      prisma.actionTaken.count({ where: { followUpRequired: true, status: { in: ['PLANNED', 'IN_PROGRESS'] } } }),
+      // Ticket count, not Action count: one Ticket counts once however many matching Actions it has (AC-18).
+      prisma.ticket.count({ where: myOpenActionsTicketFilter(staff.id) }),
+      prisma.ticket.count({ where: pendingFollowUpsTicketFilter() }),
     ]);
     expect(res.body.unassigned.count).toBe(directUnassigned);
     expect(res.body.myOwnedOpen.count).toBe(directMyOwnedOpen);
@@ -203,6 +204,28 @@ describe('Staff & Administrator dashboard API (Lab 4)', () => {
     const myOwnedOpenQueue = await get('/api/staff/tickets?ownerId=me&statusGroup=open&pageSize=50', staffCookie);
     expect(myOwnedOpenQueue.status).toBe(200);
     expect(myOwnedOpenQueue.body.pagination.totalItems).toBe(dashboard.body.myOwnedOpen.count);
+  });
+
+  it('API-39c: a Ticket with two matching Actions counts once, so the card total equals the drill-down total (AC-16, AC-18)', async () => {
+    const before = await get('/api/dashboard/staff', staffCookie);
+    const myOpenActionsBefore = before.body.myOpenActions.count;
+    const pendingFollowUpsBefore = before.body.pendingFollowUps.count;
+
+    // One Ticket, two Actions both assigned to staff and both pending follow-up.
+    const t = await makeTicket('OPEN');
+    await addAction(t.id, { assignedToId: staff.id, status: 'PLANNED', followUpRequired: true });
+    await addAction(t.id, { assignedToId: staff.id, status: 'IN_PROGRESS', followUpRequired: true });
+
+    const after = await get('/api/dashboard/staff', staffCookie);
+    expect(after.status).toBe(200);
+    expect(after.body.myOpenActions.count).toBe(myOpenActionsBefore + 1);
+    expect(after.body.pendingFollowUps.count).toBe(pendingFollowUpsBefore + 1);
+
+    const myActionsQueue = await get('/api/staff/tickets?actionAssignee=me&pageSize=50', staffCookie);
+    expect(myActionsQueue.body.pagination.totalItems).toBe(after.body.myOpenActions.count);
+
+    const followUpQueue = await get('/api/staff/tickets?followUp=pending&pageSize=50', staffCookie);
+    expect(followUpQueue.body.pagination.totalItems).toBe(after.body.pendingFollowUps.count);
   });
 
   it('API-39b: an invalid statusGroup, actionAssignee or followUp value returns 400', async () => {
