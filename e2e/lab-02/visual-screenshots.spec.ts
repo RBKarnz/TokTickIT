@@ -15,13 +15,16 @@ test.describe('Automated Visual Screenshots (Lab 2)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
+    // Lab 4 FR-22: /dashboard is the post-login landing; navigate on to My Tickets.
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('http://localhost:5173/tickets');
     await expect(page).toHaveURL(/\/tickets|\/$/);
   });
 
   test('Capture My Tickets viewports', async ({ page }) => {
     for (const vp of viewports) {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto('http://localhost:5173/');
+      await page.goto('http://localhost:5173/tickets');
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(500);
       await page.screenshot({ path: path.join(screenshotsBase, 'my-tickets', `my-tickets-${vp.name}.png`), fullPage: true });
