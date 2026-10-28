@@ -3,7 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TicketDetailPage from '../../src/pages/TicketDetailPage.js';
-import { RequesterProvider } from '../../src/RequesterContext.js';
 
 vi.mock('../../src/api.js', () => ({
   fetchTicketDetail: vi.fn(() => Promise.resolve({
@@ -22,9 +21,7 @@ describe('RequesterTicketDetail UI', () => {
   it('renders the ticket details view spinner and loads', () => {
     const { container } = render(
       <MemoryRouter>
-        <RequesterProvider>
-          <TicketDetailPage />
-        </RequesterProvider>
+        <TicketDetailPage />
       </MemoryRouter>
     );
     expect(container.querySelector('.spinner-border')).toBeInTheDocument();

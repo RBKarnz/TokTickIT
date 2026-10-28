@@ -507,4 +507,35 @@ describe('Actions Taken API (Lab 4)', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe('security hardening (SEC-07, SEC-08)', () => {
+    it('SEC-07: the Action and its performer/assignee payload never leaks a password hash, session token or other secret', async () => {
+      const action = await createAction(staffCookie);
+      const res = await request(app).get(`/api/tickets/${ticket.id}/actions`).set('Cookie', staffCookie);
+      expect(res.status).toBe(200);
+      const serialized = JSON.stringify(res.body);
+      expect(serialized).not.toMatch(/passwordHash|tokenHash|sessionToken/i);
+      expect(serialized).toContain(String(action.id));
+      // Only the fields the API contract documents are present on performer/assignee.
+      const found = res.body.items.find((a: any) => a.id === action.id);
+      expect(Object.keys(found.performedBy).sort()).toEqual(['id', 'name']);
+      expect(Object.keys(found.assignedTo).sort()).toEqual(['email', 'id', 'name']);
+    });
+
+    it('SEC-08: a script-tag payload in description/result is stored and returned as plain text data, never executed or stripped', async () => {
+      const payload = '<script>alert(1)</script>';
+      const action = await createAction(staffCookie, { ...valid(), description: payload });
+      expect(action.description).toBe(payload);
+
+      const res = await request(app).get(`/api/tickets/${ticket.id}/actions`).set('Cookie', staffCookie);
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(/application\/json/);
+      const found = res.body.items.find((a: any) => a.id === action.id);
+      // The server returns the literal string inside a JSON string value; it is
+      // never unescaped into raw HTML, and the client renders it as text only
+      // (no dangerouslySetInnerHTML anywhere in the React tree), so the tag can
+      // never execute.
+      expect(found.description).toBe(payload);
+    });
+  });
 });

@@ -116,21 +116,6 @@ app.get('/api/systems', async (req, res) => {
   }
 });
 
-// Lab 2: Get active requesters (uses User model after Lab 3 migration)
-app.get('/api/requesters', async (req, res) => {
-  try {
-    const prisma = getPrisma();
-    const requesters = await prisma.user.findMany({
-      where: { isActive: true, role: 'REQUESTER' },
-      select: { id: true, name: true, email: true, isActive: true },
-      orderBy: { id: 'asc' }
-    });
-    res.status(200).json(requesters);
-  } catch (error) {
-    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch requesters" } });
-  }
-});
-
 // ---------------------------------------------------------------------------
 // Lab 3: Authentication Endpoints
 // ---------------------------------------------------------------------------

@@ -168,44 +168,44 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| STYLE-01 | Style | AC-27 | Zen Green design token compliance | New screens use the existing tokens: `#006B3C` primary, `#0B7A46` focus/secondary, `#F5F7F6` background | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-02 | A11y | AC-27 | Keyboard focus rings on all interactive elements | Visible 2px outline on tab focus | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-03 | A11y | AC-27 | Non-color status cues on all badges | Status and priority badges include text labels and icons | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-04 | Responsive | AC-27 | Desktop viewport (1280px) layout | 4-column metric grid; full width actions table; zero overflow | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-05 | Responsive | AC-27 | Tablet viewport (768px) layout | 2-column metric grid; readable cards; zero overflow | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-06 | Responsive | AC-27 | Mobile viewport (375px) layout | 1-column metric stack; actions as cards; zero horizontal scroll | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-07 | A11y | AC-27 | Form field label and error associations | Inputs linked to labels via `for` and errors via `aria-describedby` | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-08 | Responsive | AC-27 | Modal and drawer responsive containment | Modals wrap within mobile screen without clipping | `e2e/lab-04/style.spec.ts` | Planned |
+| STYLE-01 | Style | AC-27 | Zen Green design token compliance | New screens use the existing tokens: `#006B3C` primary, `#0B7A46` focus/secondary, `#F5F7F6` background | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-02 | A11y | AC-27 | Keyboard focus rings on all interactive elements | Visible 2px outline on tab focus | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-03 | A11y | AC-27 | Non-color status cues on all badges | Status and priority badges include text labels and icons | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-04 | Responsive | AC-27 | Desktop viewport (1280px) layout | 4-column metric grid; full width actions table; zero overflow | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-05 | Responsive | AC-27 | Tablet viewport (768px) layout | Metric grid stays 4 columns (Bootstrap `col-md-3` applies at the md breakpoint, 768px and up); readable cards; zero overflow | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-06 | Responsive | AC-27 | Mobile viewport (375px) layout | 2-column metric grid (`col-6` below the md breakpoint); actions as cards; zero horizontal scroll | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-07 | A11y | AC-27 | Form field label and error associations | Inputs linked to labels via `for` and errors via `aria-describedby` | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-08 | Responsive | AC-27 | Modal and drawer responsive containment | Modals wrap within mobile screen without clipping | `e2e/lab-04/style.spec.ts` | Pass |
 
 ## 10. E2E Tests
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| E2E-01 | E2E | AC-01, AC-07 | IT Staff records multiple actions on a ticket | Actions saved, assigned, listed in chronological order | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-02 | E2E | AC-06 | IT Staff transitions action through to COMPLETED | Status changes, result entered, editing locked post-completion | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-03 | E2E | AC-11 | Staff attempts to resolve ticket blocked by gate | Resolution modal alerts missing completed action; blocked | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-04 | E2E | AC-11 | Staff fulfills gate and confirms resolution | Ticket resolves; summary badge updates; history appends | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-05 | E2E | AC-08 | Requester logs in and views resolved ticket | Sees all staff actions read-only and resolution notice | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-06 | E2E | AC-15 | Administrator claims, updates status, and logs action | Admin operates seamlessly in staff ticket workflow | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
+| E2E-01 | E2E | AC-01, AC-07 | IT Staff records multiple actions on a ticket | Actions saved, assigned, listed in chronological order | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-02 | E2E | AC-06 | IT Staff transitions action through to COMPLETED | Status changes, result entered, editing locked post-completion | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-03 | E2E | AC-11 | Staff attempts to resolve ticket blocked by gate | Resolution modal alerts missing completed action; blocked | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-04 | E2E | AC-11 | Staff fulfills gate and confirms resolution | Ticket resolves; summary badge updates; history appends | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-05 | E2E | AC-08 | Requester logs in and views resolved ticket | Sees all staff actions read-only and resolution notice | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-06 | E2E | AC-15 | Administrator claims, updates status, and logs action | Admin operates seamlessly in staff ticket workflow | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
 | E2E-07 | E2E | AC-20 | Login landing page routing for all three roles | Requester, Staff, and Admin land on respective `/dashboard` | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | E2E-08 | E2E | AC-18 | Staff dashboard metric drill-down navigation | Clicking "Unassigned" opens queue filtered by unassigned open | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | E2E-09 | E2E | AC-18 | Requester dashboard metric drill-down navigation | Clicking "Waiting for Me" opens My Tickets filtered | `e2e/lab-04/dashboards.spec.ts` | Pass |
-| E2E-10 | E2E | AC-14 | Stale update detection in dual-browser simulation | Second user receives 409 conflict alert; typed input preserved | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-11 | E2E | AC-09 | Double-click action creation prevention | Rapid double click submits single request; creates 1 action | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-12 | E2E | AC-24 | Regression smoke: ticket creation, attachment, comment | Core Lab 1–3 user journey completes without regressions | `e2e/lab-04/dashboards.spec.ts` | Planned |
+| E2E-10 | E2E | AC-14 | Stale update detection in dual-browser simulation | Second user receives 409 conflict alert; typed input preserved | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-11 | E2E | AC-09 | Double-click action creation prevention | Rapid double click submits single request; creates 1 action | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-12 | E2E | AC-24 | Regression smoke: ticket creation, attachment, comment | Core Lab 1–3 user journey completes without regressions | ticket creation: `e2e/lab-03/authentication.spec.ts` ("Core Regression"); comment post + persistence: `e2e/lab-03/staff-ticket-flow.spec.ts` (E2E-17 & E2E-18); attachment view/download continuity: `e2e/lab-03/staff-ticket-flow.spec.ts` (E2E-21) | Pass |
 
 ## 11. Security Tests
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| SEC-01 | Security | AC-23 | State-changing request missing `X-CSRF-Token` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-02 | Security | AC-23 | State-changing request with forged CSRF token | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-03 | Security | AC-23 | State-changing request from unauthorized `Origin` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-04 | Security | AC-08 | Requester calls direct POST to create Action Taken | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-05 | Security | AC-08 | Requester calls direct GET for other user's actions | 404 Not Found (safe non-disclosure) | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-06 | Security | AC-03 | Client sends forged `performedById` parameter | Server ignores parameter; stores authenticated user ID | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-07 | Security | AC-30 | API response payload auditing | No passwords, hashes, session secrets in responses | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| SEC-08 | Security | AC-30 | XSS payload injection in action description | Script tags safely escaped and rendered as text | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| SEC-01 | Security | AC-23 | State-changing request missing `X-CSRF-Token` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-02 | Security | AC-23 | State-changing request with forged CSRF token | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-03 | Security | AC-23 | State-changing request from unauthorized `Origin` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-04 | Security | AC-08 | Requester calls direct POST to create Action Taken | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-05 | Security | AC-08 | Requester calls direct GET for other user's actions | 404 Not Found (safe non-disclosure) | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-06 | Security | AC-03 | Client sends forged `performedById` parameter | Server ignores parameter; stores authenticated user ID | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-07 | Security | AC-30 | API response payload auditing | No passwords, hashes, session secrets in responses | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-08 | Security | AC-30 | XSS payload injection in action description | Script tags safely escaped and rendered as text | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 
 ## 12. Lab 1–3 Regression Coverage
 

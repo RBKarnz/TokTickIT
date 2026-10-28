@@ -32,15 +32,6 @@ export async function checkSystem(): Promise<SystemStatus> {
   return { online: true, categories: categories };
 }
 
-// Lab 2: Fetch active requesters
-export async function fetchRequesters() {
-  const res = await csrfFetch(`${API_URL}/api/requesters`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch requesters.");
-  }
-  return await res.json();
-}
-
 // Lab 2: Fetch active categories directly
 export async function fetchCategories() {
   const res = await csrfFetch(`${API_URL}/api/categories`);

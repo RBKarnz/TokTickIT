@@ -115,7 +115,7 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
       await firstTicket.click();
       await expect(page).toHaveURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
@@ -165,7 +165,7 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
       await firstTicket.click();
       await expect(page).toHaveURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
