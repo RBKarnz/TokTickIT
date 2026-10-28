@@ -168,14 +168,14 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| STYLE-01 | Style | AC-27 | Zen Green design token compliance | New screens use the existing tokens: `#006B3C` primary, `#0B7A46` focus/secondary, `#F5F7F6` background | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-02 | A11y | AC-27 | Keyboard focus rings on all interactive elements | Visible 2px outline on tab focus | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-03 | A11y | AC-27 | Non-color status cues on all badges | Status and priority badges include text labels and icons | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-04 | Responsive | AC-27 | Desktop viewport (1280px) layout | 4-column metric grid; full width actions table; zero overflow | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-05 | Responsive | AC-27 | Tablet viewport (768px) layout | 2-column metric grid; readable cards; zero overflow | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-06 | Responsive | AC-27 | Mobile viewport (375px) layout | 1-column metric stack; actions as cards; zero horizontal scroll | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-07 | A11y | AC-27 | Form field label and error associations | Inputs linked to labels via `for` and errors via `aria-describedby` | `e2e/lab-04/style.spec.ts` | Planned |
-| STYLE-08 | Responsive | AC-27 | Modal and drawer responsive containment | Modals wrap within mobile screen without clipping | `e2e/lab-04/style.spec.ts` | Planned |
+| STYLE-01 | Style | AC-27 | Zen Green design token compliance | New screens use the existing tokens: `#006B3C` primary, `#0B7A46` focus/secondary, `#F5F7F6` background | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-02 | A11y | AC-27 | Keyboard focus rings on all interactive elements | Visible 2px outline on tab focus | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-03 | A11y | AC-27 | Non-color status cues on all badges | Status and priority badges include text labels and icons | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-04 | Responsive | AC-27 | Desktop viewport (1280px) layout | 4-column metric grid; full width actions table; zero overflow | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-05 | Responsive | AC-27 | Tablet viewport (768px) layout | 2-column metric grid; readable cards; zero overflow | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-06 | Responsive | AC-27 | Mobile viewport (375px) layout | 1-column metric stack; actions as cards; zero horizontal scroll | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-07 | A11y | AC-27 | Form field label and error associations | Inputs linked to labels via `for` and errors via `aria-describedby` | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-08 | Responsive | AC-27 | Modal and drawer responsive containment | Modals wrap within mobile screen without clipping | `e2e/lab-04/style.spec.ts` | Pass |
 
 ## 10. E2E Tests
 
