@@ -181,18 +181,18 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| E2E-01 | E2E | AC-01, AC-07 | IT Staff records multiple actions on a ticket | Actions saved, assigned, listed in chronological order | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-02 | E2E | AC-06 | IT Staff transitions action through to COMPLETED | Status changes, result entered, editing locked post-completion | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-03 | E2E | AC-11 | Staff attempts to resolve ticket blocked by gate | Resolution modal alerts missing completed action; blocked | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-04 | E2E | AC-11 | Staff fulfills gate and confirms resolution | Ticket resolves; summary badge updates; history appends | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-05 | E2E | AC-08 | Requester logs in and views resolved ticket | Sees all staff actions read-only and resolution notice | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-06 | E2E | AC-15 | Administrator claims, updates status, and logs action | Admin operates seamlessly in staff ticket workflow | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
+| E2E-01 | E2E | AC-01, AC-07 | IT Staff records multiple actions on a ticket | Actions saved, assigned, listed in chronological order | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-02 | E2E | AC-06 | IT Staff transitions action through to COMPLETED | Status changes, result entered, editing locked post-completion | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-03 | E2E | AC-11 | Staff attempts to resolve ticket blocked by gate | Resolution modal alerts missing completed action; blocked | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-04 | E2E | AC-11 | Staff fulfills gate and confirms resolution | Ticket resolves; summary badge updates; history appends | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-05 | E2E | AC-08 | Requester logs in and views resolved ticket | Sees all staff actions read-only and resolution notice | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-06 | E2E | AC-15 | Administrator claims, updates status, and logs action | Admin operates seamlessly in staff ticket workflow | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
 | E2E-07 | E2E | AC-20 | Login landing page routing for all three roles | Requester, Staff, and Admin land on respective `/dashboard` | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | E2E-08 | E2E | AC-18 | Staff dashboard metric drill-down navigation | Clicking "Unassigned" opens queue filtered by unassigned open | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | E2E-09 | E2E | AC-18 | Requester dashboard metric drill-down navigation | Clicking "Waiting for Me" opens My Tickets filtered | `e2e/lab-04/dashboards.spec.ts` | Pass |
-| E2E-10 | E2E | AC-14 | Stale update detection in dual-browser simulation | Second user receives 409 conflict alert; typed input preserved | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-11 | E2E | AC-09 | Double-click action creation prevention | Rapid double click submits single request; creates 1 action | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-12 | E2E | AC-24 | Regression smoke: ticket creation, attachment, comment | Core Lab 1–3 user journey completes without regressions | `e2e/lab-04/dashboards.spec.ts` | Planned |
+| E2E-10 | E2E | AC-14 | Stale update detection in dual-browser simulation | Second user receives 409 conflict alert; typed input preserved | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-11 | E2E | AC-09 | Double-click action creation prevention | Rapid double click submits single request; creates 1 action | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-12 | E2E | AC-24 | Regression smoke: ticket creation, attachment, comment | Core Lab 1–3 user journey completes without regressions | `e2e/lab-03/authentication.spec.ts` ("Core Regression"), `e2e/lab-02/*` | Pass |
 
 ## 11. Security Tests
 
