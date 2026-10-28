@@ -182,6 +182,21 @@ describe('Actions Taken UI (Lab 4)', () => {
     expect(rows[3]).toHaveTextContent('Cancelled');
   });
 
+  // SEC-08 (AC-30): backs up the server round-trip test with a render-level check —
+  // the description is a script-tag payload, and the component has no
+  // dangerouslySetInnerHTML anywhere, so React renders it as literal text, never markup.
+  it('SEC-08: a script-tag Action description renders as literal text, not executable markup', async () => {
+    const payload = '<script>alert(1)</script>';
+    vi.spyOn(api, 'fetchActions').mockResolvedValue([{ ...mockActions[0], description: payload }]);
+    renderTicketDetail();
+    await screen.findByText('TCK-2026-000020');
+    fireEvent.click(screen.getByRole('button', { name: /actions taken/i }));
+
+    const row = await screen.findByTestId('action-row');
+    expect(row).toHaveTextContent(payload);
+    expect(row.querySelector('script')).toBeNull();
+  });
+
   // UI-07 (AC-04)
   it('UI-07: Follow-up note appears and is required only when Follow-Up Required is checked; request is not sent without it', async () => {
     const createSpy = vi.spyOn(api, 'createAction').mockResolvedValue(mockActions[0]);

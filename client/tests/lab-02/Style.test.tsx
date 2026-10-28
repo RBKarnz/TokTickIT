@@ -4,7 +4,6 @@ import { render } from '@testing-library/react';
 import App from '../../src/App.js';
 
 vi.mock('../../src/api.js', () => ({
-  fetchRequesters: vi.fn(() => Promise.resolve([])),
   checkSystem: vi.fn(() => Promise.resolve({ healthy: true }))
 }));
 

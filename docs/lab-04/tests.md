@@ -172,8 +172,8 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | STYLE-02 | A11y | AC-27 | Keyboard focus rings on all interactive elements | Visible 2px outline on tab focus | `e2e/lab-04/style.spec.ts` | Pass |
 | STYLE-03 | A11y | AC-27 | Non-color status cues on all badges | Status and priority badges include text labels and icons | `e2e/lab-04/style.spec.ts` | Pass |
 | STYLE-04 | Responsive | AC-27 | Desktop viewport (1280px) layout | 4-column metric grid; full width actions table; zero overflow | `e2e/lab-04/style.spec.ts` | Pass |
-| STYLE-05 | Responsive | AC-27 | Tablet viewport (768px) layout | 2-column metric grid; readable cards; zero overflow | `e2e/lab-04/style.spec.ts` | Pass |
-| STYLE-06 | Responsive | AC-27 | Mobile viewport (375px) layout | 1-column metric stack; actions as cards; zero horizontal scroll | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-05 | Responsive | AC-27 | Tablet viewport (768px) layout | Metric grid stays 4 columns (Bootstrap `col-md-3` applies at the md breakpoint, 768px and up); readable cards; zero overflow | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-06 | Responsive | AC-27 | Mobile viewport (375px) layout | 2-column metric grid (`col-6` below the md breakpoint); actions as cards; zero horizontal scroll | `e2e/lab-04/style.spec.ts` | Pass |
 | STYLE-07 | A11y | AC-27 | Form field label and error associations | Inputs linked to labels via `for` and errors via `aria-describedby` | `e2e/lab-04/style.spec.ts` | Pass |
 | STYLE-08 | Responsive | AC-27 | Modal and drawer responsive containment | Modals wrap within mobile screen without clipping | `e2e/lab-04/style.spec.ts` | Pass |
 
@@ -192,7 +192,7 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | E2E-09 | E2E | AC-18 | Requester dashboard metric drill-down navigation | Clicking "Waiting for Me" opens My Tickets filtered | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | E2E-10 | E2E | AC-14 | Stale update detection in dual-browser simulation | Second user receives 409 conflict alert; typed input preserved | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
 | E2E-11 | E2E | AC-09 | Double-click action creation prevention | Rapid double click submits single request; creates 1 action | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
-| E2E-12 | E2E | AC-24 | Regression smoke: ticket creation, attachment, comment | Core Lab 1–3 user journey completes without regressions | `e2e/lab-03/authentication.spec.ts` ("Core Regression"), `e2e/lab-02/*` | Pass |
+| E2E-12 | E2E | AC-24 | Regression smoke: ticket creation, attachment, comment | Core Lab 1–3 user journey completes without regressions | ticket creation: `e2e/lab-03/authentication.spec.ts` ("Core Regression"); comment post + persistence: `e2e/lab-03/staff-ticket-flow.spec.ts` (E2E-17 & E2E-18); attachment view/download continuity: `e2e/lab-03/staff-ticket-flow.spec.ts` (E2E-21) | Pass |
 
 ## 11. Security Tests
 
