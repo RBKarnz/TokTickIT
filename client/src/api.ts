@@ -89,6 +89,7 @@ export async function fetchMyTickets(paramsOrId?: any, maybeParams?: any) {
   if (params.search) query.append('search', params.search);
   if (params.categoryId) query.append('categoryId', params.categoryId);
   if (params.status) query.append('status', params.status);
+  if (params.statusGroup) query.append('statusGroup', params.statusGroup);
   if (params.sort) query.append('sort', params.sort);
   if (params.startDate) query.append('startDate', params.startDate);
   if (params.endDate) query.append('endDate', params.endDate);
@@ -248,7 +249,7 @@ export interface QueueQueryParams {
   requestedPriority?: string;
   itPriority?: string;
   ownership?: 'assigned' | 'unassigned' | '';
-  ownerId?: number | '';
+  ownerId?: number | 'me' | '';
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   sort?: string;
@@ -256,6 +257,10 @@ export interface QueueQueryParams {
   endDate?: string;
   page?: number;
   pageSize?: number;
+  // Lab 4 dashboard drill-downs (api-spec §6.1).
+  statusGroup?: 'open' | '';
+  actionAssignee?: 'me' | '';
+  followUp?: 'pending' | '';
 }
 
 export interface StaffQueueResponse {
@@ -284,6 +289,9 @@ export async function fetchStaffQueue(params: QueueQueryParams = {}): Promise<St
   if (params.endDate) query.set('endDate', params.endDate);
   if (params.page) query.set('page', String(params.page));
   if (params.pageSize) query.set('pageSize', String(params.pageSize));
+  if (params.statusGroup) query.set('statusGroup', params.statusGroup);
+  if (params.actionAssignee) query.set('actionAssignee', params.actionAssignee);
+  if (params.followUp) query.set('followUp', params.followUp);
 
   const res = await csrfFetch(`${API_URL}/api/staff/tickets?${query.toString()}`, { credentials: 'include' });
   if (!res.ok) {
@@ -678,6 +686,76 @@ export async function updateAction(
     await handleActionError(res);
   }
   return await res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Lab 4: Role Dashboards (api-spec §5)
+// ---------------------------------------------------------------------------
+
+export interface DashboardMetric {
+  count: number;
+  drillDown: string;
+}
+
+export interface RequesterTicketSummary {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  status: string;
+  updatedAt: string;
+}
+
+export interface StaffTicketSummary extends RequesterTicketSummary {
+  itPriority: string;
+}
+
+export interface RequesterDashboard {
+  openTickets: DashboardMetric;
+  waitingForMe: DashboardMetric;
+  resolved: DashboardMetric;
+  closed: DashboardMetric;
+  recentlyUpdated: RequesterTicketSummary[];
+  recentlyResolved: RequesterTicketSummary[];
+  generatedAt: string;
+  timeZone: string;
+}
+
+export interface StaffDashboardUserBucket {
+  active: number;
+  inactive: number;
+  drillDown: string;
+}
+
+export interface StaffDashboard {
+  unassigned: DashboardMetric;
+  myOwnedOpen: DashboardMetric;
+  myOpenActions: DashboardMetric;
+  pendingFollowUps: DashboardMetric;
+  byStatus: Record<string, number>;
+  byItPriority: Record<string, number>;
+  urgent: StaffTicketSummary[];
+  recentlyUpdated: StaffTicketSummary[];
+  users?: Record<string, StaffDashboardUserBucket>;
+  generatedAt: string;
+  timeZone: string;
+}
+
+export async function fetchRequesterDashboard(): Promise<RequesterDashboard> {
+  const res = await csrfFetch(`${API_URL}/api/dashboard/requester`, { credentials: 'include' });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || `Failed to load the dashboard (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchStaffDashboard(): Promise<StaffDashboard> {
+  const res = await csrfFetch(`${API_URL}/api/dashboard/staff`, { credentials: 'include' });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || `Failed to load the dashboard (HTTP ${res.status})`);
+  }
+  return res.json();
 }
 
 

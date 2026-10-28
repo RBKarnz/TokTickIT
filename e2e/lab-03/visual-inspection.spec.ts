@@ -47,7 +47,8 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
     await page.locator('input[type="email"]').fill('admin@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/admin\/users/);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('/admin/users');
 
     await page.locator('input[placeholder*="Search"]').fill('firstlogin@toktickit.com');
     await page.waitForTimeout(300);
@@ -84,6 +85,8 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
       await page.locator('input[type="email"]').fill('requester1@toktickit.com');
       await page.locator('input[type="password"]').fill('Password123!');
       await page.locator('button[type="submit"]').click();
+      await expect(page).toHaveURL(/\/dashboard/);
+      await page.goto('/tickets');
       await expect(page).toHaveURL(/\/tickets|\/$/);
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
@@ -103,6 +106,8 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
       await page.locator('input[type="email"]').fill('requester1@toktickit.com');
       await page.locator('input[type="password"]').fill('Password123!');
       await page.locator('button[type="submit"]').click();
+      await expect(page).toHaveURL(/\/dashboard/);
+      await page.goto('/tickets');
       await expect(page).toHaveURL(/\/tickets|\/$/);
 
       const firstTicket = page.locator('tr:has-text("TKT-"):visible, .card:has-text("TKT-"):visible').first();
@@ -130,6 +135,8 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
       await page.locator('input[type="email"]').fill('staff1@toktickit.com');
       await page.locator('input[type="password"]').fill('Password123!');
       await page.locator('button[type="submit"]').click();
+      await expect(page).toHaveURL(/\/dashboard/);
+      await page.goto('/staff/queue');
       await expect(page).toHaveURL(/\/staff\/queue/);
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
@@ -149,6 +156,8 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
       await page.locator('input[type="email"]').fill('staff1@toktickit.com');
       await page.locator('input[type="password"]').fill('Password123!');
       await page.locator('button[type="submit"]').click();
+      await expect(page).toHaveURL(/\/dashboard/);
+      await page.goto('/staff/queue');
       await expect(page).toHaveURL(/\/staff\/queue/);
 
       const firstTicket = page.locator('tr:has-text("TKT-"):visible, .card:has-text("TKT-"):visible').first();
@@ -176,6 +185,8 @@ test.describe('Responsive State & Visual Inspection (21 Visual Snapshots)', () =
       await page.locator('input[type="email"]').fill('admin@toktickit.com');
       await page.locator('input[type="password"]').fill('Password123!');
       await page.locator('button[type="submit"]').click();
+      await expect(page).toHaveURL(/\/dashboard/);
+      await page.goto('/admin/users');
       await expect(page).toHaveURL(/\/admin\/users/);
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);

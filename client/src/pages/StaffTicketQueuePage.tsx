@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchStaffQueue,
   fetchStaffUsers,
@@ -17,15 +17,22 @@ interface StaffUser {
 
 export default function StaffTicketQueuePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Filters & Search & Pagination state
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || '');
   const [sort, setSort] = useState('updated_desc');
   // selectedOwner: "" (all) | "assigned" | "unassigned" | string(staffId)
-  const [selectedOwner, setSelectedOwner] = useState('');
+  const [selectedOwner, setSelectedOwner] = useState(() => {
+    const ownership = searchParams.get('ownership');
+    const ownerId = searchParams.get('ownerId');
+    if (ownership === 'assigned' || ownership === 'unassigned') return ownership;
+    if (ownerId) return ownerId;
+    return '';
+  });
   const [isOwnerDropdownOpen, setIsOwnerDropdownOpen] = useState(false);
   const [isStaffSubmenuOpen, setIsStaffSubmenuOpen] = useState(false);
   const [staffSearch, setStaffSearch] = useState('');
@@ -35,6 +42,28 @@ export default function StaffTicketQueuePage() {
   const [pageSize, setPageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [totalTickets, setTotalTickets] = useState(0);
+
+  // Lab 4 dashboard drill-down (AC-18): these filters have no dedicated UI
+  // control; they are carried only through the URL a dashboard card links to.
+  const [statusGroup, setStatusGroup] = useState(searchParams.get('statusGroup') || '');
+  const [actionAssignee, setActionAssignee] = useState(searchParams.get('actionAssignee') || '');
+  const [followUp, setFollowUp] = useState(searchParams.get('followUp') || '');
+  const [itPriorityFilter, setItPriorityFilter] = useState(searchParams.get('itPriority') || '');
+  const [fromDashboard, setFromDashboard] = useState(
+    Boolean(searchParams.get('statusGroup') || searchParams.get('actionAssignee') || searchParams.get('followUp') || searchParams.get('itPriority'))
+  );
+
+  const clearDashboardFilter = () => {
+    setSearchParams({});
+    setSelectedStatus('');
+    setSelectedOwner('');
+    setStatusGroup('');
+    setActionAssignee('');
+    setFollowUp('');
+    setItPriorityFilter('');
+    setFromDashboard(false);
+    setPage(1);
+  };
 
   const ownerDropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -78,12 +107,14 @@ export default function StaffTicketQueuePage() {
     setError('');
     try {
       let ownership: 'assigned' | 'unassigned' | undefined = undefined;
-      let ownerId: number | undefined = undefined;
+      let ownerId: number | 'me' | undefined = undefined;
 
       if (selectedOwner === 'assigned') {
         ownership = 'assigned';
       } else if (selectedOwner === 'unassigned') {
         ownership = 'unassigned';
+      } else if (selectedOwner === 'me') {
+        ownerId = 'me';
       } else if (selectedOwner) {
         ownerId = parseInt(selectedOwner, 10);
       }
@@ -95,6 +126,10 @@ export default function StaffTicketQueuePage() {
         sort: sort,
         ownership,
         ownerId,
+        statusGroup: (statusGroup as 'open' | '') || undefined,
+        actionAssignee: (actionAssignee as 'me' | '') || undefined,
+        followUp: (followUp as 'pending' | '') || undefined,
+        itPriority: itPriorityFilter || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         page,
@@ -113,7 +148,7 @@ export default function StaffTicketQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedCategory, selectedStatus, sort, selectedOwner, startDate, endDate, page, pageSize]);
+  }, [debouncedSearch, selectedCategory, selectedStatus, sort, selectedOwner, statusGroup, actionAssignee, followUp, itPriorityFilter, startDate, endDate, page, pageSize]);
 
   useEffect(() => {
     loadQueue();
@@ -133,6 +168,7 @@ export default function StaffTicketQueuePage() {
     setStartDate('');
     setEndDate('');
     setPage(1);
+    clearDashboardFilter();
   };
 
   const filteredStaff = staffUsers.filter((u) =>
@@ -143,6 +179,7 @@ export default function StaffTicketQueuePage() {
     if (!selectedOwner) return 'All Owners';
     if (selectedOwner === 'assigned') return 'Assigned';
     if (selectedOwner === 'unassigned') return 'Unassigned';
+    if (selectedOwner === 'me') return 'My Tickets';
     const found = staffUsers.find((u) => u.id.toString() === selectedOwner);
     return found ? found.name : 'All Owners';
   };
@@ -163,6 +200,17 @@ export default function StaffTicketQueuePage() {
           <p className="text-muted mb-0">Operational triage & resolution queue</p>
         </div>
       </div>
+
+      {fromDashboard && (
+        <div className="d-flex align-items-center gap-2 mb-3">
+          <span className="badge rounded-pill d-inline-flex align-items-center gap-1" style={{ backgroundColor: '#EAF6EF', color: '#0B7A46', border: '1px solid #A7F3D0' }}>
+            <i className="bi bi-funnel-fill"></i>Filtered from Dashboard
+          </span>
+          <button type="button" className="btn btn-sm btn-link text-decoration-none p-0" onClick={clearDashboardFilter}>
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Filter Card (identical layout to MyTicketsPage) */}
       <div className="card shadow-sm mb-4" style={{ border: '1px solid #E2E8F0' }}>

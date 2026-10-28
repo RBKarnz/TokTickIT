@@ -5,6 +5,9 @@ async function adminLogin(page: any) {
   await page.locator('input[type="email"]').fill('admin@toktickit.com');
   await page.locator('input[type="password"]').fill('Password123!');
   await page.locator('button[type="submit"]').click();
+  // Lab 4 FR-22: /dashboard is the post-login landing; navigate on to User Management.
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto('/admin/users');
   await expect(page).toHaveURL(/\/admin\/users/);
 }
 
@@ -155,9 +158,9 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     await userPage.locator('input#confirm').fill(updatedPass);
     await userPage.locator('button[type="submit"]').click();
 
-    // Lands on role home shell (/staff/queue for IT_STAFF)
-    await expect(userPage).toHaveURL(/\/staff\/queue/);
-    await expect(userPage.locator('h1, h2')).toContainText(/Ticket Queue/i);
+    // Lab 4 FR-22: lands on the Dashboard regardless of role.
+    await expect(userPage).toHaveURL(/\/dashboard/);
+    await expect(userPage.locator('h1')).toContainText(/Welcome back/i);
 
     await userContext.close();
   });
@@ -216,7 +219,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     await userPage.locator('input[type="email"]').fill('requester3@toktickit.com');
     await userPage.locator('input[type="password"]').fill('Password123!');
     await userPage.locator('button[type="submit"]').click();
-    await expect(userPage).toHaveURL(/\/tickets|\/$/);
+    await expect(userPage).toHaveURL(/\/dashboard/);
 
     // 2. Admin resets initial password in context B
     await adminLogin(page);
@@ -247,7 +250,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     await userPage.locator('input#newPwd').fill('Password123!');
     await userPage.locator('input#confirm').fill('Password123!');
     await userPage.locator('button[type="submit"]').click();
-    await expect(userPage).toHaveURL(/\/tickets|\/$/);
+    await expect(userPage).toHaveURL(/\/dashboard/);
 
     await userContext.close();
   });
@@ -293,7 +296,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/tickets|\/$/);
+    await expect(page).toHaveURL(/\/dashboard/);
 
     await page.goto('/admin/users');
     await expect(page).not.toHaveURL(/\/admin\/users/);
@@ -305,7 +308,7 @@ test.describe('Administrator User Management (E2E-22 to E2E-32)', () => {
     await page.locator('input[type="email"]').fill('staff1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/staff\/queue/);
+    await expect(page).toHaveURL(/\/dashboard/);
 
     await page.goto('/admin/users');
     await expect(page).not.toHaveURL(/\/admin\/users/);

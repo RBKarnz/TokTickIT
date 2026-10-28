@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext.js';
 import { fetchMyTickets, fetchCategories, Category } from '../api.js';
 import { getPriorityBadge, getStatusBadge } from '../utils.js';
@@ -18,22 +18,38 @@ interface Ticket {
 export default function MyTicketsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Filters & Pagination state
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || '');
   const [sort, setSort] = useState('updated_desc');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Lab 4 dashboard drill-down (AC-18): statusGroup=open has no dedicated
+  // dropdown option; it is carried only through the URL a dashboard card links to.
+  const [statusGroup, setStatusGroup] = useState(searchParams.get('statusGroup') || '');
+  const [fromDashboard, setFromDashboard] = useState(
+    Boolean(searchParams.get('statusGroup') || searchParams.get('status'))
+  );
+
+  const clearDashboardFilter = () => {
+    setSearchParams({});
+    setSelectedStatus('');
+    setStatusGroup('');
+    setFromDashboard(false);
+    setPage(1);
+  };
 
   // Debounce search
   useEffect(() => {
@@ -52,6 +68,7 @@ export default function MyTicketsPage() {
         search: debouncedSearch,
         categoryId: selectedCategory,
         status: selectedStatus,
+        statusGroup: statusGroup || undefined,
         sort: sort,
         startDate: startDate,
         endDate: endDate,
@@ -65,7 +82,7 @@ export default function MyTicketsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, debouncedSearch, selectedCategory, selectedStatus, sort, startDate, endDate, page, pageSize]);
+  }, [user, debouncedSearch, selectedCategory, selectedStatus, statusGroup, sort, startDate, endDate, page, pageSize]);
 
   useEffect(() => {
     loadTickets();
@@ -95,6 +112,17 @@ export default function MyTicketsPage() {
           <i className="bi bi-plus-circle me-2"></i> Create Ticket
         </a>
       </div>
+
+      {fromDashboard && (
+        <div className="d-flex align-items-center gap-2 mb-3">
+          <span className="badge rounded-pill d-inline-flex align-items-center gap-1" style={{ backgroundColor: '#EAF6EF', color: '#0B7A46', border: '1px solid #A7F3D0' }}>
+            <i className="bi bi-funnel-fill"></i>Filtered from Dashboard
+          </span>
+          <button type="button" className="btn btn-sm btn-link text-decoration-none p-0" onClick={clearDashboardFilter}>
+            Clear
+          </button>
+        </div>
+      )}
 
       <div className="card shadow-sm mb-4" style={{ border: '1px solid #E2E8F0' }}>
         <div className="card-body bg-light">
