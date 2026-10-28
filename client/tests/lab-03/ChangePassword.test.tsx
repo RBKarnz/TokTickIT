@@ -110,7 +110,7 @@ describe('ChangePassword Component (Lab 3)', () => {
 
     await waitFor(
       () => {
-        expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+        expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
       },
       { timeout: 2500 }
     );

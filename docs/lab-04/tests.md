@@ -76,11 +76,11 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | API-33 | API | AC-12 | Requester calls `problem-appears-resolved` | 200 OK, timestamp recorded, status stays unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | API-34 | API | AC-13 | Retrieve status history for ticket after transitions | 200 OK, list ordered `createdAt ASC, id ASC`, actor populated | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | API-35 | API | AC-14 | Status transition with stale `expectedVersion` | 409 Conflict with code `STALE_UPDATE` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
-| API-36 | API | AC-02 | Requester retrieves dashboard data | 200 OK, counts and lists contain only requester's tickets | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-37 | API | AC-16 | IT Staff dashboard metrics match direct database queries | 200 OK, every metric value matches Prisma count assertion | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-38 | API | AC-17 | Administrator dashboard returns user counts | 200 OK, active and inactive counts per role present | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-39 | API | AC-18 | Staff queue API accepts drill-down parameters (`actionAssignee=me`) | 200 OK, filtered list matches dashboard action count | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-40 | API | AC-19 | Dashboard endpoint on empty database state | 200 OK, counts are 0, arrays are empty `[]`, never `null` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| API-36 | API | AC-02 | Requester retrieves dashboard data | 200 OK, counts and lists contain only requester's tickets | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-37 | API | AC-16 | IT Staff dashboard metrics match direct database queries | 200 OK, every metric value matches Prisma count assertion | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-38 | API | AC-17 | Administrator dashboard returns user counts | 200 OK, active and inactive counts per role present | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-39 | API | AC-18 | Staff queue API accepts drill-down parameters (`actionAssignee=me`) | 200 OK, filtered list matches dashboard action count | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-40 | API | AC-19 | Dashboard endpoint on empty database state | 200 OK, counts are 0, arrays are empty `[]`, never `null` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
 | API-41 | API | AC-01 | List assignable users for the Actions Taken form | 200 OK, active IT Staff and Administrators only, inactive users excluded | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-42 | API | AC-08 | Requester requests the assignable user list | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-43 | API | AC-01 | Assignable user list without a session | 401 Unauthorized | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
@@ -98,9 +98,9 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | UNIT-03 | Unit | AC-11 | Resolution gate pure evaluator | Evaluates summary, completed action, follow-up flags | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | UNIT-04 | Unit | AC-04 | Follow-up note validator | Rejects empty note if follow-up required is true | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | UNIT-05 | Unit | AC-01 | Action datetime tolerance checker | Rejects timestamps > 5 minutes in future | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
-| UNIT-06 | Unit | AC-16 | Open group status classifier | Maps 5 statuses to Open group, 3 to Non-Open | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| UNIT-07 | Unit | AC-02 | Asia/Bangkok 7-day rolling window calculator | Calculates rolling 168h boundary without timezone offset errors | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| UNIT-08 | Unit | AC-16 | Dashboard metric builder aggregator | Correctly folds Prisma aggregates into response envelope | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| UNIT-06 | Unit | AC-16 | Open group status classifier | Maps 5 statuses to Open group, 3 to Non-Open | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| UNIT-07 | Unit | AC-02 | Asia/Bangkok 7-day rolling window calculator | Calculates rolling 168h boundary without timezone offset errors | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| UNIT-08 | Unit | AC-16 | Dashboard metric builder aggregator | Correctly folds Prisma aggregates into response envelope | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
 
 ## 5. Workflow Tests
 
@@ -128,18 +128,18 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| PERF-01 | Performance | AC-28 | Requester dashboard latency under load | p95 response time < 500 ms over 20 consecutive requests | `server/tests/lab-04/performance.smoke.test.ts` | Planned |
-| PERF-02 | Performance | AC-28 | Staff & Admin dashboard latency under load | p95 response time < 500 ms over 20 consecutive requests | `server/tests/lab-04/performance.smoke.test.ts` | Planned |
+| PERF-01 | Performance | AC-28 | Requester dashboard latency under load | p95 response time < 500 ms over 20 consecutive requests | `server/tests/lab-04/performance.smoke.test.ts` | Pass |
+| PERF-02 | Performance | AC-28 | Staff & Admin dashboard latency under load | p95 response time < 500 ms over 20 consecutive requests | `server/tests/lab-04/performance.smoke.test.ts` | Pass |
 
 ## 8. UI Component Tests
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| UI-01 | UI | AC-19, AC-20 | Requester dashboard metric cards rendering | Displays 4 metric values and accessible drill-down links | `client/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
-| UI-02 | UI | AC-19 | Requester dashboard zero/empty states | Renders "0" count and empty list container cleanly | `client/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
-| UI-03 | UI | AC-16, AC-20 | Staff dashboard metric cards rendering | Displays operational cards, status pills, urgent list | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
-| UI-04 | UI | AC-17 | Administrator dashboard user account breakdown | Renders active/inactive user counts per role | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
-| UI-05 | UI | AC-18 | Dashboard drill-down link parameters | Clicking metric navigates to queue with pre-filled filters | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
+| UI-01 | UI | AC-19, AC-20 | Requester dashboard metric cards rendering | Displays 4 metric values and accessible drill-down links | `client/tests/lab-04/RequesterDashboard.test.tsx` | Pass |
+| UI-02 | UI | AC-19 | Requester dashboard zero/empty states | Renders "0" count and empty list container cleanly | `client/tests/lab-04/RequesterDashboard.test.tsx` | Pass |
+| UI-03 | UI | AC-16, AC-20 | Staff dashboard metric cards rendering | Displays operational cards, status pills, urgent list | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
+| UI-04 | UI | AC-17 | Administrator dashboard user account breakdown | Renders active/inactive user counts per role | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
+| UI-05 | UI | AC-18 | Dashboard drill-down link parameters | Clicking metric navigates to queue with pre-filled filters | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
 | UI-06 | UI | AC-07 | Actions Taken list rendering on Ticket Detail | Lists actions with formatted timestamps and status badges | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-07 | UI | AC-04 | Create action conditional follow-up validation | Checking follow-up reveals required note field | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-08 | UI | AC-06 | Edit action status dropdown filtering | Shows only permitted next action statuses | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
@@ -150,7 +150,7 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | UI-13 | UI | AC-11 | Resolution gate modal checklist rendering | Checks off passed criteria; disables confirm on missing items | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 | UI-14 | UI | AC-13 | Status history timeline rendering | Displays chronological entries with actor, time, and reason | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 | UI-15 | UI | AC-15 | Administrator operational ticket view | Full staff operations accessible without permission errors | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
-| UI-16 | UI | AC-20 | Header navigation active page highlight | Applies `aria-current="page"` and green underline to active route | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
+| UI-16 | UI | AC-20 | Header navigation active page highlight | Applies `aria-current="page"` and green underline to active route | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
 | UI-17 | UI | AC-09 | Double click on Save Action | `createAction` is called exactly once | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-18 | UI | AC-09, AC-25 | Create fails, then retry | Typed values kept; retry sends the same `Idempotency-Key`; one action added | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-19 | UI | AC-07 | Actions Taken loading, empty and load-failure states | Failure alert with Retry, loading indicator, empty message | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
@@ -187,9 +187,9 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | E2E-04 | E2E | AC-11 | Staff fulfills gate and confirms resolution | Ticket resolves; summary badge updates; history appends | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
 | E2E-05 | E2E | AC-08 | Requester logs in and views resolved ticket | Sees all staff actions read-only and resolution notice | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
 | E2E-06 | E2E | AC-15 | Administrator claims, updates status, and logs action | Admin operates seamlessly in staff ticket workflow | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-07 | E2E | AC-20 | Login landing page routing for all three roles | Requester, Staff, and Admin land on respective `/dashboard` | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| E2E-08 | E2E | AC-18 | Staff dashboard metric drill-down navigation | Clicking "Unassigned" opens queue filtered by unassigned open | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| E2E-09 | E2E | AC-18 | Requester dashboard metric drill-down navigation | Clicking "Waiting for Me" opens My Tickets filtered | `e2e/lab-04/dashboards.spec.ts` | Planned |
+| E2E-07 | E2E | AC-20 | Login landing page routing for all three roles | Requester, Staff, and Admin land on respective `/dashboard` | `e2e/lab-04/dashboards.spec.ts` | Pass |
+| E2E-08 | E2E | AC-18 | Staff dashboard metric drill-down navigation | Clicking "Unassigned" opens queue filtered by unassigned open | `e2e/lab-04/dashboards.spec.ts` | Pass |
+| E2E-09 | E2E | AC-18 | Requester dashboard metric drill-down navigation | Clicking "Waiting for Me" opens My Tickets filtered | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | E2E-10 | E2E | AC-14 | Stale update detection in dual-browser simulation | Second user receives 409 conflict alert; typed input preserved | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
 | E2E-11 | E2E | AC-09 | Double-click action creation prevention | Rapid double click submits single request; creates 1 action | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
 | E2E-12 | E2E | AC-24 | Regression smoke: ticket creation, attachment, comment | Core Lab 1–3 user journey completes without regressions | `e2e/lab-04/dashboards.spec.ts` | Planned |

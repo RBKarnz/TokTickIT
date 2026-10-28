@@ -25,6 +25,7 @@ import {
 } from './auth.js';
 import { actionsRouter, STAFF_ROLES } from './actions.js';
 import { workflowRouter, STATUS_TO_LABEL, LABEL_TO_STATUS } from './workflow.js';
+import { dashboardRouter, OPEN_GROUP_STATUSES, myOpenActionsTicketFilter, pendingFollowUpsTicketFilter } from './dashboard.js';
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -341,11 +342,16 @@ app.post('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req
 // Get tickets for the active requester (My Tickets)
 app.get('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req, res) => {
   const requesterId = req.sessionUser!.id;
-  const { search, categoryId, status, sort, startDate, endDate, page = '1', limit = '10' } = req.query;
+  const { search, categoryId, status, statusGroup, sort, startDate, endDate, page = '1', limit = '10' } = req.query;
+
+  // Lab 4 dashboard drill-down (api-spec §6.2).
+  if (statusGroup !== undefined && (typeof statusGroup !== 'string' || statusGroup.trim().toLowerCase() !== 'open')) {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'statusGroup must be "open".' } });
+  }
 
   try {
     const prisma = getPrisma();
-    
+
     // Build the where clause
     const whereClause: any = { requesterId };
 
@@ -362,8 +368,10 @@ app.get('/api/tickets', requireNormalAuth, requireRole('REQUESTER'), async (req,
 
     if (status) {
       whereClause.currentStatus = status as string;
+    } else if (statusGroup) {
+      whereClause.currentStatus = { in: OPEN_GROUP_STATUSES };
     }
-    
+
     // Date Range Filter (by updatedAt)
     if (startDate || endDate) {
       whereClause.updatedAt = {};
@@ -1077,10 +1085,40 @@ app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
       if (typeof req.query.ownerId !== 'string') {
         return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ownerId parameter.' } });
       }
-      parsedOwnerId = parseInt(req.query.ownerId, 10);
-      if (isNaN(parsedOwnerId) || parsedOwnerId < 1 || String(parsedOwnerId) !== req.query.ownerId.trim()) {
-        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ownerId parameter.' } });
+      const rawOwnerId = req.query.ownerId.trim();
+      if (rawOwnerId === 'me') {
+        parsedOwnerId = req.sessionUser!.id;
+      } else {
+        parsedOwnerId = parseInt(rawOwnerId, 10);
+        if (isNaN(parsedOwnerId) || parsedOwnerId < 1 || String(parsedOwnerId) !== rawOwnerId) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid ownerId parameter.' } });
+        }
       }
+    }
+
+    // Lab 4 dashboard drill-downs (api-spec §6.1).
+    let statusGroup: string | undefined;
+    if (req.query.statusGroup !== undefined) {
+      if (typeof req.query.statusGroup !== 'string' || req.query.statusGroup.trim().toLowerCase() !== 'open') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'statusGroup must be "open".' } });
+      }
+      statusGroup = 'open';
+    }
+
+    let actionAssigneeMe = false;
+    if (req.query.actionAssignee !== undefined) {
+      if (typeof req.query.actionAssignee !== 'string' || req.query.actionAssignee.trim().toLowerCase() !== 'me') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'actionAssignee must be "me".' } });
+      }
+      actionAssigneeMe = true;
+    }
+
+    let followUpPending = false;
+    if (req.query.followUp !== undefined) {
+      if (typeof req.query.followUp !== 'string' || req.query.followUp.trim().toLowerCase() !== 'pending') {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'followUp must be "pending".' } });
+      }
+      followUpPending = true;
     }
 
     if (req.query.sort !== undefined && typeof req.query.sort === 'string') {
@@ -1149,6 +1187,8 @@ app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
 
     if (mappedStatus) {
       where.currentStatus = mappedStatus;
+    } else if (statusGroup === 'open') {
+      where.currentStatus = { in: OPEN_GROUP_STATUSES };
     }
 
     if (requestedPriority) {
@@ -1167,6 +1207,19 @@ app.get('/api/staff/tickets', requireNormalAuth, async (req, res) => {
 
     if (parsedOwnerId !== undefined) {
       where.ownerId = parsedOwnerId;
+    }
+
+    // Shared verbatim with the "My Open Actions" / "Pending Follow-ups" dashboard
+    // cards (dashboard.ts) so this list's total can never drift from the card count.
+    const actionFilters: any[] = [];
+    if (actionAssigneeMe) {
+      actionFilters.push(myOpenActionsTicketFilter(req.sessionUser!.id));
+    }
+    if (followUpPending) {
+      actionFilters.push(pendingFollowUpsTicketFilter());
+    }
+    if (actionFilters.length > 0) {
+      where.AND = [...(where.AND ?? []), ...actionFilters];
     }
 
     // Deterministic Sorting with Secondary Tie-Breaker
@@ -1573,6 +1626,7 @@ app.post('/api/admin/users/:userId/set-initial-password', requireNormalAuth, req
 // Actions Taken endpoints (Lab 4), kept in their own module
 app.use(actionsRouter);
 app.use(workflowRouter);
+app.use(dashboardRouter);
 
 export default app;
 

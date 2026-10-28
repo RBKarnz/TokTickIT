@@ -49,6 +49,16 @@ async function loginAs(page: Page, email: string, password = 'Password123!', tar
   await page.locator('#password').fill(password);
   await page.locator('button[type="submit"]').click();
   if (targetUrl) {
+    // Lab 4 FR-22: /dashboard is the universal post-login landing for every role
+    // (change-password is the one exception, forced before the Dashboard loads).
+    const targetSource = typeof targetUrl === 'string' ? targetUrl : targetUrl.source;
+    if (!targetSource.includes('dashboard') && !targetSource.includes('change-password')) {
+      await page.waitForURL(/\/dashboard/, { timeout: 15000 });
+      const path = targetSource.includes('staff') ? '/staff/queue'
+                 : targetSource.includes('admin') ? '/admin/users'
+                 : '/tickets';
+      await page.goto(path);
+    }
     await page.waitForURL(targetUrl, { timeout: 15000 });
   }
 }
@@ -142,7 +152,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
         fullPage: true,
       });
 
-      await page.waitForURL(/\/staff\/queue/, { timeout: 15000 });
+      await page.waitForURL(/\/dashboard/, { timeout: 15000 });
       await page.unroute('**/api/auth/login');
     });
 
@@ -786,7 +796,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
 
       await page.goto('/admin/users');
-      await page.waitForURL(/\/tickets|\/$/);
+      await page.waitForURL(/\/dashboard/);
       await expect(page.locator('nav.navbar')).not.toContainText('User Management');
 
       await page.screenshot({

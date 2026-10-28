@@ -11,7 +11,15 @@ async function loginAs(page: Page, email: string, landing: RegExp) {
   await page.locator('#email').fill(email);
   await page.locator('#password').fill('Password123!');
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL(landing);
+  // Lab 4 FR-22: /dashboard is the universal post-login landing for every role.
+  await page.waitForURL(/\/dashboard/);
+  if (!landing.test(page.url())) {
+    const target = landing.source.includes('staff') ? '/staff/queue'
+                 : landing.source.includes('admin') ? '/admin/users'
+                 : '/tickets';
+    await page.goto(target);
+    await page.waitForURL(landing);
+  }
   await page.waitForLoadState('networkidle');
 }
 

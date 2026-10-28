@@ -33,6 +33,9 @@ async function staffLogin(page: Page, email = 'staff1@toktickit.com', password =
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
+  // Lab 4 FR-22: /dashboard is the post-login landing; navigate on to the queue.
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto('/staff/queue');
   await expect(page).toHaveURL(/\/staff\/queue/);
 }
 
@@ -42,6 +45,8 @@ async function requesterLogin(page: Page, email = 'requester1@toktickit.com', pa
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto('/tickets');
   await expect(page).toHaveURL(/\/tickets|\/$/);
 }
 
