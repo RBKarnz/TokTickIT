@@ -82,10 +82,8 @@ test.describe('Lab 4 Submission Evidence: Ticket Workflow', () => {
     ensureDir(path.resolve(process.cwd(), 'artifacts/lab-04/screenshots/ticket-workflow'));
   });
 
-  test('Capture Ticket Workflow: status dropdown, Resolution Gate modal, history timeline (3 viewports)', async ({
-    page,
-  }) => {
-    for (const vp of VIEWPORTS) {
+  for (const vp of VIEWPORTS) {
+    test(`Capture Ticket Workflow: Resolution Gate modal (${vp.name})`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       const ticket = await createTicket(`workflow-${vp.name}`);
 
@@ -113,6 +111,6 @@ test.describe('Lab 4 Submission Evidence: Ticket Workflow', () => {
       );
       await page.screenshot({ path: filePath, fullPage: true });
       expect(fs.existsSync(filePath)).toBe(true);
-    }
-  });
+    });
+  }
 });
