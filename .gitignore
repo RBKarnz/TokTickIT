@@ -19,3 +19,6 @@ server/uploads/
 # test results & playwright reports
 test-results/
 playwright-report/
+
+# Claude Code local session state
+.claude/
