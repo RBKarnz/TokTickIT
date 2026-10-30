@@ -19,11 +19,12 @@ test.describe('Automated Accessibility Scans (WCAG 2.1 Level AA)', () => {
     await page.locator('input[type="email"]').fill('admin@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/admin\/users/);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('/admin/users');
 
     await page.locator('input[placeholder*="Search"]').fill('firstlogin@toktickit.com');
     await page.waitForTimeout(300);
-    await page.locator('table tbody tr').filter({ hasText: 'firstlogin@toktickit.com' }).locator('button:has-text("Edit")').click();
+    await page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'firstlogin@toktickit.com' }).locator('button:has-text("Edit")').click();
     await page.locator('span:has-text("Set New Initial Password")').click();
     await page.locator('input#reset-password').fill('Password123!');
     await page.locator('input#reset-confirm-password').fill('Password123!');
@@ -49,7 +50,8 @@ test.describe('Automated Accessibility Scans (WCAG 2.1 Level AA)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/tickets|\/$/);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('/tickets');
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -63,10 +65,11 @@ test.describe('Automated Accessibility Scans (WCAG 2.1 Level AA)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/tickets|\/$/);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('/tickets');
 
     // Open first ticket detail
-    const firstTicket = page.locator('table tbody tr, .card a').first();
+    const firstTicket = page.locator('[data-testid="list-item"]:visible').first();
     await firstTicket.click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
@@ -82,7 +85,8 @@ test.describe('Automated Accessibility Scans (WCAG 2.1 Level AA)', () => {
     await page.locator('input[type="email"]').fill('staff1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/staff\/queue/);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('/staff/queue');
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -96,10 +100,11 @@ test.describe('Automated Accessibility Scans (WCAG 2.1 Level AA)', () => {
     await page.locator('input[type="email"]').fill('staff1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/staff\/queue/);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('/staff/queue');
 
     // Click first ticket
-    await page.locator('table tbody tr').first().click();
+    await page.locator('[data-testid="list-item"]:visible').first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
     const results = await new AxeBuilder({ page })
@@ -114,7 +119,8 @@ test.describe('Automated Accessibility Scans (WCAG 2.1 Level AA)', () => {
     await page.locator('input[type="email"]').fill('admin@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/admin\/users/);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('/admin/users');
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

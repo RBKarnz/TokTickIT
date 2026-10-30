@@ -4,6 +4,7 @@ import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
 import fs from 'fs';
 import path from 'path';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -28,7 +29,7 @@ describe('Attachment APIs', () => {
     
     const res = await request(app)
       .post(`/api/tickets/${ticketId}/attachments`)
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .attach('file', dummyFilePath);
       
     fs.unlinkSync(dummyFilePath);
@@ -49,13 +50,13 @@ describe('Attachment APIs', () => {
 
     const delRes = await request(app)
       .delete(`/api/attachments/${attachment.id}`)
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .send({ reason: 'Test delete' });
     expect(delRes.status).toBe(200);
 
     const downRes = await request(app)
       .get(`/api/attachments/${attachment.id}/download`)
-      .set('Cookie', cookie);
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
     expect(downRes.status).toBe(404);
   });
 });

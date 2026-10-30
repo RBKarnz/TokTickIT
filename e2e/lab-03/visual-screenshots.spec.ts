@@ -2,6 +2,7 @@ import { test, expect, Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
+import { resetFirstLoginPassword } from './helpers';
 
 const screenshotsBase = path.resolve(process.cwd(), 'artifacts/lab-03/screenshots');
 
@@ -48,6 +49,16 @@ async function loginAs(page: Page, email: string, password = 'Password123!', tar
   await page.locator('#password').fill(password);
   await page.locator('button[type="submit"]').click();
   if (targetUrl) {
+    // Lab 4 FR-22: /dashboard is the universal post-login landing for every role
+    // (change-password is the one exception, forced before the Dashboard loads).
+    const targetSource = typeof targetUrl === 'string' ? targetUrl : targetUrl.source;
+    if (!targetSource.includes('dashboard') && !targetSource.includes('change-password')) {
+      await page.waitForURL(/\/dashboard/, { timeout: 15000 });
+      const path = targetSource.includes('staff') ? '/staff/queue'
+                 : targetSource.includes('admin') ? '/admin/users'
+                 : '/tickets';
+      await page.goto(path);
+    }
     await page.waitForURL(targetUrl, { timeout: 15000 });
   }
 }
@@ -141,7 +152,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
         fullPage: true,
       });
 
-      await page.waitForURL(/\/staff\/queue/, { timeout: 15000 });
+      await page.waitForURL(/\/dashboard/, { timeout: 15000 });
       await page.unroute('**/api/auth/login');
     });
 
@@ -169,6 +180,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     });
 
     test('06-first-login-change-password: Mandatory password reset view for first-time users', async ({ page }) => {
+      await resetFirstLoginPassword();
       await loginAs(page, 'firstlogin@toktickit.com', 'Password123!', /\/change-password/);
 
       await page.locator('#current').fill('Password123!');
@@ -233,7 +245,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
   test.describe('2. IT Staff Ticket Queue UI (Part 6)', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'staff1@toktickit.com', 'Password123!', /\/staff\/queue/);
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
     });
 
     test('01-queue-realistic-data: Staff queue populated with diverse seed tickets', async ({ page }) => {
@@ -245,7 +257,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     });
 
     test('02-assigned-vs-unassigned: Highlighting distinct differences between Assigned and Unassigned', async ({ page }) => {
-      await expect(page.locator('table tbody tr:has-text("Unassigned")').first()).toBeVisible();
+      await expect(page.locator('[data-testid="list-item"]:visible:has-text("Unassigned")').first()).toBeVisible();
       await page.screenshot({
         path: path.join(screenshotsBase, 'staff-queue', '02-assigned-vs-unassigned.png'),
         fullPage: true,
@@ -263,7 +275,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       const searchInput = page.locator('input[placeholder*="Search summary"]');
       await searchInput.fill('Monitor');
       await page.waitForTimeout(600); // debounce
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
 
       await page.screenshot({
         path: path.join(screenshotsBase, 'staff-queue', '04-search-filter.png'),
@@ -299,7 +311,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     });
 
     test('07-open-detail-action: Clear hover/click action to navigate to ticket detail', async ({ page }) => {
-      const firstRow = page.locator('table tbody tr').first();
+      const firstRow = page.locator('[data-testid="list-item"]:visible').first();
       await firstRow.hover();
       await page.screenshot({
         path: path.join(screenshotsBase, 'staff-queue', '07-open-detail-action.png'),
@@ -368,16 +380,14 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await queueResponsePromise;
       await page.waitForTimeout(200);
 
-      const targetRow = page.locator('table tbody tr:has(.badge:has-text("In Progress"))').first();
-      if (await targetRow.isVisible()) {
-        await targetRow.click();
-      } else {
-        await page.locator('table tbody tr').first().click();
-      }
+      const targetRow = page.locator('[data-testid="list-item"]:visible:has(.badge:has-text("In Progress"))').first();
+      // Screenshots 01-11 need an In Progress Ticket; fail instead of silently using another one
+      await expect(targetRow).toBeVisible();
+      await targetRow.click();
       await page.waitForURL(/\/tickets\/\d+/);
 
       // Robust wait: ensure loading spinner is detached and ticket header is visible!
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
       await page.waitForTimeout(300);
     });
@@ -418,31 +428,22 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     });
 
     test('04-permitted-status-changes: Permitted ticket status transitions according to state machine', async ({ page }) => {
+      // An In Progress Ticket must offer Resolved; the screenshot shows its confirmation modal
       const statusSelect = page.locator('select[aria-label="Change Status"]').first();
-      if (await statusSelect.isVisible()) {
-        const options = await statusSelect.locator('option').allInnerTexts();
-        const resolveOption = options.find((o) => o.includes('Resolved'));
-        if (resolveOption) {
-          await statusSelect.selectOption({ label: resolveOption.trim() });
-          await page.locator('button:has-text("Update Status")').click();
-          const modal = page.locator('.modal.show, .modal[style*="block"], [role="dialog"]').first();
-          await expect(modal).toBeVisible();
+      await expect(statusSelect).toBeVisible();
+      expect(await statusSelect.locator('option').allInnerTexts()).toContain('Resolved');
+      await statusSelect.selectOption({ label: 'Resolved' });
+      await page.locator('button:has-text("Update Status")').click();
+      const modal = page.locator('.modal.show, .modal[style*="block"], [role="dialog"]').first();
+      await expect(modal).toBeVisible();
 
-          // Capture modal cleanly without fullPage to avoid backdrop splitting
-          await page.screenshot({
-            path: path.join(screenshotsBase, 'staff-ticket-detail', '04-permitted-status-changes.png'),
-            fullPage: false,
-          });
-          await modal.locator('button:has-text("Cancel")').click();
-          await page.waitForTimeout(300);
-          return;
-        }
-      }
-
+      // Capture modal cleanly without fullPage to avoid backdrop splitting
       await page.screenshot({
         path: path.join(screenshotsBase, 'staff-ticket-detail', '04-permitted-status-changes.png'),
-        fullPage: true,
+        fullPage: false,
       });
+      await modal.locator('button:has-text("Cancel")').click();
+      await page.waitForTimeout(300);
     });
 
     test('05-public-comments-section: Public discussion thread visible to requester and staff', async ({ page }) => {
@@ -474,11 +475,11 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     test('07-attachment-continuity: Display of attachments originally uploaded during ticket creation', async ({ page }) => {
       // Step 1: Log in as requester and upload an attachment to one of their tickets
       await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
-      await page.locator('table tbody tr').first().click();
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
+      await page.locator('[data-testid="list-item"]:visible').first().click();
       await page.waitForURL(/\/tickets\/\d+/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       // Get ticket ID from URL
@@ -501,7 +502,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       // Step 2: Log in as staff and view the same ticket's attachments
       await loginAs(page, 'staff1@toktickit.com', 'Password123!', /\/staff\/queue/);
       await page.goto(`/tickets/${ticketId}`);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       const staffAttachmentsTab = page.locator('button:has-text("Attachments")').first();
@@ -516,7 +517,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
     test('08-requester-resolution-summary: Resolution notes and resolved badge indicator in Requester view', async ({ page }) => {
       await loginAs(page, 'requester3@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
 
       // Click Sarah\'s resolved ticket "Monitor won't turn on"
       const resolvedRow = page.locator('tr').filter({ hasText: "Monitor won't turn on" }).first();
@@ -524,7 +525,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await resolvedRow.click();
       await page.waitForURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
       await expect(page.locator('h6:has-text("Resolution Summary")')).toBeVisible();
       await expect(page.locator('.badge:has-text("RESOLVED")').first()).toBeVisible();
@@ -537,13 +538,13 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
     test('09-role-restricted-forbidden-ui: UI feedback when unauthorized role views ticket (controls hidden)', async ({ page }) => {
       await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
 
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
-      await page.locator('table tbody tr').first().click();
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
+      await page.locator('[data-testid="list-item"]:visible').first().click();
       await page.waitForURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
       await page.waitForTimeout(300);
 
@@ -576,7 +577,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
       // Attempt direct access to requester1's ticket (/tickets/1)
       await page.goto('/tickets/1');
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h2:has-text("Ticket Not Found")')).toBeVisible();
       await expect(page.locator('.bi-search')).toBeVisible();
 
@@ -653,7 +654,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
   test.describe('4. Administrator User Management UI (Part 8)', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'admin@toktickit.com', 'Password123!', /\/admin\/users/);
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
     });
 
     test('01-user-list-table: Minimalist table displaying Name, Email, Role, Status, and Actions', async ({ page }) => {
@@ -668,7 +669,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       const searchInput = page.locator('input[placeholder*="Search by name or email"]');
       await searchInput.fill('Alice');
       await page.waitForTimeout(400);
-      await expect(page.locator('table tbody tr').first()).toContainText('Alice Tech');
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toContainText('Alice Tech');
 
       await page.screenshot({
         path: path.join(screenshotsBase, 'user-management', '02-search-users.png'),
@@ -727,7 +728,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
     test('06-edit-user-details: Edit interface for changing name, email, role, and active toggle', async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 950 });
-      const firstStaffRow = page.locator('table tbody tr').filter({ hasText: 'Alice Tech' }).first();
+      const firstStaffRow = page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'Alice Tech' }).first();
       await firstStaffRow.locator('button:has-text("Edit")').click();
       const editModal = page.locator('.modal.show, .modal[style*="block"]').first();
       await expect(editModal).toBeVisible();
@@ -740,7 +741,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
     test('07-reset-initial-password: Action to set a new initial password forcing password reset', async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 950 });
-      const firstStaffRow = page.locator('table tbody tr').filter({ hasText: 'Alice Tech' }).first();
+      const firstStaffRow = page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'Alice Tech' }).first();
       await firstStaffRow.locator('button:has-text("Edit")').click();
       const editModal = page.locator('.modal.show, .modal[style*="block"]').first();
       await expect(editModal).toBeVisible();
@@ -757,7 +758,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
     test('08-prevent-self-deactivation: Visual block or disabled toggle preventing self-deactivation', async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 950 });
-      const adminRow = page.locator('table tbody tr').filter({ hasText: 'Admin User' }).first();
+      const adminRow = page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'Admin User' }).first();
       await adminRow.locator('button:has-text("Edit")').click();
       const editModal = page.locator('.modal.show, .modal[style*="block"]').first();
       await expect(editModal).toBeVisible();
@@ -773,7 +774,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
 
     test('09-prevent-removing-last-admin: System blocking role demotion of the last active Administrator', async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 950 });
-      const adminRow = page.locator('table tbody tr').filter({ hasText: 'Admin User' }).first();
+      const adminRow = page.locator('[data-testid="list-item"]:visible').filter({ hasText: 'Admin User' }).first();
       await adminRow.locator('button:has-text("Edit")').click();
       const editModal = page.locator('.modal.show, .modal[style*="block"]').first();
       await expect(editModal).toBeVisible();
@@ -795,7 +796,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
 
       await page.goto('/admin/users');
-      await page.waitForURL(/\/tickets|\/$/);
+      await page.waitForURL(/\/dashboard/);
       await expect(page.locator('nav.navbar')).not.toContainText('User Management');
 
       await page.screenshot({
@@ -849,6 +850,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // View 2: Mandatory First-Login Password Change (Desktop, Tablet, Mobile)
     // -----------------------------------------------------------------------
     test('02-change-password responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
+      await resetFirstLoginPassword();
       await loginAs(page, 'firstlogin@toktickit.com', 'Password123!', /\/change-password/);
       await page.locator('#current').fill('Password123!');
       await page.locator('#newPwd').fill('NewSecurePass123!');
@@ -876,7 +878,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // -----------------------------------------------------------------------
     test('03-staff-queue responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
       await loginAs(page, 'staff1@toktickit.com', 'Password123!', /\/staff\/queue/);
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
 
       // Desktop
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -899,11 +901,11 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // -----------------------------------------------------------------------
     test('04-staff-detail responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
       await loginAs(page, 'staff1@toktickit.com', 'Password123!', /\/staff\/queue/);
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
-      await page.locator('table tbody tr').first().click();
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
+      await page.locator('[data-testid="list-item"]:visible').first().click();
       await page.waitForURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       // Desktop
@@ -927,7 +929,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // -----------------------------------------------------------------------
     test('05-user-management responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
       await loginAs(page, 'admin@toktickit.com', 'Password123!', /\/admin\/users/);
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
 
       // Desktop
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -950,8 +952,8 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // -----------------------------------------------------------------------
     test('06-requester-tickets responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
       await loginAs(page, 'requester1@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
+      await expect(page.locator('[data-testid="list-item"]:visible').first()).toBeVisible();
 
       // Desktop
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -986,7 +988,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
     // -----------------------------------------------------------------------
     test('07-requester-detail responsive views: Desktop, Tablet, Mobile', async ({ page }) => {
       await loginAs(page, 'requester3@toktickit.com', 'Password123!', /\/tickets|\/$/);
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
 
       // Open resolved ticket
       const resolvedRow = page.locator('tr').filter({ hasText: "Monitor won't turn on" }).first();
@@ -994,7 +996,7 @@ test.describe('Lab 3 Visual Inspection & Automated Screenshot Checklist', () => 
       await resolvedRow.click();
       await page.waitForURL(/\/tickets\/\d+/);
 
-      await page.locator('.spinner-border').waitFor({ state: 'detached' });
+      await page.locator('.spinner-border:not(.spinner-border-sm)').waitFor({ state: 'detached' });
       await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
 
       // Desktop

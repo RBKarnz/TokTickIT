@@ -104,10 +104,8 @@ export default function ChangePasswordPage() {
       const updated = await fetchCurrentUser();
       setTimeout(() => {
         setUser(updated);
-        const landing = updated?.role === 'IT_STAFF' ? '/staff/queue'
-                      : updated?.role === 'ADMINISTRATOR' ? '/admin/users'
-                      : '/';
-        navigate(landing, { replace: true });
+        // Lab 4 FR-22: the Dashboard is the landing page after login for every role.
+        navigate('/dashboard', { replace: true });
       }, 1500);
     } catch (err: any) {
       const e = err as ChangePasswordError;

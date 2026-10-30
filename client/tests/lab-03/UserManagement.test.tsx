@@ -286,6 +286,24 @@ describe('Administrator User Management UI (Lab 3 UI-27 to UI-34)', () => {
     ).toBeInTheDocument();
   });
 
+  // A slow older response must not overwrite the list for a newer filter
+  it('ignores a stale unfiltered response that arrives after the role filter response', async () => {
+    let resolveFirstLoad: (value: { items: api.AdminUserItem[] }) => void = () => {};
+    vi.spyOn(api, 'fetchAdminUsers')
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirstLoad = resolve; }))
+      .mockResolvedValueOnce({ items: mockUsers.filter((u) => u.role === 'IT_STAFF') });
+
+    renderUserManagement();
+    fireEvent.change(screen.getByLabelText('Filter by role'), { target: { value: 'IT_STAFF' } });
+    await screen.findAllByText('Alice Staff');
+
+    resolveFirstLoad({ items: [...mockUsers] });
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(screen.getAllByText('Alice Staff').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
+  });
+
   // API Failure state and Retry
   it('displays API failure error and allows retrying fetch', async () => {
     vi.spyOn(api, 'fetchAdminUsers').mockRejectedValueOnce(new Error('Network error: 500'));

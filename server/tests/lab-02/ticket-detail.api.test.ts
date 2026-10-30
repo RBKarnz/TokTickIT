@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -27,7 +28,7 @@ describe('GET /api/tickets/:id', () => {
   it('should prevent cross-requester access (403 or 404)', async () => {
     const res = await request(app)
       .get(`/api/tickets/${ticketId}`)
-      .set('Cookie', otherCookie);
+      .set('Cookie', otherCookie).set('X-CSRF-Token', csrfFor(otherCookie));
     expect([403, 404]).toContain(res.status);
   });
 });

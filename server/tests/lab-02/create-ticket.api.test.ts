@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -33,7 +34,7 @@ describe('POST /api/tickets', () => {
     };
     const res = await request(app)
       .post('/api/tickets')
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .send(payload);
     expect(res.status).toBe(201);
     expect(res.body.ticketNumber).toMatch(/^TKT-\d{4}-\d{6}$/);

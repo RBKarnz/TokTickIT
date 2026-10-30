@@ -7,6 +7,9 @@ test.describe('Requester Ticket Flow (E2E-01)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
+    // Lab 4 FR-22: /dashboard is the post-login landing; navigate on to My Tickets.
+    await expect(page).toHaveURL(/\/dashboard/);
+    await page.goto('http://localhost:5173/tickets');
     await expect(page).toHaveURL(/\/tickets|\/$/);
   });
 
@@ -29,10 +32,10 @@ test.describe('Requester Ticket Flow (E2E-01)', () => {
 
     // 5. Verify success and ticket details
     await expect(page.locator('text=Successfully')).toBeVisible();
-    await page.goto('http://localhost:5173/');
+    await page.goto('http://localhost:5173/tickets');
     
     // 6. View details
-    const firstTicket = page.locator('table tbody tr').first();
+    const firstTicket = page.locator('[data-testid="list-item"]:visible').first();
     await firstTicket.click();
     await expect(page.locator('text=Ticket Details')).toBeVisible();
   });

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext.js';
 import LoginPage from './pages/LoginPage.js';
 import ChangePasswordPage from './pages/ChangePasswordPage.js';
@@ -8,6 +8,8 @@ import CreateTicketPage from './pages/CreateTicketPage.js';
 import TicketDetailPage from './pages/TicketDetailPage.js';
 import StaffTicketQueuePage from './pages/StaffTicketQueuePage.js';
 import UserManagementPage from './pages/UserManagementPage.js';
+import RequesterDashboardPage from './pages/RequesterDashboardPage.js';
+import StaffDashboardPage from './pages/StaffDashboardPage.js';
 import { logout, checkSystem, Category } from './api.js';
 
 // Home Component restoring Lab 1 functionality
@@ -112,22 +114,30 @@ function RequirePasswordChange() {
   if (isLoading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
   if (!user.mustChangePassword) {
-    const landing = user.role === 'IT_STAFF' ? '/staff/queue'
-                  : user.role === 'ADMINISTRATOR' ? '/admin/users'
-                  : '/';
-    return <Navigate to={landing} replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return <Outlet />;
 }
 
 // ---------------------------------------------------------------------------
-// Role Landings
+// Role Landings (Lab 4 FR-22: the Dashboard is the landing page after login)
 // ---------------------------------------------------------------------------
 
 function RoleLandingRoute() {
+  return <Navigate to="/dashboard" replace />;
+}
+
+function DashboardRoute() {
   const { user } = useAuth();
-  if (user?.role === 'IT_STAFF') return <Navigate to="/staff/queue" replace />;
-  if (user?.role === 'ADMINISTRATOR') return <Navigate to="/admin/users" replace />;
+  if (user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') return <StaffDashboardPage />;
+  return <RequesterDashboardPage />;
+}
+
+function RequireRequesterTickets() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
+  if (user.role !== 'REQUESTER') return <Navigate to="/dashboard" replace />;
   return <MyTicketsPage />;
 }
 
@@ -135,8 +145,9 @@ function RequireStaffQueue() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
-  if (user.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
-  if (user.role !== 'IT_STAFF') return <Navigate to="/" replace />;
+  if (user.role === 'REQUESTER') return <Navigate to="/dashboard" replace />;
+  // Lab 4 BR-14: Administrators use the queue like IT Staff.
+  if (user.role !== 'IT_STAFF' && user.role !== 'ADMINISTRATOR') return <Navigate to="/dashboard" replace />;
   return <StaffTicketQueuePage />;
 }
 
@@ -167,14 +178,29 @@ function RequireAdmin() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace state={{ unauthorized: true }} />;
-  if (user.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
-  if (user.role !== 'ADMINISTRATOR') return <Navigate to="/" replace />;
+  if (user.role !== 'ADMINISTRATOR') return <Navigate to="/dashboard" replace />;
   return <UserManagementPage />;
 }
 
 // ---------------------------------------------------------------------------
 // App Shell (Zen Green Navbar + User context + Logout)
 // ---------------------------------------------------------------------------
+
+/** Nav link with aria-current="page" and a visible underline on the active route (FR-22/AC-20). */
+function NavItem({ to, icon, children }: { to: string; icon: string; children: React.ReactNode }) {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  return (
+    <Link
+      className="text-white text-decoration-none fw-semibold me-1 d-none d-sm-inline pb-1"
+      to={to}
+      aria-current={isActive ? 'page' : undefined}
+      style={isActive ? { borderBottom: '2px solid #FFFFFF' } : undefined}
+    >
+      <i className={`bi ${icon} me-1`}></i>{children}
+    </Link>
+  );
+}
 
 function AppShell() {
   const { user, setUser } = useAuth();
@@ -190,27 +216,23 @@ function AppShell() {
                   : user?.role === 'IT_STAFF' ? 'IT Staff'
                   : 'Requester';
 
-  const landingUrl = user?.role === 'IT_STAFF' ? '/staff/queue'
-                   : user?.role === 'ADMINISTRATOR' ? '/admin/users'
-                   : '/';
-
   return (
     <div style={{ backgroundColor: '#F5F7F6', minHeight: '100vh' }}>
       <nav className="navbar navbar-expand-lg" style={{ backgroundColor: '#006B3C' }}>
         <div className="container d-flex justify-content-between">
-          <Link className="navbar-brand text-white fw-bold d-flex align-items-center" to={landingUrl}>
+          <Link className="navbar-brand text-white fw-bold d-flex align-items-center" to="/dashboard">
             <i className="bi bi-clock-history me-2"></i>TokTickIT
           </Link>
           <div className="d-flex align-items-center gap-2">
-            {user?.role === 'IT_STAFF' && (
-              <Link className="text-white text-decoration-none fw-semibold me-1 d-none d-sm-inline" to="/staff/queue">
-                <i className="bi bi-inbox me-1"></i>Ticket Queue
-              </Link>
+            <NavItem to="/dashboard" icon="bi-speedometer2">Dashboard</NavItem>
+            {user?.role === 'REQUESTER' && (
+              <NavItem to="/tickets" icon="bi-ticket-detailed">My Tickets</NavItem>
+            )}
+            {(user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') && (
+              <NavItem to="/staff/queue" icon="bi-inbox">Ticket Queue</NavItem>
             )}
             {user?.role === 'ADMINISTRATOR' && (
-              <Link className="text-white text-decoration-none fw-semibold me-1 d-none d-sm-inline" to="/admin/users">
-                <i className="bi bi-people me-1"></i>User Management
-              </Link>
+              <NavItem to="/admin/users" icon="bi-people">User Management</NavItem>
             )}
             <span className="badge bg-light text-dark d-none d-sm-inline">{roleBadge}</span>
             <span className="text-white small text-truncate d-none d-md-inline" style={{ maxWidth: '150px' }}>
@@ -251,7 +273,8 @@ export default function App() {
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
               <Route path="/" element={<RoleLandingRoute />} />
-              <Route path="/tickets" element={<RoleLandingRoute />} />
+              <Route path="/dashboard" element={<DashboardRoute />} />
+              <Route path="/tickets" element={<RequireRequesterTickets />} />
               <Route path="/ticket" element={<Navigate to="/tickets" replace />} />
               <Route path="/staff/queue" element={<RequireStaffQueue />} />
               <Route path="/admin/users" element={<RequireAdmin />} />

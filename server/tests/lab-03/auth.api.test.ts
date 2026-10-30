@@ -3,6 +3,7 @@ import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
 import { hashPassword } from '../../src/auth.js';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -71,14 +72,14 @@ describe('Auth API (Lab 3)', () => {
   // API-06
   it('API-06: restricted session cannot access normal ticket routes -> 403', async () => {
     const cookie = await getCookie(FIRSTLOGIN, PASSWORD);
-    const res = await request(app).get('/api/tickets').set('Cookie', cookie);
+    const res = await request(app).get('/api/tickets').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
     expect(res.status).toBe(403);
   });
 
   // API-09
   it('API-09: /api/auth/me returns safe user fields — no hash or session token', async () => {
     const cookie = await getCookie();
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    const res = await request(app).get('/api/auth/me').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
     expect(res.status).toBe(200);
     expect(res.body.user.mustChangePassword).toBe(false);
     const bodyStr = JSON.stringify(res.body);
@@ -90,15 +91,15 @@ describe('Auth API (Lab 3)', () => {
   // API-10
   it('API-10: logout returns 204 and clears session cookie', async () => {
     const cookie = await getCookie();
-    const res = await request(app).post('/api/auth/logout').set('Cookie', cookie);
+    const res = await request(app).post('/api/auth/logout').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
     expect(res.status).toBe(204);
   });
 
   // API-11
   it('API-11: session reuse after logout -> 401', async () => {
     const cookie = await getCookie();
-    await request(app).post('/api/auth/logout').set('Cookie', cookie);
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    await request(app).post('/api/auth/logout').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
+    const res = await request(app).get('/api/auth/me').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
     expect(res.status).toBe(401);
   });
 
@@ -116,7 +117,7 @@ describe('Auth API (Lab 3)', () => {
     const cookie = await getCookie(FIRSTLOGIN, PASSWORD);
     const res = await request(app)
       .post('/api/auth/change-password')
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .send({ currentPassword: PASSWORD, newPassword: 'Ab1!', confirmPassword: 'Ab1!' });
     expect(res.status).toBe(422);
   });
@@ -125,7 +126,7 @@ describe('Auth API (Lab 3)', () => {
     const cookie = await getCookie(FIRSTLOGIN, PASSWORD);
     const res = await request(app)
       .post('/api/auth/change-password')
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .send({ currentPassword: PASSWORD, newPassword: 'abcdefg1!', confirmPassword: 'abcdefg1!' });
     expect(res.status).toBe(422);
   });
@@ -134,7 +135,7 @@ describe('Auth API (Lab 3)', () => {
     const cookie = await getCookie(FIRSTLOGIN, PASSWORD);
     const res = await request(app)
       .post('/api/auth/change-password')
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .send({ currentPassword: PASSWORD, newPassword: 'Abcdefg!!', confirmPassword: 'Abcdefg!!' });
     expect(res.status).toBe(422);
   });
@@ -143,7 +144,7 @@ describe('Auth API (Lab 3)', () => {
     const cookie = await getCookie(FIRSTLOGIN, PASSWORD);
     const res = await request(app)
       .post('/api/auth/change-password')
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .send({ currentPassword: PASSWORD, newPassword: 'Abcdefg1', confirmPassword: 'Abcdefg1' });
     expect(res.status).toBe(422);
   });
@@ -153,7 +154,7 @@ describe('Auth API (Lab 3)', () => {
     const cookie = await getCookie(FIRSTLOGIN, PASSWORD);
     const res = await request(app)
       .post('/api/auth/change-password')
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .send({ currentPassword: PASSWORD, newPassword: 'NewPassword123!', confirmPassword: 'DifferentPass1!' });
     expect(res.status).toBe(422);
   });
@@ -163,7 +164,7 @@ describe('Auth API (Lab 3)', () => {
     const cookie = await getCookie(FIRSTLOGIN, PASSWORD);
     const res = await request(app)
       .post('/api/auth/change-password')
-      .set('Cookie', cookie)
+      .set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie))
       .send({ currentPassword: PASSWORD, newPassword: PASSWORD, confirmPassword: PASSWORD });
     expect(res.status).toBe(422);
   });
@@ -199,8 +200,8 @@ describe('Auth API (Lab 3)', () => {
   // UNIT-18 — revoked session
   it('UNIT-18: revoked session immediately returns 401', async () => {
     const cookie = await getCookie();
-    await request(app).post('/api/auth/logout').set('Cookie', cookie);
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    await request(app).post('/api/auth/logout').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
+    const res = await request(app).get('/api/auth/me').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
     expect(res.status).toBe(401);
   });
 
@@ -246,7 +247,7 @@ describe('Auth API (Lab 3)', () => {
       data: { lastSeenAt: nineHoursAgo },
     });
 
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    const res = await request(app).get('/api/auth/me').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
     expect(res.status).toBe(401);
   });
 
@@ -264,7 +265,7 @@ describe('Auth API (Lab 3)', () => {
       data: { expiresAt: oneMinuteAgo },
     });
 
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    const res = await request(app).get('/api/auth/me').set('Cookie', cookie).set('X-CSRF-Token', csrfFor(cookie));
     expect(res.status).toBe(401);
   });
 
@@ -277,7 +278,7 @@ describe('Auth API (Lab 3)', () => {
     const NEW_PASS = 'BrandNewSecretPass99!';
     const changeRes = await request(app)
       .post('/api/auth/change-password')
-      .set('Cookie', oldCookie)
+      .set('Cookie', oldCookie).set('X-CSRF-Token', csrfFor(oldCookie))
       .send({ currentPassword: PASSWORD, newPassword: NEW_PASS, confirmPassword: NEW_PASS });
     expect(changeRes.status).toBe(200);
 
@@ -288,16 +289,16 @@ describe('Auth API (Lab 3)', () => {
     expect(newToken).not.toBe(oldToken);
 
     // Old session revoked -> 401
-    const oldRes = await request(app).get('/api/auth/me').set('Cookie', oldCookie);
+    const oldRes = await request(app).get('/api/auth/me').set('Cookie', oldCookie).set('X-CSRF-Token', csrfFor(oldCookie));
     expect(oldRes.status).toBe(401);
 
     // New session active -> 200 and mustChangePassword = false
-    const newRes = await request(app).get('/api/auth/me').set('Cookie', newCookie);
+    const newRes = await request(app).get('/api/auth/me').set('Cookie', newCookie).set('X-CSRF-Token', csrfFor(newCookie));
     expect(newRes.status).toBe(200);
     expect(newRes.body.user.mustChangePassword).toBe(false);
 
     // Now permitted to access normal ticket routes with new session
-    const ticketsRes = await request(app).get('/api/tickets').set('Cookie', newCookie);
+    const ticketsRes = await request(app).get('/api/tickets').set('Cookie', newCookie).set('X-CSRF-Token', csrfFor(newCookie));
     expect(ticketsRes.status).toBe(200);
   });
 });

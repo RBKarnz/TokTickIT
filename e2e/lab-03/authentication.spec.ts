@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { resetFirstLoginPassword } from './helpers';
 
 test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
   test.beforeEach(async ({ page }) => {
@@ -11,8 +12,9 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/tickets|\/$/);
-    await expect(page.locator('h1, h2')).toContainText(/My Tickets|Tickets/i);
+    // Lab 4 FR-22: the Dashboard is the landing page after login for every role.
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.locator('h1')).toContainText(/Welcome back/i);
 
     // Logout
     await page.locator('button:has-text("Logout")').click();
@@ -22,8 +24,8 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('staff1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/staff\/queue/);
-    await expect(page.locator('h1, h2')).toContainText(/Ticket Queue/i);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.locator('h1')).toContainText(/Welcome back/i);
 
     // Logout
     await page.locator('button:has-text("Logout")').click();
@@ -33,11 +35,12 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('admin@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/admin\/users/);
-    await expect(page.locator('h1, h2')).toContainText(/User Management/i);
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.locator('h1')).toContainText(/Welcome back/i);
   });
 
   test('E2E-02 & E2E-08: Initial password login forces change password, prevents URL bypass, and lands after success', async ({ page }) => {
+    await resetFirstLoginPassword();
     await page.goto('/login');
     await page.locator('input[type="email"]').fill('firstlogin@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
@@ -87,7 +90,7 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('staff1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/staff\/queue/);
+    await expect(page).toHaveURL(/\/dashboard/);
 
     // Logout
     await page.locator('button:has-text("Logout")').click();
@@ -104,7 +107,7 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/tickets|\/$/);
+    await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.locator('nav.navbar')).toBeVisible();
     await expect(page.locator('nav.navbar')).not.toContainText('Ticket Queue');
     await expect(page.locator('nav.navbar')).not.toContainText('User Management');
@@ -116,7 +119,7 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('staff1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/staff\/queue/);
+    await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.locator('nav.navbar')).toContainText('Ticket Queue');
     await expect(page.locator('nav.navbar')).not.toContainText('User Management');
 
@@ -127,9 +130,10 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('admin@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/admin\/users/);
+    await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.locator('nav.navbar')).toContainText('User Management');
-    await expect(page.locator('nav.navbar')).not.toContainText('Ticket Queue');
+    // Lab 4 BR-14 supersedes Lab 3 BR-23/BR-41: Administrators also use the Ticket Queue.
+    await expect(page.locator('nav.navbar')).toContainText('Ticket Queue');
   });
 
   test('E2E-07: Requester cannot reach Internal Notes on Ticket Detail', async ({ page }) => {
@@ -137,13 +141,16 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(/\/dashboard/); // wait for the session before navigating
 
     await page.goto('/tickets');
-    const firstTicket = page.locator('table tbody tr').first();
-    if (await firstTicket.isVisible()) {
-      await firstTicket.click();
-      await expect(page.locator('body')).not.toContainText('Internal Notes');
-    }
+    const firstTicket = page.locator('[data-testid="list-item"]:visible').first();
+    await expect(firstTicket).toBeVisible();
+    await firstTicket.click();
+    // Wait for the detail page to load before checking that Internal Notes are absent
+    await expect(page.locator('h5:has-text("TKT-")')).toBeVisible();
+    await expect(page.locator('button:has-text("Public Comments")').first()).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('Internal Notes');
   });
 
   test('Core Regression: Authenticated ticket creation without dev requester selector', async ({ page }) => {
@@ -151,7 +158,7 @@ test.describe('Authentication & Role Workflows (E2E-01 to E2E-08)', () => {
     await page.locator('input[type="email"]').fill('requester1@toktickit.com');
     await page.locator('input[type="password"]').fill('Password123!');
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/tickets|\/$/);
+    await expect(page).toHaveURL(/\/dashboard/);
 
     await page.goto('/tickets/create');
     await expect(page).toHaveURL(/\/tickets\/create/);

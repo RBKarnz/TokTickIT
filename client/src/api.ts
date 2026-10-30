@@ -1,3 +1,4 @@
+import { csrfFetch } from './csrf';
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 export interface Category {
@@ -17,12 +18,12 @@ export * from './authApi.js';
 // ---------------------------------------------------------------------------
 
 export async function checkSystem(): Promise<SystemStatus> {
-  const healthRes = await fetch(`${API_URL}/api/health`);
+  const healthRes = await csrfFetch(`${API_URL}/api/health`);
   if (!healthRes.ok) {
     throw new Error("Backend is unavailable (health check failed)");
   }
   
-  const catRes = await fetch(`${API_URL}/api/categories`);
+  const catRes = await csrfFetch(`${API_URL}/api/categories`);
   if (!catRes.ok) {
     throw new Error("Failed to fetch categories.");
   }
@@ -31,18 +32,9 @@ export async function checkSystem(): Promise<SystemStatus> {
   return { online: true, categories: categories };
 }
 
-// Lab 2: Fetch active requesters
-export async function fetchRequesters() {
-  const res = await fetch(`${API_URL}/api/requesters`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch requesters.");
-  }
-  return await res.json();
-}
-
 // Lab 2: Fetch active categories directly
 export async function fetchCategories() {
-  const res = await fetch(`${API_URL}/api/categories`);
+  const res = await csrfFetch(`${API_URL}/api/categories`);
   if (!res.ok) {
     throw new Error("Failed to fetch categories.");
   }
@@ -51,7 +43,7 @@ export async function fetchCategories() {
 
 // Lab 2: Fetch active systems
 export async function fetchSystems() {
-  const res = await fetch(`${API_URL}/api/systems`);
+  const res = await csrfFetch(`${API_URL}/api/systems`);
   if (!res.ok) {
     throw new Error("Failed to fetch systems.");
   }
@@ -64,7 +56,7 @@ export async function fetchSystems() {
 
 // Create ticket
 export async function createTicket(ticketData: any, _requesterId?: number) {
-  const res = await fetch(`${API_URL}/api/tickets`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -88,6 +80,7 @@ export async function fetchMyTickets(paramsOrId?: any, maybeParams?: any) {
   if (params.search) query.append('search', params.search);
   if (params.categoryId) query.append('categoryId', params.categoryId);
   if (params.status) query.append('status', params.status);
+  if (params.statusGroup) query.append('statusGroup', params.statusGroup);
   if (params.sort) query.append('sort', params.sort);
   if (params.startDate) query.append('startDate', params.startDate);
   if (params.endDate) query.append('endDate', params.endDate);
@@ -95,7 +88,7 @@ export async function fetchMyTickets(paramsOrId?: any, maybeParams?: any) {
   if (params.limit) query.append('limit', params.limit.toString());
   if (params.pageSize) query.append('limit', params.pageSize.toString());
   
-  const res = await fetch(`${API_URL}/api/tickets?${query.toString()}`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets?${query.toString()}`, {
     credentials: 'include',
   });
 
@@ -108,7 +101,7 @@ export async function fetchMyTickets(paramsOrId?: any, maybeParams?: any) {
 
 // Fetch specific ticket detail
 export async function fetchTicketDetail(ticketId: number, _requesterId?: number) {
-  const res = await fetch(`${API_URL}/api/tickets/${ticketId}`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}`, {
     credentials: 'include',
   });
 
@@ -123,7 +116,7 @@ export async function fetchTicketDetail(ticketId: number, _requesterId?: number)
 export async function uploadAttachment(ticketId: number, file: File, _requesterId?: number) {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
     method: 'POST',
     credentials: 'include',
     body: formData,
@@ -136,7 +129,7 @@ export async function uploadAttachment(ticketId: number, file: File, _requesterI
 }
 
 export async function downloadAttachment(attachmentId: number, originalFilename: string, _requesterId?: number) {
-  const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
+  const res = await csrfFetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -155,7 +148,7 @@ export async function downloadAttachment(attachmentId: number, originalFilename:
 }
 
 export async function removeAttachment(attachmentId: number, reason: string, _requesterId?: number) {
-  const res = await fetch(`${API_URL}/api/attachments/${attachmentId}`, {
+  const res = await csrfFetch(`${API_URL}/api/attachments/${attachmentId}`, {
     method: 'DELETE',
     headers: { 
       'Content-Type': 'application/json',
@@ -183,7 +176,7 @@ export interface PublicComment {
 }
 
 export async function fetchPublicComments(ticketId: number): Promise<PublicComment[]> {
-  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -195,7 +188,7 @@ export async function fetchPublicComments(ticketId: number): Promise<PublicComme
 }
 
 export async function postPublicComment(ticketId: number, content: string): Promise<PublicComment> {
-  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/public-comments`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -212,7 +205,7 @@ export async function postPublicComment(ticketId: number, content: string): Prom
 }
 
 export async function markProblemResolved(ticketId: number): Promise<{ ticketId: number; requesterResolvedAt: string }> {
-  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/problem-appears-resolved`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/problem-appears-resolved`, {
     method: 'POST',
     credentials: 'include',
   });
@@ -247,7 +240,7 @@ export interface QueueQueryParams {
   requestedPriority?: string;
   itPriority?: string;
   ownership?: 'assigned' | 'unassigned' | '';
-  ownerId?: number | '';
+  ownerId?: number | 'me' | '';
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   sort?: string;
@@ -255,6 +248,10 @@ export interface QueueQueryParams {
   endDate?: string;
   page?: number;
   pageSize?: number;
+  // Lab 4 dashboard drill-downs (api-spec §6.1).
+  statusGroup?: 'open' | '';
+  actionAssignee?: 'me' | '';
+  followUp?: 'pending' | '';
 }
 
 export interface StaffQueueResponse {
@@ -283,8 +280,11 @@ export async function fetchStaffQueue(params: QueueQueryParams = {}): Promise<St
   if (params.endDate) query.set('endDate', params.endDate);
   if (params.page) query.set('page', String(params.page));
   if (params.pageSize) query.set('pageSize', String(params.pageSize));
+  if (params.statusGroup) query.set('statusGroup', params.statusGroup);
+  if (params.actionAssignee) query.set('actionAssignee', params.actionAssignee);
+  if (params.followUp) query.set('followUp', params.followUp);
 
-  const res = await fetch(`${API_URL}/api/staff/tickets?${query.toString()}`, { credentials: 'include' });
+  const res = await csrfFetch(`${API_URL}/api/staff/tickets?${query.toString()}`, { credentials: 'include' });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData?.error?.message || `Failed to fetch ticket queue (HTTP ${res.status})`);
@@ -293,7 +293,7 @@ export async function fetchStaffQueue(params: QueueQueryParams = {}): Promise<St
 }
 
 export async function fetchStaffUsers(): Promise<{ users: { id: number; name: string; email: string }[] }> {
-  const res = await fetch(`${API_URL}/api/staff/users`, { credentials: 'include' });
+  const res = await csrfFetch(`${API_URL}/api/staff/users`, { credentials: 'include' });
   if (!res.ok) return { users: [] };
   return res.json();
 }
@@ -303,7 +303,7 @@ export async function fetchStaffUsers(): Promise<{ users: { id: number; name: st
 // ---------------------------------------------------------------------------
 
 export async function fetchStaffTicketDetail(ticketId: number) {
-  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}`, {
+  const res = await csrfFetch(`${API_URL}/api/staff/tickets/${ticketId}`, {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -314,7 +314,7 @@ export async function fetchStaffTicketDetail(ticketId: number) {
 }
 
 export async function claimTicket(ticketId: number) {
-  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/claim`, {
+  const res = await csrfFetch(`${API_URL}/api/staff/tickets/${ticketId}/claim`, {
     method: 'POST',
     credentials: 'include',
   });
@@ -326,7 +326,7 @@ export async function claimTicket(ticketId: number) {
 }
 
 export async function assignTicketOwner(ticketId: number, ownerId: number) {
-  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/owner`, {
+  const res = await csrfFetch(`${API_URL}/api/staff/tickets/${ticketId}/owner`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -342,7 +342,7 @@ export async function assignTicketOwner(ticketId: number, ownerId: number) {
 }
 
 export async function updateTicketItPriority(ticketId: number, itPriority: string) {
-  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/it-priority`, {
+  const res = await csrfFetch(`${API_URL}/api/staff/tickets/${ticketId}/it-priority`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -357,20 +357,45 @@ export async function updateTicketItPriority(ticketId: number, itPriority: strin
   return await res.json();
 }
 
-export async function updateTicketStatus(ticketId: number, status: string, resolutionSummary?: string) {
-  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/status`, {
+export interface StatusHistoryItem {
+  id: number;
+  fromStatus: string | null;
+  toStatus: string;
+  changedBy: { id: number; name: string; role: string } | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+// Throws ApiError so the UI can read `code`, `details` (RESOLUTION_GATE) and `current` (STALE_UPDATE).
+export async function updateTicketStatus(
+  ticketId: number,
+  status: string,
+  resolutionSummary?: string,
+  options: { reason?: string; expectedVersion?: number } = {},
+) {
+  const res = await csrfFetch(`${API_URL}/api/staff/tickets/${ticketId}/status`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     credentials: 'include',
-    body: JSON.stringify({ status, resolutionSummary }),
+    body: JSON.stringify({ status, resolutionSummary, ...options }),
   });
   if (!res.ok) {
-    const errorData = await res.json().catch(() => null);
-    throw new Error(errorData?.error?.message || 'Failed to update ticket status');
+    await handleActionError(res);
   }
   return await res.json();
+}
+
+export async function fetchStatusHistory(ticketId: number): Promise<StatusHistoryItem[]> {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/status-history`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  const data = await res.json();
+  return data.items || [];
 }
 
 export interface InternalNote {
@@ -386,7 +411,7 @@ export interface InternalNote {
 }
 
 export async function fetchInternalNotes(ticketId: number): Promise<InternalNote[]> {
-  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/internal-notes`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/internal-notes`, {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -398,7 +423,7 @@ export async function fetchInternalNotes(ticketId: number): Promise<InternalNote
 }
 
 export async function postInternalNote(ticketId: number, content: string): Promise<InternalNote> {
-  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/internal-notes`, {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/internal-notes`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -432,7 +457,7 @@ export async function fetchAdminUsers(params?: { search?: string; role?: string 
   if (params?.search) query.append('search', params.search);
   if (params?.role) query.append('role', params.role);
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${API_URL}/api/admin/users${qs}`, {
+  const res = await csrfFetch(`${API_URL}/api/admin/users${qs}`, {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -450,7 +475,7 @@ export async function createAdminUser(data: {
   initialPassword: string;
   confirmInitialPassword: string;
 }): Promise<{ user: AdminUserItem }> {
-  const res = await fetch(`${API_URL}/api/admin/users`, {
+  const res = await csrfFetch(`${API_URL}/api/admin/users`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -471,7 +496,7 @@ export async function updateAdminUser(userId: number, data: {
   role?: string;
   isActive?: boolean;
 }): Promise<{ user: AdminUserItem }> {
-  const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+  const res = await csrfFetch(`${API_URL}/api/admin/users/${userId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -490,7 +515,7 @@ export async function setUserInitialPassword(userId: number, data: {
   initialPassword: string;
   confirmInitialPassword: string;
 }): Promise<{ message: string; user: AdminUserItem }> {
-  const res = await fetch(`${API_URL}/api/admin/users/${userId}/set-initial-password`, {
+  const res = await csrfFetch(`${API_URL}/api/admin/users/${userId}/set-initial-password`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -504,4 +529,224 @@ export async function setUserInitialPassword(userId: number, data: {
   }
   return await res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Lab 4: Actions Taken (api-spec §3)
+// ---------------------------------------------------------------------------
+
+export type ActionStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  actionAt: string;
+  description: string;
+  result: string | null;
+  status: ActionStatus;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  performedBy: {
+    id: number;
+    name: string;
+  };
+  assignedTo: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionInput {
+  actionAt?: string;
+  description: string;
+  result?: string | null;
+  status?: ActionStatus;
+  assignedToId: number;
+  followUpRequired: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+}
+
+export interface AssigneeUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
+export class ApiError extends Error {
+  status: number;
+  code: string;
+  fieldErrors?: Record<string, string>;
+  current?: ActionTaken;
+  details?: string[];
+
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fieldErrors?: Record<string, string>,
+    current?: ActionTaken,
+    details?: string[],
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.fieldErrors = fieldErrors;
+    this.current = current;
+    this.details = details;
+  }
+}
+
+async function handleActionError(res: Response): Promise<never> {
+  const data = await res.json().catch(() => null);
+  const status = res.status;
+  const code = data?.error?.code || (status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : 'ERROR');
+  const message = data?.error?.message || `Request failed with status ${status}`;
+  const fieldErrors = data?.error?.fieldErrors;
+  const current = data?.error?.current;
+  throw new ApiError(status, code, message, fieldErrors, current, data?.error?.details);
+}
+
+export async function fetchActions(ticketId: number): Promise<ActionTaken[]> {
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/actions`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  const data = await res.json();
+  return data.items || [];
+}
+
+export async function fetchAssignees(): Promise<AssigneeUser[]> {
+  const res = await csrfFetch(`${API_URL}/api/staff/assignees`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  const data = await res.json();
+  return data.users || [];
+}
+
+export async function createAction(
+  ticketId: number,
+  input: ActionInput,
+  idempotencyKey?: string,
+): Promise<ActionTaken> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] = idempotencyKey;
+  }
+  const res = await csrfFetch(`${API_URL}/api/tickets/${ticketId}/actions`, {
+    method: 'POST',
+    headers,
+    credentials: 'include',
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  return await res.json();
+}
+
+export async function updateAction(
+  actionId: number,
+  input: Partial<ActionInput> & { expectedVersion?: number },
+  expectedVersion?: number,
+): Promise<ActionTaken> {
+  const version = expectedVersion !== undefined ? expectedVersion : input.expectedVersion;
+  const payload = { ...input, expectedVersion: version };
+  const res = await csrfFetch(`${API_URL}/api/actions/${actionId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    await handleActionError(res);
+  }
+  return await res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Lab 4: Role Dashboards (api-spec §5)
+// ---------------------------------------------------------------------------
+
+export interface DashboardMetric {
+  count: number;
+  drillDown: string;
+}
+
+export interface RequesterTicketSummary {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  status: string;
+  updatedAt: string;
+}
+
+export interface StaffTicketSummary extends RequesterTicketSummary {
+  itPriority: string;
+}
+
+export interface RequesterDashboard {
+  openTickets: DashboardMetric;
+  waitingForMe: DashboardMetric;
+  resolved: DashboardMetric;
+  closed: DashboardMetric;
+  recentlyUpdated: RequesterTicketSummary[];
+  recentlyResolved: RequesterTicketSummary[];
+  generatedAt: string;
+  timeZone: string;
+}
+
+export interface StaffDashboardUserBucket {
+  active: number;
+  inactive: number;
+  drillDown: string;
+}
+
+export interface StaffDashboard {
+  unassigned: DashboardMetric;
+  myOwnedOpen: DashboardMetric;
+  myOpenActions: DashboardMetric;
+  pendingFollowUps: DashboardMetric;
+  byStatus: Record<string, number>;
+  byItPriority: Record<string, number>;
+  urgent: StaffTicketSummary[];
+  recentlyUpdated: StaffTicketSummary[];
+  users?: Record<string, StaffDashboardUserBucket>;
+  generatedAt: string;
+  timeZone: string;
+}
+
+export async function fetchRequesterDashboard(): Promise<RequesterDashboard> {
+  const res = await csrfFetch(`${API_URL}/api/dashboard/requester`, { credentials: 'include' });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || `Failed to load the dashboard (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchStaffDashboard(): Promise<StaffDashboard> {
+  const res = await csrfFetch(`${API_URL}/api/dashboard/staff`, { credentials: 'include' });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || `Failed to load the dashboard (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
 

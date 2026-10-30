@@ -38,10 +38,8 @@ export default function LoginPage() {
       if (authUser.mustChangePassword) {
         navigate('/change-password', { replace: true });
       } else {
-        const landing = authUser.role === 'IT_STAFF' ? '/staff/queue'
-                      : authUser.role === 'ADMINISTRATOR' ? '/admin/users'
-                      : '/';
-        navigate(landing, { replace: true });
+        // Lab 4 FR-22: the Dashboard is the landing page after login for every role.
+        navigate('/dashboard', { replace: true });
       }
     } catch (err: any) {
       setError(err.message || 'Invalid email or password.');

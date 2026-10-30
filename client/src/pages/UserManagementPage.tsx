@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../AuthContext.js';
 import {
   fetchAdminUsers,
@@ -152,8 +152,11 @@ export default function UserManagementPage() {
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
-  // Load users from API
+  // Load users from API. Only the latest request may update state, so a slow
+  // older response (e.g. the unfiltered first load) cannot overwrite a newer filter.
+  const latestRequestId = useRef(0);
   const loadUsers = useCallback(async () => {
+    const requestId = ++latestRequestId.current;
     setLoading(true);
     setFetchError(null);
     try {
@@ -161,11 +164,13 @@ export default function UserManagementPage() {
         search: search.trim() || undefined,
         role: roleFilter || undefined,
       });
+      if (requestId !== latestRequestId.current) return;
       setUsers(data.items || []);
     } catch (err: any) {
+      if (requestId !== latestRequestId.current) return;
       setFetchError(err.message || 'Failed to fetch users');
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestId.current) setLoading(false);
     }
   }, [search, roleFilter]);
 
@@ -500,7 +505,7 @@ export default function UserManagementPage() {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id}>
+                  <tr key={u.id} data-testid="list-item">
                     <td className="ps-4 fw-semibold text-dark">{u.name}</td>
                     <td className="text-muted">{u.email}</td>
                     <td>{renderRoleBadge(u.role)}</td>
@@ -525,7 +530,7 @@ export default function UserManagementPage() {
             <div className="row g-3">
               {users.map((u) => (
                 <div className="col-12" key={u.id}>
-                  <div className="card border p-3">
+                  <div data-testid="list-item" className="card border p-3">
                     <div className="d-flex justify-content-between align-items-start mb-2">
                       <div>
                         <h6 className="fw-bold mb-1">{u.name}</h6>

@@ -77,7 +77,7 @@ describe('Login Component (Lab 3)', () => {
     });
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
     });
   });
 
@@ -123,7 +123,7 @@ describe('Login Component (Lab 3)', () => {
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
     });
   });
 

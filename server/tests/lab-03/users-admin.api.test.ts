@@ -3,6 +3,7 @@ import request from 'supertest';
 import { app } from '../../src/app.js';
 import { getPrisma } from '../../src/prisma.js';
 import * as argon2 from 'argon2';
+import { csrfFor } from '../helpers/csrf.js';
 
 const prisma = getPrisma();
 
@@ -132,11 +133,11 @@ describe('Administrator User Management API (Lab 3)', () => {
   // -------------------------------------------------------------------------
   describe('Role Guards (AC-15)', () => {
     it('API-46a: GET /api/admin/users rejects non-admin with 403', async () => {
-      const resStaff = await request(app).get('/api/admin/users').set('Cookie', staffCookie);
+      const resStaff = await request(app).get('/api/admin/users').set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie));
       expect(resStaff.status).toBe(403);
       expect(resStaff.body.error.code).toBe('FORBIDDEN');
 
-      const resReq = await request(app).get('/api/admin/users').set('Cookie', requesterCookie);
+      const resReq = await request(app).get('/api/admin/users').set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie));
       expect(resReq.status).toBe(403);
     });
 
@@ -149,27 +150,27 @@ describe('Administrator User Management API (Lab 3)', () => {
         confirmInitialPassword: 'Password123!',
       };
 
-      const resStaff = await request(app).post('/api/admin/users').set('Cookie', staffCookie).send(payload);
+      const resStaff = await request(app).post('/api/admin/users').set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie)).send(payload);
       expect(resStaff.status).toBe(403);
 
-      const resReq = await request(app).post('/api/admin/users').set('Cookie', requesterCookie).send(payload);
+      const resReq = await request(app).post('/api/admin/users').set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send(payload);
       expect(resReq.status).toBe(403);
     });
 
     it('API-46c: PATCH /api/admin/users/:userId rejects non-admin with 403', async () => {
-      const resStaff = await request(app).patch(`/api/admin/users/${adminUser.id}`).set('Cookie', staffCookie).send({ name: 'Hacked' });
+      const resStaff = await request(app).patch(`/api/admin/users/${adminUser.id}`).set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie)).send({ name: 'Hacked' });
       expect(resStaff.status).toBe(403);
 
-      const resReq = await request(app).patch(`/api/admin/users/${adminUser.id}`).set('Cookie', requesterCookie).send({ name: 'Hacked' });
+      const resReq = await request(app).patch(`/api/admin/users/${adminUser.id}`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send({ name: 'Hacked' });
       expect(resReq.status).toBe(403);
     });
 
     it('API-46d: POST /api/admin/users/:userId/set-initial-password rejects non-admin with 403', async () => {
       const payload = { initialPassword: 'Password123!', confirmInitialPassword: 'Password123!' };
-      const resStaff = await request(app).post(`/api/admin/users/${adminUser.id}/set-initial-password`).set('Cookie', staffCookie).send(payload);
+      const resStaff = await request(app).post(`/api/admin/users/${adminUser.id}/set-initial-password`).set('Cookie', staffCookie).set('X-CSRF-Token', csrfFor(staffCookie)).send(payload);
       expect(resStaff.status).toBe(403);
 
-      const resReq = await request(app).post(`/api/admin/users/${adminUser.id}/set-initial-password`).set('Cookie', requesterCookie).send(payload);
+      const resReq = await request(app).post(`/api/admin/users/${adminUser.id}/set-initial-password`).set('Cookie', requesterCookie).set('X-CSRF-Token', csrfFor(requesterCookie)).send(payload);
       expect(resReq.status).toBe(403);
     });
   });
@@ -179,7 +180,7 @@ describe('Administrator User Management API (Lab 3)', () => {
   // -------------------------------------------------------------------------
   describe('GET /api/admin/users', () => {
     it('API-47: Admin lists users returning safe fields without password hashes', async () => {
-      const res = await request(app).get('/api/admin/users').set('Cookie', adminCookie);
+      const res = await request(app).get('/api/admin/users').set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.items)).toBe(true);
       expect(res.body.items.length).toBeGreaterThan(0);
@@ -195,27 +196,27 @@ describe('Administrator User Management API (Lab 3)', () => {
     });
 
     it('API-48: Search by name returns matching records', async () => {
-      const res = await request(app).get('/api/admin/users?search=Alice').set('Cookie', adminCookie);
+      const res = await request(app).get('/api/admin/users?search=Alice').set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
       expect(res.status).toBe(200);
       expect(res.body.items.every((u: any) => u.name.toLowerCase().includes('alice'))).toBe(true);
     });
 
     it('API-49: Search by email returns matching records', async () => {
-      const res = await request(app).get('/api/admin/users?search=staff1@toktickit.com').set('Cookie', adminCookie);
+      const res = await request(app).get('/api/admin/users?search=staff1@toktickit.com').set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBe(1);
       expect(res.body.items[0].email).toBe('staff1@toktickit.com');
     });
 
     it('API-50: Role filter returns only matching records', async () => {
-      const res = await request(app).get('/api/admin/users?role=IT_STAFF').set('Cookie', adminCookie);
+      const res = await request(app).get('/api/admin/users?role=IT_STAFF').set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
       expect(res.status).toBe(200);
       expect(res.body.items.length).toBeGreaterThan(0);
       expect(res.body.items.every((u: any) => u.role === 'IT_STAFF')).toBe(true);
     });
 
     it('rejects invalid role query parameter with 400 Bad Request', async () => {
-      const res = await request(app).get('/api/admin/users?role=INVALID_ROLE').set('Cookie', adminCookie);
+      const res = await request(app).get('/api/admin/users?role=INVALID_ROLE').set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie));
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
@@ -231,7 +232,7 @@ describe('Administrator User Management API (Lab 3)', () => {
       testUserEmail = `created_${Date.now()}@toktickit.com`;
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Created Test User',
           email: testUserEmail,
@@ -254,7 +255,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('API-52: rejects duplicate email (with case/whitespace variations) with 409 Conflict', async () => {
       const duplicateRes = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Duplicate User',
           email: `  ${testUserEmail.toUpperCase()}  `,
@@ -270,7 +271,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('API-53: rejects invalid role with 422 Unprocessable Entity', async () => {
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Invalid Role User',
           email: `invalid_role_${Date.now()}@toktickit.com`,
@@ -286,7 +287,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('rejects non-boolean isActive with 400 Bad Request', async () => {
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Bad Active User',
           email: `bad_active_${Date.now()}@toktickit.com`,
@@ -303,7 +304,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('rejects invalid email format with 400 Bad Request', async () => {
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Bad Email User',
           email: 'not-an-email',
@@ -319,7 +320,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('rejects password mismatch with 400 Bad Request', async () => {
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Mismatch User',
           email: `mismatch_${Date.now()}@toktickit.com`,
@@ -335,7 +336,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('rejects weak initial password with 400 Bad Request', async () => {
       const res = await request(app)
         .post('/api/admin/users')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: 'Weak Password User',
           email: `weak_${Date.now()}@toktickit.com`,
@@ -373,7 +374,7 @@ describe('Administrator User Management API (Lab 3)', () => {
       const updatedName = 'Updated Target Name';
       const res = await request(app)
         .patch(`/api/admin/users/${targetUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           name: updatedName,
           role: 'IT_STAFF',
@@ -387,7 +388,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('rejects empty PATCH payload with 400 Bad Request', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${targetUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({});
 
       expect(res.status).toBe(400);
@@ -397,7 +398,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('rejects non-boolean isActive in PATCH with 400 Bad Request', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${targetUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ isActive: 'false' });
 
       expect(res.status).toBe(400);
@@ -406,7 +407,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('API-55: rejects self-deactivation with 409 Conflict', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ isActive: false });
 
       expect(res.status).toBe(409);
@@ -426,7 +427,7 @@ describe('Administrator User Management API (Lab 3)', () => {
 
       const res = await request(app)
         .patch(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ isActive: false });
 
       expect(res.status).toBe(409);
@@ -441,7 +442,7 @@ describe('Administrator User Management API (Lab 3)', () => {
 
       const res = await request(app)
         .patch(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ role: 'IT_STAFF' });
 
       expect(res.status).toBe(409);
@@ -462,21 +463,21 @@ describe('Administrator User Management API (Lab 3)', () => {
       // Deactivate target user via Admin
       const deactRes = await request(app)
         .patch(`/api/admin/users/${targetUser.id}`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ isActive: false });
       expect(deactRes.status).toBe(200);
 
       // Target user's session should now be rejected (401)
       const testRes = await request(app)
         .get('/api/auth/me')
-        .set('Cookie', targetCookie);
+        .set('Cookie', targetCookie).set('X-CSRF-Token', csrfFor(targetCookie));
       expect(testRes.status).toBe(401);
     });
 
     it('returns 404 for nonexistent user ID on PATCH', async () => {
       const res = await request(app)
         .patch('/api/admin/users/999999')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({ name: 'Nonexistent' });
       expect(res.status).toBe(404);
     });
@@ -512,7 +513,7 @@ describe('Administrator User Management API (Lab 3)', () => {
       // Admin sets new initial password
       const resetRes = await request(app)
         .post(`/api/admin/users/${targetUser.id}/set-initial-password`)
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           initialPassword: 'NewInitialPassword123!',
           confirmInitialPassword: 'NewInitialPassword123!',
@@ -524,7 +525,7 @@ describe('Administrator User Management API (Lab 3)', () => {
       // Prior session is revoked (API-60 / SEC-12)
       const oldSessionRes = await request(app)
         .get('/api/auth/me')
-        .set('Cookie', oldCookie);
+        .set('Cookie', oldCookie).set('X-CSRF-Token', csrfFor(oldCookie));
       expect(oldSessionRes.status).toBe(401);
 
       // Old password no longer works
@@ -544,7 +545,7 @@ describe('Administrator User Management API (Lab 3)', () => {
     it('returns 404 for nonexistent user ID on set-initial-password', async () => {
       const res = await request(app)
         .post('/api/admin/users/999999/set-initial-password')
-        .set('Cookie', adminCookie)
+        .set('Cookie', adminCookie).set('X-CSRF-Token', csrfFor(adminCookie))
         .send({
           initialPassword: 'NewInitialPassword123!',
           confirmInitialPassword: 'NewInitialPassword123!',

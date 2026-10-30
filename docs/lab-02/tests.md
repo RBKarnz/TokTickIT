@@ -12,13 +12,13 @@ Testing will follow Test-Driven Development (TDD) principles. We will implement 
 | API-02 | API | AC-03 | Prevent cross-requester access | 403 Forbidden or 404 Not Found when Requester B requests Requester A's ticket | `server/tests/lab-02/ticket-detail.api.test.ts` | Pass |
 | API-03 | API | AC-04 | Reject >5MB attachment | 400 Bad Request with validation error message | `server/tests/lab-02/attachments.api.test.ts` | Pass |
 | API-04 | API | AC-05 | Soft-remove attachment | 200 OK; attachment marked removed, subsequent download returns 404 | `server/tests/lab-02/attachments.api.test.ts` | Pass |
-| UI-01 | UI | FR-01 | Requester Selector renders | Dropdown shows active requesters from mock API | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
+| UI-01 | UI | FR-01 | Requester Selector renders | Dropdown shows active requesters from mock API | `client/tests/lab-02/RequesterSelector.test.tsx` | Retired (Lab 4 hardening): the Development Requester selector and its test were removed once Lab 3 session login replaced it (AC-26) |
 | UI-02 | UI | AC-07 | Submit without required field | Form blocked; API not called; error message displayed | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
 | UI-03 | UI | FR-04 | My Tickets search filter | Search input updates list via API call | `client/tests/lab-02/MyTickets.test.tsx` | Pass |
 | UI-04 | UI | FR-04 | My Tickets advanced filters | Category/Status filters and Sorting update list correctly | `client/tests/lab-02/MyTickets.test.tsx` | Pass |
 | UI-05 | UI | AC-12 | Form input retention on error | Input values remain after API failure | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
-| UI-06 | UI | AC-13 | Inactive requester omission | Dropdown excludes inactive requesters | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
-| UI-07 | UI | AC-10 | Requester switching context | Cached data clears on user switch | `client/tests/lab-02/RequesterContext.test.tsx` | Pass |
+| UI-06 | UI | AC-13 | Inactive requester omission | Dropdown excludes inactive requesters | `client/tests/lab-02/RequesterSelector.test.tsx` | Retired (Lab 4 hardening): same removal as UI-01 |
+| UI-07 | UI | AC-10 | Requester switching context | Cached data clears on user switch | `client/tests/lab-02/RequesterContext.test.tsx` | Retired (Lab 4 hardening): `RequesterContext` was dead code (no production usage) and was removed along with its test (AC-26) |
 | UI-08 | UI | Style | UI Style constraints | Validates colors, asterisks, read-only appearance | `client/tests/lab-02/Style.test.tsx` | Pass |
 | UI-09 | UI | Responsive | Responsive layout logic | Multi-column desktop vs single-column mobile | `client/tests/lab-02/Responsive.test.tsx` | Pass |
 | API-05 | API | FR-04, AC-08, AC-09 | Search, Filter, Sort query | API returns correctly filtered/sorted/paginated data | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
@@ -30,7 +30,7 @@ Testing will follow Test-Driven Development (TDD) principles. We will implement 
 | Acceptance Criterion | Covered By Tests |
 |---|---|
 | AC-01 (Create valid ticket) | API-01, E2E-01 |
-| AC-02 (Redirect if no user) | UI-01, E2E-01 |
+| AC-02 (Redirect if no user) | UI-01 (retired, see above), E2E-01 |
 | AC-03 (Data ownership) | API-02 |
 | AC-04 (File size limit) | API-03 |
 | AC-05 (Soft-remove file) | API-04, E2E-01 |
@@ -38,10 +38,10 @@ Testing will follow Test-Driven Development (TDD) principles. We will implement 
 | AC-07 (Client-side validation) | UI-02 |
 | AC-08 (Pagination updates) | API-05, UI-04 |
 | AC-09 (Multiple filters & sorting) | API-05, UI-04 |
-| AC-10 (Requester switching context) | UI-07 |
+| AC-10 (Requester switching context) | UI-07 (retired, see above) |
 | AC-11 (Add attachment to ticket) | API-06 |
 | AC-12 (Form input retention) | UI-05 |
-| AC-13 (Exclude inactive requesters) | UI-06 |
+| AC-13 (Exclude inactive requesters) | UI-06 (retired, see above) |
 
 ## 4. Responsive and Visual Checklist
 - [ ] **Desktop**: Multi-column form layout, table view for My Tickets.

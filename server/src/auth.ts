@@ -49,6 +49,48 @@ export function hashToken(token: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// CSRF protection (spec §15.2): Origin validation + session-bound token.
+// Token = HMAC-SHA256(raw session token); nothing extra is stored in the DB.
+// ---------------------------------------------------------------------------
+export const CSRF_HEADER = 'x-csrf-token';
+// Falls back to a per-process random secret so no secret is committed; tokens
+// are re-fetched from /api/auth/me after a server restart.
+const CSRF_SECRET = process.env.CSRF_SECRET || crypto.randomBytes(32).toString('hex');
+
+export function csrfTokenFor(sessionToken: string): string {
+  return crypto.createHmac('sha256', CSRF_SECRET).update(sessionToken).digest('hex');
+}
+
+function allowedOrigins(): string[] {
+  return (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((o) => o.trim());
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+// Login has no session yet (only Origin is checked); logout must always succeed.
+const TOKEN_EXEMPT_PATHS = new Set(['/api/auth/login', '/api/auth/logout']);
+
+export function csrfProtection(req: Request, res: Response, next: NextFunction) {
+  if (SAFE_METHODS.has(req.method)) return next();
+
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins().includes(origin)) {
+    return res.status(403).json({ error: { code: 'CSRF_ORIGIN_MISMATCH', message: 'Cross-origin request rejected.' } });
+  }
+
+  const sessionToken = req.cookies?.[COOKIE_NAME];
+  if (!sessionToken || TOKEN_EXEMPT_PATHS.has(req.path)) return next();
+
+  const sent = req.headers[CSRF_HEADER];
+  const expected = csrfTokenFor(sessionToken);
+  const valid = typeof sent === 'string' && sent.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(sent), Buffer.from(expected));
+  if (!valid) {
+    return res.status(403).json({ error: { code: 'CSRF_TOKEN_INVALID', message: 'Missing or invalid CSRF token.' } });
+  }
+  return next();
+}
+
+// ---------------------------------------------------------------------------
 // Session creation
 // ---------------------------------------------------------------------------
 export async function createSession(userId: number): Promise<string> {
