@@ -94,13 +94,21 @@ test.describe('Actions Taken Flow (E2E-01, E2E-02, E2E-06, E2E-11)', () => {
     await page.locator('#description').fill('Investigating the reported outage.');
     await page.locator('#status').selectOption('PLANNED');
     await page.locator('button:has-text("Save Action")').click();
-    await expect(page.getByText('Investigating the reported outage.')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="action-row"]:visible, [data-testid="action-card"]:visible', {
+        hasText: 'Investigating the reported outage.',
+      })
+    ).toBeVisible();
 
-    await page.locator('button:has-text("Edit")').first().click();
+    await page.locator('button:has-text("Edit"):visible').first().click();
     await page.locator('#status').selectOption('COMPLETED');
     await page.locator('#result').fill('Outage resolved; service restored.');
     await page.locator('button:has-text("Save Action")').click();
-    await expect(page.getByText('Outage resolved; service restored.')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="action-row"]:visible, [data-testid="action-card"]:visible', {
+        hasText: 'Outage resolved; service restored.',
+      })
+    ).toBeVisible();
 
     // A COMPLETED Action has no Edit button (BR-10).
     await expect(page.locator('button:has-text("Edit")')).toHaveCount(0);

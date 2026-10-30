@@ -144,7 +144,11 @@ test.describe('Ticket Resolution Gate & Stale Update (E2E-03, E2E-04, E2E-05, E2
     await expect(page.getByText('Diagnosed and repaired the issue; confirmed working.')).toBeVisible();
 
     await page.locator('button:has-text("Actions Taken")').click();
-    await expect(page.getByText('Diagnosed and repaired the issue.').first()).toBeVisible();
+    await expect(
+      page.locator('[data-testid="action-row"]:visible, [data-testid="action-card"]:visible', {
+        hasText: 'Diagnosed and repaired the issue.',
+      })
+    ).toBeVisible();
     // Read-only: no create/edit controls for a Requester.
     await expect(page.locator('button:has-text("+ Add Action Taken")')).toHaveCount(0);
     await expect(page.locator('button:has-text("Edit")')).toHaveCount(0);
