@@ -1,7 +1,7 @@
 # Lab 4 — Peer Review Record
 
-**Author:** <ธีรกาญจน์ น้อยรักษา> — <67070501062> — GitHub: @<RBKarnz>
-**Peer reviewer:** <เมธิภัทร มั่นทรัพย์> — <67070501071> — GitHub: @<Bobbie-CPE38>
+**Author:** ธีรกาญจน์ น้อยรักษา — 67070501062 — GitHub: @RBKarnz
+**Peer reviewer:** เมธิภัทร มั่นทรัพย์ — 67070501071 — GitHub: @Bobbie-CPE38
 
 ## Pull Requests I authored (reviewed by my partner)
 | PR | Branch | Reviewer verdict |
@@ -14,7 +14,9 @@
 | #65 | feature/lab4-ticket-workflow | Approved |
 | #66 | feature/lab4-dashboards | Approved |
 | #67 | feature/lab4-hardening | Approved |
-| #68 | feature/lab4-doc | Not yet reviewed |
+| #68 | feature/lab4-doc | Approved |
+| #69 | lab4-staging → main | Approved |
+| #70 | fix/lab4-submission-evidence → main | Approved |
 
 ### Reviewer comments I received
 
@@ -339,7 +341,73 @@
 - **Issue** https://github.com/RBKarnz/TokTickIT/issues/60
 - **Comment:**
  **Reviewer comment I received:**
-    Not yet reviewed as of this writing.
+    **Comment 1**
+    ```
+    Approved. I reviewed all four changed files.
+    
+    - `docs/lab-04/ai-use.md`: It names the agents used (Claude Code and Gemini/Antigravity) and has 8 concrete prompts, which fits the required 6-10. Each prompt has a result and a reflection. The specification-agent and coding-agent reflections are specific and match what happened in the review rounds.
+    - `docs/lab-04/reviewer.md`: The format follows the Lab 3 record. The comments on my side are quoted accurately, and the PR table matches the actual review history. PR #68 is correctly marked "Not yet reviewed".
+    - `.gitignore`: Adding `.claude/` is sensible and harmless.
+    - Removing `migration-runbook.md` is fine, since it isn't part of the required `docs/lab-04/` structure.
+    
+    Non-blocking note: `server/prisma/rollback/20260927120000_lab4_actions_status_history.down.sql` line 2 still says "(docs/lab-04/migration-runbook.md)". That file no longer exists after this PR. Consider rewording that comment in a follow-up so it doesn't point to a missing file.
+    
+    Good to merge.
+    ```
+
+    **How I responded:** — https://github.com/RBKarnz/TokTickIT/pull/68#issuecomment-6516415845
+    ```
+    Huge thanks for your help in getting this across the finish line!
+    ```
+
+### PR #69: lab4-staging → main
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/69
+- **Comment:**
+ **Reviewer comment I received:**
+    **Comment 1**
+    ```
+    Approved. This is the Lab 4 integration PR merging lab4-staging into main.
+    
+    What I checked:
+    - The PR is mergeable with a clean merge state, and the only CI check (Project Board Automation) is green.
+    - The diff (102 files) matches the sub-PRs listed in the description (#52, #61-#68): specs, additive Prisma migration with a rollback script, Actions Taken API and UI, workflow and resolution gate, role dashboards, hardening, and docs.
+    - I scanned the non-doc changes for leftover debug code, `.only` test filters, TODO/FIXME markers and committed secrets. I found none. The only credentials are the seeded test passwords in test fixtures, and the workflow token is read from `secrets`.
+    - The reported test evidence (server 284 and client 98 passing, clean typechecks, E2E passing) is consistent with the scope of the changes.
+    
+    I did not re-run the test suites locally. I'm relying on the sub-PR reviews and the evidence in the description.
+    
+    Good to merge.
+    ```
+
+    **How I responded:** — https://github.com/RBKarnz/TokTickIT/pull/69#issuecomment-6517504397
+    ```
+    Appreciate your patience and guidance on this Sprint!
+    ```
+
+### PR #70: fix/lab4-submission-evidence → main
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/70
+- **Comment:**
+ **Reviewer comment I received:**
+    **Comment 1**
+    ```
+    Approved.
+    
+    - The selector fix in `actions-taken-flow.spec.ts` and `ticket-resolution.spec.ts` is correct. Scoping to `[data-testid="action-row"]:visible, [data-testid="action-card"]:visible` avoids matching the hidden duplicate node (desktop table row vs. mobile card). Both test ids exist in `ActionsTakenTab.tsx`.
+    - `submission-evidence.spec.ts` is clean. It creates its own data per viewport, checks for horizontal scroll, and writes only to `artifacts/lab-04/screenshots/ticket-workflow/`.
+    - There are no production code changes, and the screenshot artifacts are evidence only. CI passes, and the reported results (375/375 E2E, server and client unit tests, typecheck) are consistent with the changes.
+    
+    Minor, non-blocking: the `submission-evidence` test relies on `Date.now()` for unique summaries and a single long test for all three viewports. That's fine for evidence capture, but splitting it per viewport would give clearer failures later.
+    ```
+
+    **Comment 2**
+    ```
+    Approved. 77cd227 splits the evidence capture into one test per viewport, as suggested. The change is test-only and correct: the loop now wraps `test()` and the body is otherwise unchanged. Each viewport has its own test name and ticket, and failures will name the viewport. Nothing else changed in this push.
+    ```
+
+    **How I responded:** — https://github.com/RBKarnz/TokTickIT/pull/70#issuecomment-6527264234
+    ```
+    Fixes are in progress......
+    ```
 
 ## Pull Requests I reviewed for my partner
 

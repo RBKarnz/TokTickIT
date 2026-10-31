@@ -24,7 +24,7 @@ The top header provides immediate brand recognition, contextual navigation links
 
 - The currently active navigation link is visually distinguished by a 3px solid Zen Green bottom border, bold typography, and semantic attribute `aria-current="page"`.
 - Inactive links feature standard weight text with subtle hover underlines.
-- Mobile view collapses items into a clean hamburger sliding drawer with identical active state highlights.
+- Below 576px the links collapse into a hamburger drawer that opens under the header, with identical active state highlights.
 
 ### 2.3 Elimination of Obsolete Components
 
@@ -196,8 +196,8 @@ When navigating to `/tickets` or `/staff/queue` via dashboard metric cards:
 - **Screen Reader Support:** Metric values include explicit `aria-label` descriptors (e.g., `aria-label="14 unassigned tickets, click to view"`).
 - **Responsive Layout:**
   - **Desktop (>= 1024px):** 4 metric cards per row; two-column dashboard body; full data tables.
-  - **Tablet (768px – 1023px):** 2 metric cards per row; stacked dashboard lists; compact table padding.
-  - **Mobile (< 768px):** 1 metric card per row; full-width stacked cards; table rows collapse into self-contained cards; navigation moves to slide-out drawer.
+  - **Tablet (768px – 1023px):** 4 metric cards per row (`col-md-3`); stacked dashboard lists; compact table padding.
+  - **Mobile (< 768px):** 2 metric cards per row (`col-6`); full-width stacked cards; table rows collapse into self-contained cards; below 576px navigation moves to the hamburger drawer.
 - **Form Association:** Every input, select, and textarea has a matching `<label>` with explicit `htmlFor` matching the control's `id`.
 
 ## 11. Visual Evidence Requirements

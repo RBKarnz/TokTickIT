@@ -445,4 +445,4 @@ Per Lab 4 handout Section 4.3 (superseding Lab 3 BR-23 and BR-41), Administrator
 - Every state-changing request (`POST`, `PUT`, `PATCH`, `DELETE`) requires:
   1. **Origin Verification:** Header `Origin` (or `Referer` if `Origin` is missing) must match the configured application origin.
   2. **Token Verification:** Header `X-CSRF-Token` must be present and match the HMAC signature of the authenticated session token.
-- Failure of either check terminates the request immediately with `403 Forbidden`, error code `CSRF_ERROR`.
+- Failure of either check terminates the request immediately with `403 Forbidden`: error code `CSRF_ORIGIN_MISMATCH` for a failed Origin check, `CSRF_TOKEN_INVALID` for a missing or invalid token.

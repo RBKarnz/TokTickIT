@@ -131,6 +131,26 @@ describe('Staff & Administrator Dashboard (Lab 4)', () => {
     expect(queueLink).not.toHaveAttribute('aria-current');
   });
 
+  it('UI-29: the hamburger opens a drawer with the role links and active page, and a link closes it', async () => {
+    vi.spyOn(authApi, 'fetchCurrentUser').mockResolvedValue(staffUser);
+    vi.spyOn(api, 'fetchStaffDashboard').mockResolvedValue(baseStaffDashboard);
+    window.history.pushState({}, '', '/dashboard');
+    render(<App />);
+
+    const toggle = await screen.findByRole('button', { name: /toggle navigation menu/i });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    const drawer = within(document.getElementById('mobile-nav-drawer')!);
+    const dashboardLink = drawer.getByRole('link', { name: /dashboard/i });
+    expect(dashboardLink).toHaveAttribute('aria-current', 'page');
+    expect(drawer.getByRole('link', { name: /ticket queue/i })).toBeInTheDocument();
+
+    fireEvent.click(dashboardLink);
+    expect(document.getElementById('mobile-nav-drawer')).toBeNull();
+  });
+
   it('shows a safe-failure banner with Retry on a load failure, and recovers', async () => {
     vi.spyOn(authApi, 'fetchCurrentUser').mockResolvedValue(staffUser);
     const spy = vi.spyOn(api, 'fetchStaffDashboard')

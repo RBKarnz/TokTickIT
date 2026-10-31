@@ -90,7 +90,27 @@ function groupByRow(boxes: { y: number }[], tolerancePx = 4): number {
   return rows;
 }
 
-test.describe('Lab 4 Style / Responsive / Accessibility (STYLE-01 to STYLE-08)', () => {
+test.describe('Lab 4 Style / Responsive / Accessibility (STYLE-01 to STYLE-09)', () => {
+  test('STYLE-09: below 576px the navigation is reachable through the hamburger drawer; wider viewports keep inline links', async ({ page }) => {
+    await login(page, 'staff1@toktickit.com');
+    const toggle = page.getByRole('button', { name: 'Toggle navigation menu' });
+    const width = page.viewportSize()!.width;
+    if (width >= 576) {
+      await expect(toggle).toBeHidden();
+      await expect(page.locator('nav.navbar').getByRole('link', { name: 'Ticket Queue' })).toBeVisible();
+      return;
+    }
+    await expect(toggle).toBeVisible();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const drawer = page.locator('#mobile-nav-drawer');
+    await expect(drawer.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
+    await expectNoHorizontalOverflow(page);
+    await drawer.getByRole('link', { name: 'Ticket Queue' }).click();
+    await expect(page).toHaveURL(/\/staff\/queue/);
+    await expect(drawer).toHaveCount(0);
+  });
+
   test('STYLE-01: the Dashboard uses the Zen Green primary token for the header and primary action', async ({ page }) => {
     await login(page, 'staff1@toktickit.com');
     expect(await bg(page, 'nav.navbar')).toBe(ZEN_GREEN);

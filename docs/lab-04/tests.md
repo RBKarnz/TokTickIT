@@ -163,6 +163,7 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | UI-26 | UI | AC-25 | Double click on Confirm in the status modal | `updateTicketStatus` is called exactly once; button locked while in flight | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 | UI-27 | UI | AC-13 | Status history loading, failure and empty states | Loading indicator, failure alert with Retry, empty message | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 | UI-28 | UI | AC-13 | Requester views the status history of an own ticket | Same read-only timeline is shown | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-29 | UI | AC-20 | Hamburger drawer on the header | Opens with the role links and active page; following a link closes it | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
 
 ## 9. UI Style, Responsive & Accessibility Tests
 
@@ -176,6 +177,7 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 | STYLE-06 | Responsive | AC-27 | Mobile viewport (375px) layout | 2-column metric grid (`col-6` below the md breakpoint); actions as cards; zero horizontal scroll | `e2e/lab-04/style.spec.ts` | Pass |
 | STYLE-07 | A11y | AC-27 | Form field label and error associations | Inputs linked to labels via `for` and errors via `aria-describedby` | `e2e/lab-04/style.spec.ts` | Pass |
 | STYLE-08 | Responsive | AC-27 | Modal and drawer responsive containment | Modals wrap within mobile screen without clipping | `e2e/lab-04/style.spec.ts` | Pass |
+| STYLE-09 | Responsive | AC-27 | Navigation on narrow viewports | Below 576px the drawer gives access to every role link with no overflow; wider viewports keep inline links | `e2e/lab-04/style.spec.ts` | Pass |
 
 ## 10. E2E Tests
 
@@ -198,9 +200,9 @@ All tests operate against a real PostgreSQL database instance and evaluate exact
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| SEC-01 | Security | AC-23 | State-changing request missing `X-CSRF-Token` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
-| SEC-02 | Security | AC-23 | State-changing request with forged CSRF token | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
-| SEC-03 | Security | AC-23 | State-changing request from unauthorized `Origin` | 403 Forbidden with code `CSRF_ERROR` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-01 | Security | AC-23 | State-changing request missing `X-CSRF-Token` | 403 Forbidden with code `CSRF_TOKEN_INVALID` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-02 | Security | AC-23 | State-changing request with forged CSRF token | 403 Forbidden with code `CSRF_TOKEN_INVALID` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| SEC-03 | Security | AC-23 | State-changing request from unauthorized `Origin` | 403 Forbidden with code `CSRF_ORIGIN_MISMATCH` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | SEC-04 | Security | AC-08 | Requester calls direct POST to create Action Taken | 403 Forbidden | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | SEC-05 | Security | AC-08 | Requester calls direct GET for other user's actions | 404 Not Found (safe non-disclosure) | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | SEC-06 | Security | AC-03 | Client sends forged `performedById` parameter | Server ignores parameter; stores authenticated user ID | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
@@ -296,14 +298,14 @@ Seeded by `server/prisma/seed.ts` for `requester3@toktickit.com` with fixed numb
 | AC-17 | API-38, UI-04 |
 | AC-18 | API-39, UI-05, E2E-08, E2E-09 |
 | AC-19 | API-40, UI-01, UI-02, UI-03 |
-| AC-20 | UI-01, UI-03, UI-16, E2E-07 |
+| AC-20 | UI-01, UI-03, UI-16, UI-29, E2E-07 |
 | AC-21 | MIG-01, MIG-02, MIG-03, MIG-05 |
 | AC-22 | MIG-04 |
 | AC-23 | SEC-01, SEC-02, SEC-03 |
 | AC-24 | E2E-12, Section 12 regression suite |
 | AC-25 | UI-10, UI-11, UI-18, UI-24, UI-26 |
 | AC-26 | UI-16, Manual inspection checklist |
-| AC-27 | UI-21, STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08 |
+| AC-27 | UI-21, STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08, STYLE-09 |
 | AC-28 | PERF-01, PERF-02 |
 | AC-29 | Complete test suite coverage across Sections 3 through 11 |
 | AC-30 | SEC-07, SEC-08, Test strategy adherence |

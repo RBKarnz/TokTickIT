@@ -187,13 +187,21 @@ function RequireAdmin() {
 // ---------------------------------------------------------------------------
 
 /** Nav link with aria-current="page" and a visible underline on the active route (FR-22/AC-20). */
-function NavItem({ to, icon, children }: { to: string; icon: string; children: React.ReactNode }) {
+function NavItem({ to, icon, children, inDrawer = false, onNavigate }: {
+  to: string;
+  icon: string;
+  children: React.ReactNode;
+  inDrawer?: boolean;
+  onNavigate?: () => void;
+}) {
   const location = useLocation();
   const isActive = location.pathname === to;
+  const layout = inDrawer ? 'd-inline-block py-2 align-self-start' : 'me-1 d-none d-sm-inline pb-1';
   return (
     <Link
-      className="text-white text-decoration-none fw-semibold me-1 d-none d-sm-inline pb-1"
+      className={`text-white text-decoration-none fw-semibold ${layout}`}
       to={to}
+      onClick={onNavigate}
       aria-current={isActive ? 'page' : undefined}
       style={isActive ? { borderBottom: '2px solid #FFFFFF' } : undefined}
     >
@@ -205,12 +213,31 @@ function NavItem({ to, icon, children }: { to: string; icon: string; children: R
 function AppShell() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   async function handleLogout() {
     await logout();
     setUser(null);
     navigate('/login', { replace: true });
   }
+
+  const navItems = (inDrawer: boolean) => {
+    const props = inDrawer ? { inDrawer, onNavigate: () => setDrawerOpen(false) } : {};
+    return (
+      <>
+        <NavItem to="/dashboard" icon="bi-speedometer2" {...props}>Dashboard</NavItem>
+        {user?.role === 'REQUESTER' && (
+          <NavItem to="/tickets" icon="bi-ticket-detailed" {...props}>My Tickets</NavItem>
+        )}
+        {(user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') && (
+          <NavItem to="/staff/queue" icon="bi-inbox" {...props}>Ticket Queue</NavItem>
+        )}
+        {user?.role === 'ADMINISTRATOR' && (
+          <NavItem to="/admin/users" icon="bi-people" {...props}>User Management</NavItem>
+        )}
+      </>
+    );
+  };
 
   const roleBadge = user?.role === 'ADMINISTRATOR' ? 'Admin'
                   : user?.role === 'IT_STAFF' ? 'IT Staff'
@@ -224,16 +251,7 @@ function AppShell() {
             <i className="bi bi-clock-history me-2"></i>TokTickIT
           </Link>
           <div className="d-flex align-items-center gap-2">
-            <NavItem to="/dashboard" icon="bi-speedometer2">Dashboard</NavItem>
-            {user?.role === 'REQUESTER' && (
-              <NavItem to="/tickets" icon="bi-ticket-detailed">My Tickets</NavItem>
-            )}
-            {(user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') && (
-              <NavItem to="/staff/queue" icon="bi-inbox">Ticket Queue</NavItem>
-            )}
-            {user?.role === 'ADMINISTRATOR' && (
-              <NavItem to="/admin/users" icon="bi-people">User Management</NavItem>
-            )}
+            {navItems(false)}
             <span className="badge bg-light text-dark d-none d-sm-inline">{roleBadge}</span>
             <span className="text-white small text-truncate d-none d-md-inline" style={{ maxWidth: '150px' }}>
               <i className="bi bi-person me-1"></i>{user?.name}
@@ -244,7 +262,23 @@ function AppShell() {
             >
               <i className="bi bi-box-arrow-right me-1"></i>Logout
             </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-light d-sm-none"
+              aria-label="Toggle navigation menu"
+              aria-expanded={drawerOpen}
+              aria-controls="mobile-nav-drawer"
+              onClick={() => setDrawerOpen((open) => !open)}
+            >
+              <i className={`bi ${drawerOpen ? 'bi-x-lg' : 'bi-list'}`}></i>
+            </button>
           </div>
+          {drawerOpen && (
+            <div id="mobile-nav-drawer" className="d-flex d-sm-none flex-column w-100 pt-2 mt-2 border-top border-light">
+              <span className="badge bg-light text-dark align-self-start mb-1">{roleBadge}</span>
+              {navItems(true)}
+            </div>
+          )}
         </div>
       </nav>
       <Outlet />
